@@ -1,0 +1,17 @@
+# Manta recorder: Kalshi BTC contracts, Deribit BTC options and index, Coinbase and Kraken spot.
+[Unit]
+Description=Manta market-data recorder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=manta
+EnvironmentFile=/etc/manta/env
+ExecStart=/opt/manta/bin/recorder -out /var/lib/manta/raw
+# A crash or write failure exits non-zero: restart, and the gap shows up in `status`.
+# The disk guard exits 0 on purpose: stay down until someone frees space.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

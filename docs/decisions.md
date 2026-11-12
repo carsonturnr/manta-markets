@@ -1,0 +1,10 @@
+# Decisions
+
+Newest first. One line each: date — decision — why.
+
+- 2026-11-12 — Recordings archive nightly to a Hetzner Storage Box (BX11, 1 TB, €4/mo, Helsinki), recompressed with zstd -19; the VM keeps the last 3 days. Carson approved. — About 6.7 GB/day raw (Kalshi KXBTCD alone is 80%), about 125 GB per 4 weeks after recompression, about 5x the VM's free disk.
+- 2026-11-12 — Deribit option quotes are recorded only for options expiring within 2 days with a strike within ±15% of the index, at 1 s; the full surface comes from `markprice.options.btc_usd` (every option's mark and implied volatility, once a second). — Quotes for all 270 near-term options were 2.9 GB/day; hourly Kalshi contracts are priced from near-expiry, near-the-money options.
+- 2026-11-12 — Kalshi series are an explicit allow-list (KXBTCD, KXBTC, KXBTC15M), and the recorder refuses to start unless every series' category from Kalshi's API is Crypto, Financials or Economics. — No sports markets ever; Series discovered markets by title regex, which could have matched anything.
+- 2026-11-12 — Coinbase and Kraken BTC/USD spot are recorded as a stand-in for the CF Benchmarks BRTI that Kalshi settles on. — The BRTI isn't a free feed; the stand-in gets measured against Kalshi's published settlements.
+- 2026-11-12 — Repo `manta-markets`, separate from Series (archived, nothing deleted) and from an unrelated app also named Manta. Recorder: the Go raw tap from Series, extended; NautilusTrader is used as a library from Milestone 2 on. — Carson's choices. The recorder ran 72 h on Series with 0 restarts, and the Nautilus Kalshi adapter is a beta inside a release candidate, too young to trust for data that can't be re-recorded.
+- 2026-11-12 — Facts checked against live APIs: KXBTCD and KXBTC hourly, KXBTC15M 15-minute, all `Crypto`, CF Benchmarks settlement, fee_type `quadratic` (taker-only, no maker fee); Deribit dailies at 08:00 UTC; NautilusTrader 2.0.0rc9 is a pre-release (stable 1.231.0). — The brief asked for each to be confirmed before relying on it.

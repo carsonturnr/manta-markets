@@ -1,0 +1,6 @@
+.env
+*.pem
+data/
+recorder/recorder
+recorder/status
+.DS_Store

@@ -1,0 +1,6 @@
+[Unit]
+Description=Manta nightly archive to the Storage Box
+
+[Service]
+Type=oneshot
+ExecStart=/opt/manta/bin/archive.sh
