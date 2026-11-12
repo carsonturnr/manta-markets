@@ -11,6 +11,7 @@ trap 'rm -rf "$bin"' EXIT
   GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$bin/$c" "./cmd/$c"
 done)
 cp infra/deploy/archive.sh "$bin/"
+ssh "$host" "mkdir -p /opt/manta"
 rsync -a "$bin/" "$host:/opt/manta/bin.new/"
 rsync -a infra/deploy/manta-recorder.service infra/deploy/manta-archive.service infra/deploy/manta-archive.timer "$host:/etc/systemd/system/"
 scp -q infra/deploy/env.example "$host:/opt/manta/env.example"

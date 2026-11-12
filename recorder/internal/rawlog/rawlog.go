@@ -1,16 +1,19 @@
-// Package rawlog appends raw venue messages to hourly gzip JSONL files:
+// Package rawlog writes raw venue messages to hourly gzip JSONL files:
 //
-//	<dir>/<venue>/<YYYY-MM-DD>/<HH>.jsonl.gz
+//	<dir>/<venue>/<YYYY-MM-DD>/<HH>-<MMSS>.jsonl.gz
 //
-// One record per line: {"recv_ns":…,"venue":…,"stream":…,"msg":<raw venue JSON>}.
-// Files are flushed every second; a restart appends a new gzip member to the same hour,
-// which gzip readers concatenate. Write errors are returned, never swallowed.
+// One record per line: {"recv_ns":…,"venue":…,"stream":…,"msg":<raw venue JSON>}. A new file is
+// created at each hour and at each recorder start (MMSS is when it was opened), never appended
+// to: a crash can then only damage the end of its own file. (Appending to the hour's file after a
+// crash, as Series did, put the new data behind the torn gzip block where readers can't reach
+// it.) Files are flushed every second. Write errors are returned, never swallowed.
 package rawlog
 
 import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -96,11 +99,15 @@ func (w *Writer) fileFor(venue string, t time.Time) (*file, error) {
 		}
 		delete(w.files, venue)
 	}
-	path := filepath.Join(w.dir, venue, hour.Format("2006-01-02"), hour.Format("15")+".jsonl.gz")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Join(w.dir, venue, hour.Format("2006-01-02"))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
-	fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	name := t.Format("15-0405")
+	fh, err := os.OpenFile(filepath.Join(dir, name+".jsonl.gz"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	for n := 2; errors.Is(err, os.ErrExist) && n < 100; n++ { // a second start within the same second
+		fh, err = os.OpenFile(filepath.Join(dir, fmt.Sprintf("%s-%02d.jsonl.gz", name, n)), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	}
 	if err != nil {
 		return nil, err
 	}

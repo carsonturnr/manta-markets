@@ -6,7 +6,7 @@
 set -euo pipefail
 . /etc/manta/env
 RAW=${RAW:-/var/lib/manta/raw}
-KEEP_DAYS=${KEEP_DAYS:-3}
+KEEP_DAYS=${KEEP_DAYS:-1}
 BOX="$STORAGEBOX_USER@$STORAGEBOX_USER.your-storagebox.de"
 SSH="ssh -p 23 -i /root/.ssh/storagebox -o BatchMode=yes"
 DONE="$RAW/archived.txt"   # relative paths already on the Storage Box
@@ -20,7 +20,7 @@ trap 'rm -rf "$tmp"' EXIT
 
 cd "$RAW"
 find . -name '*.jsonl.gz' | sed 's|^\./||' | sort | while read -r rel; do
-  [[ "$rel" == *"$current".jsonl.gz ]] && continue          # still being written
+  [[ "$rel" == *"$current"[-.]* ]] && continue              # this hour's files are still being written
   if ! grep -qxF "$rel" "$DONE"; then
     zst="$tmp/${rel%.gz}.zst"
     mkdir -p "$(dirname "$zst")"

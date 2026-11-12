@@ -50,7 +50,7 @@ func isMarker(r rawlog.Record) bool {
 func summarize(in, rel string, gap time.Duration) (fileSummary, bool, error) {
 	fs := fileSummary{Path: rel, Venue: strings.SplitN(rel, string(filepath.Separator), 2)[0]}
 	marker := false
-	truncated, err := rawlog.ReadFile(filepath.Join(in, rel), func(r rawlog.Record) error {
+	info, err := rawlog.ReadFile(filepath.Join(in, rel), func(r rawlog.Record) error {
 		fs.Records++
 		if isMarker(r) {
 			marker = true
@@ -68,7 +68,10 @@ func summarize(in, rel string, gap time.Duration) (fileSummary, bool, error) {
 		fs.LastData, marker = r.RecvNs, false
 		return nil
 	})
-	return fs, truncated, err
+	if info.Corrupt > 0 {
+		log.Printf("%s: skipped %d damaged stretch(es) (a crash mid-write); later data recovered", rel, info.Corrupt)
+	}
+	return fs, info.Truncated, err
 }
 
 type venueReport struct {
@@ -116,7 +119,7 @@ func main() {
 			log.Fatalf("%s: %v", rel, err)
 		}
 		indexed[rel] = s
-		// Cache finished hours only: the current hour's file is still growing.
+		// Cache finished hours only: the current hour's files are still growing.
 		if !truncated && !strings.Contains(rel, currentHour) {
 			b, _ := json.Marshal(s)
 			fmt.Fprintln(idx, string(b))
@@ -128,7 +131,7 @@ func main() {
 	for p := range indexed {
 		paths = append(paths, p)
 	}
-	sort.Strings(paths)
+	sort.Slice(paths, func(i, j int) bool { return rawlog.OrderKey(paths[i]) < rawlog.OrderKey(paths[j]) })
 	reports := map[string]*venueReport{}
 	var venues []string
 	for _, p := range paths {
