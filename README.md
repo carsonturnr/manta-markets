@@ -1,6 +1,6 @@
 # Manta
 
-Options-implied fair values for Kalshi's Bitcoin contracts, a public tracker of where Kalshi and the options market disagree, and a small market maker on Kalshi. Work in progress: Milestone 1, the recorder, is running.
+Options-implied fair values for Kalshi's Bitcoin contracts, a public tracker of where Kalshi and the options market disagree, and a small market maker on Kalshi. Work in progress: Milestone 1 (the recorder) is running; Milestone 2 (pricing) has a live demo.
 
 **Built on [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), used as an installed library for exchange connections, backtesting and order handling. Manta's own code is the recorder, the pricing, the strategy and the measurement.
 
@@ -15,4 +15,14 @@ Records, continuously:
 cd recorder
 go run ./cmd/recorder -out ../data/raw     # record (KALSHI_API_KEY_ID / KALSHI_PRIVATE_KEY_PATH for the WebSocket)
 go run ./cmd/status -in ../data/raw        # what has been recorded, for how long, and every gap
+```
+
+## Milestone 2: pricing
+
+Fair value for each Kalshi contract from Deribit's option prices. The method, in plain English, is in [docs/milestone-2-pricing.md](docs/milestone-2-pricing.md).
+
+```
+cd pricing
+uv run manta-fair          # live table: Kalshi bid/ask, our fair value, the gap
+uv run pytest              # hand-checked tests of the math
 ```
