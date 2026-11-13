@@ -2,6 +2,7 @@
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-13 — Carson confirmed that Kalshi's permission to display its data publicly (granted for Series) covers the Manta tracker site. — The brief requires this before the tracker goes public.
 - 2026-11-13 — Pricing v1 (docs/milestone-2-pricing.md): log-normal probability from the Deribit index, the volatility at the contract's strike from the first Deribit expiry after the close (total variance interpolated when the close falls between expiries), the smile correction −vega·dσ/dK, and the 60-second average as an effective time of τ − 2w/3. Plain Python, no dependencies; data comes from public REST for the demo, and Nautilus's Deribit adapter enters when the pricing runs continuously (Milestone 3). — The simplest sound method the brief asks for, every step explainable.
 - 2026-11-13 — First live observation, not acted on: 3 hours out, our distribution is narrower than Kalshi's prices (we're higher below spot and lower above, by 2–6¢). It is either intraday volatility the flat-volatility assumption misses, or Kalshi traders overpricing big moves; Milestone 3 measures which against settled outcomes before changing the model.
 - 2026-11-13 — The archive reads crash-damaged files with our own reader (`rawcat` for exports), never `gzip -dc`, and one failing file never stops the night's run. — The first night's archive aborted on the file from the deliberate crash test (gzip rejects a member cut off mid-write) and archived nothing.
