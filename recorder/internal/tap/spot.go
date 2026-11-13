@@ -35,3 +35,21 @@ func Kraken(ctx context.Context, w *rawlog.Writer) error {
 		pingEvery: 30 * time.Second,
 	}.run(ctx, w, "BTC/USD")
 }
+
+// Binance records BTC/USDT from Binance's public WebSocket: the 1-minute candles (Polymarket's
+// Bitcoin contracts settle on the close of one of them) and the ticker once a second (best bid
+// and ask, last price). Not the best-bid/ask stream: it updates many times a second, hundreds of
+// MB a day for nothing the pricing uses. Binance closes connections after 24 hours; the session
+// reconnects and the moment shows up as a status record.
+//
+// From data-stream.binance.vision, Binance's public market-data-only host, not stream.binance.com:
+// the main site refuses US users (HTTP 451, seen from a development Mac), and Manta runs from the US.
+func Binance(ctx context.Context, w *rawlog.Writer) error {
+	return wsSession{
+		venue: "binance",
+		url:   "wss://data-stream.binance.vision/ws",
+		subscribe: [][]byte{
+			[]byte(`{"method":"SUBSCRIBE","params":["btcusdt@kline_1m","btcusdt@ticker"],"id":1}`),
+		},
+	}.run(ctx, w, "BTCUSDT")
+}

@@ -10,6 +10,8 @@ Records, continuously:
 - **Kalshi:** order books and trades for the Bitcoin series KXBTCD (above/below), KXBTC (ranges) and KXBTC15M (15 minutes).
 - **Deribit:** the BTC index, the mark price and implied volatility of every BTC option, and full quotes for near-expiry, near-the-money options.
 - **Coinbase and Kraken:** BTC/USD spot, a stand-in for the CF Benchmarks index Kalshi settles on.
+- **Polymarket:** order books of the daily "Bitcoin above ___" and "Bitcoin price on" contracts, every 10 seconds (read-only).
+- **Binance:** BTC/USDT 1-minute candles and ticker, the price Polymarket settles on.
 
 ```
 cd recorder

@@ -1,6 +1,6 @@
 // Command recorder records raw market data to hourly gzip JSONL files (internal/rawlog): Kalshi's
-// Bitcoin contracts, Deribit's Bitcoin options and index, and Bitcoin spot from Coinbase and
-// Kraken. It runs for weeks under systemd: a write failure exits non-zero so it restarts, and
+// Bitcoin contracts, Deribit's Bitcoin options and index, Bitcoin spot from Coinbase and Kraken,
+// Polymarket's daily Bitcoin contracts, and Binance BTC/USDT. It runs for weeks under systemd: a write failure exits non-zero so it restarts, and
 // every start and disconnect is a status record, so gaps show up in `status`.
 //
 //	go run ./cmd/recorder -out ../data/raw
@@ -21,7 +21,7 @@ import (
 	"github.com/carsonturnr/manta-markets/recorder/internal/tap"
 )
 
-var venues = []string{"kalshi", "deribit", "coinbase", "kraken"}
+var venues = []string{"kalshi", "deribit", "coinbase", "kraken", "polymarket", "binance"}
 
 func main() {
 	out := flag.String("out", "data/raw", "output directory")
@@ -31,6 +31,8 @@ func main() {
 	kalshiRestSnap := flag.Duration("kalshi-rest-snapshot", 5*time.Minute, "Kalshi REST orderbook snapshot interval (WebSocket mode)")
 	deribitDays := flag.Int("deribit-days", 2, "record Deribit option tickers expiring within this many days")
 	deribitBand := flag.Float64("deribit-strike-band", 0.15, "…and with a strike within this fraction of the index")
+	polymarketDays := flag.Int("polymarket-days", 3, "record Polymarket's daily Bitcoin contracts for this many New York dates")
+	polymarketPoll := flag.Duration("polymarket-poll", 10*time.Second, "Polymarket order book poll interval")
 	minFreeGB := flag.Uint64("min-free-gb", 5, "stop cleanly (exit 0) when the output disk has less free space")
 	flag.Parse()
 
@@ -41,6 +43,8 @@ func main() {
 		KalshiRestSnap:    *kalshiRestSnap,
 		DeribitDays:       *deribitDays,
 		DeribitStrikeBand: *deribitBand,
+		PolymarketDays:    *polymarketDays,
+		PolymarketPoll:    *polymarketPoll,
 	}
 	if id, path := os.Getenv("KALSHI_API_KEY_ID"), os.Getenv("KALSHI_PRIVATE_KEY_PATH"); id != "" && path != "" {
 		auth, err := tap.LoadKalshiAuth(id, path)
@@ -79,6 +83,8 @@ func main() {
 	go func() { errs <- tap.Deribit(ctx, w, cfg) }()
 	go func() { errs <- tap.Coinbase(ctx, w) }()
 	go func() { errs <- tap.Kraken(ctx, w) }()
+	go func() { errs <- tap.Polymarket(ctx, w, cfg) }()
+	go func() { errs <- tap.Binance(ctx, w) }()
 
 	flush := time.NewTicker(time.Second)
 	defer flush.Stop()

@@ -1,6 +1,7 @@
 // Package tap records raw market data to rawlog files: Kalshi's Bitcoin contracts, Deribit's
-// Bitcoin options and index, and Bitcoin spot from Coinbase and Kraken (a stand-in for the CF
-// Benchmarks index Kalshi settles on). Raw venue messages are stored as received; parsing
+// Bitcoin options and index, Bitcoin spot from Coinbase and Kraken (a stand-in for the CF
+// Benchmarks index Kalshi settles on), Polymarket's daily Bitcoin contracts, and Binance BTC/USDT
+// (what Polymarket settles on). Raw venue messages are stored as received; parsing
 // happens later, so a parsing bug can never lose data.
 package tap
 
@@ -26,6 +27,8 @@ type Config struct {
 	KalshiRestSnap    time.Duration // REST orderbook snapshot interval in WebSocket mode
 	DeribitDays       int           // record option tickers expiring within this many days…
 	DeribitStrikeBand float64       // …with a strike within this fraction of the index (0.15 = ±15%)
+	PolymarketDays    int           // record Polymarket's daily contracts for this many New York dates
+	PolymarketPoll    time.Duration // order book poll interval for those contracts
 }
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}

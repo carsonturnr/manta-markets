@@ -38,6 +38,10 @@ type fileSummary struct {
 	Gaps        [][2]int64 `json:"gaps"`         // gaps inside the file, [from, to] ns
 }
 
+// dataStreams carry market data; the others are listings (markets, instruments, events),
+// subscriptions and status markers. "orderbook" is Kalshi polled over REST, "books" Polymarket.
+var dataStreams = map[string]bool{"ws": true, "orderbook": true, "books": true}
+
 func isMarker(r rawlog.Record) bool {
 	if r.Stream != "status" {
 		return false
@@ -56,7 +60,7 @@ func summarize(in, rel string, gap time.Duration) (fileSummary, bool, error) {
 			marker = true
 			return nil
 		}
-		if r.Stream != "ws" {
+		if !dataStreams[r.Stream] {
 			return nil
 		}
 		switch {
