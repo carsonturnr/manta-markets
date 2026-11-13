@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import GapChart from "@/components/GapChart";
 import { cents, cents1, describe, gap, price, utc } from "@/lib/format";
@@ -21,6 +22,7 @@ export default function ContractPage({ params }: PageProps<"/c/[ticker]">) {
 }
 
 async function Contract({ ticker }: { ticker: string }) {
+  await connection(); // request time only: the build never queries the database
   const data = await getContract(ticker);
   if (!data) notFound();
   const { contract: c, points } = data;

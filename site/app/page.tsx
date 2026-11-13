@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { cents, cents1, describe, gap, price, utc } from "@/lib/format";
 import { getBoard, type Quote } from "@/lib/queries";
@@ -10,7 +11,8 @@ export default function Home() {
       <p className="muted">
         Kalshi sells yes/no contracts on Bitcoin&apos;s price at the top of each hour. Deribit&apos;s
         options imply a probability for the same question. This page puts the two side by side,
-        once a minute. Prices are in cents, which is the same as a probability in percent.
+        once a minute. Prices are in cents, which is the same as a probability in percent.{" "}
+        <Link href="/stats">Gap statistics →</Link>
       </p>
       <Suspense fallback={<p className="muted">Loading the latest snapshot…</p>}>
         <Live />
@@ -20,6 +22,7 @@ export default function Home() {
 }
 
 async function Live() {
+  await connection(); // request time only: the build never queries the database
   const board = await getBoard();
   if (!board) return <p>No snapshots yet.</p>;
   // Older than 5 minutes means the snapshotter has stopped: say so rather than show stale prices

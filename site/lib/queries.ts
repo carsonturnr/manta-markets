@@ -1,6 +1,7 @@
 // Every database read the site makes. Each is cached for 30 seconds: the snapshotter writes once a
-// minute, so fresher reads would only add load. An expiry under 5 minutes also keeps Next from
-// running these at build time (they become request-time "dynamic holes" behind <Suspense>).
+// minute, so fresher reads would only add load. The components that call these first await
+// connection(), so they run per request and never during `next build` (where a slow database
+// connection once timed the build out).
 import { cacheLife } from "next/cache";
 import { sql } from "./db";
 
@@ -27,8 +28,9 @@ export type Board = {
   quotes: Quote[];
 };
 
-// Columns shared by every contract query, renamed to the TypeScript shape.
-const contractCols = sql`
+// Columns shared by every contract query, renamed to the TypeScript shape. Built per call (see
+// lib/stats.ts): a module-level postgres.js fragment is a Promise shared across cache scopes.
+const contractCols = () => sql`
   c.ticker, c.series, c.strike_type as "strikeType", c.floor_strike as floor, c.cap_strike as cap,
   extract(epoch from c.close_time) * 1000 as close, c.result, c.settlement_value as settlement`;
 
@@ -51,7 +53,7 @@ export async function getBoard(): Promise<Board | null> {
       where q.ts > latest.ts - interval '6 minutes'
       order by q.ticker, q.ts desc
     )
-    select ${contractCols}, r.yes_bid as bid, r.yes_ask as ask, r.fair
+    select ${contractCols()}, r.yes_bid as bid, r.yes_ask as ask, r.fair
     from recent r join manta.contracts c using (ticker), latest
     where c.close_time > latest.ts
     order by c.close_time, coalesce(c.floor_strike, c.cap_strike)`;
@@ -73,7 +75,7 @@ export async function getContract(
   "use cache";
   cacheLife(LIVE);
   const [contract] = await sql<Contract[]>`
-    select ${contractCols} from manta.contracts c where c.ticker = ${ticker}`;
+    select ${contractCols()} from manta.contracts c where c.ticker = ${ticker}`;
   if (!contract) return null;
   const points = await sql<Point[]>`
     select extract(epoch from q.ts) * 1000 as t, q.yes_bid as bid, q.yes_ask as ask, q.fair,

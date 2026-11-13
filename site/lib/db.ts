@@ -5,6 +5,11 @@ import postgres from "postgres";
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set (locally: site/.env.local)");
 
-// prepare: false, because Supabase's transaction pooler (what serverless hosts use) hands each
-// query to whichever server connection is free, and prepared statements live on one connection.
-export const sql = postgres(url, { prepare: false, max: 3 });
+// DATABASE_URL must be Supabase's *session* pooler (port 5432), not the transaction pooler (6543).
+// When more queries are in flight than connections, postgres.js sends several down one
+// connection without waiting for each answer ("pipelining"), and through the transaction pooler
+// those queries never get an answer: the /stats page hung forever (measured 2026-11-13). Session
+// mode holds a real database connection per client connection (about 15 on the free tier), so
+// each server instance keeps at most 3 and closes them after 20 idle seconds.
+if (url.includes(":6543/")) throw new Error("DATABASE_URL: use the session pooler (5432)");
+export const sql = postgres(url, { max: 3, idle_timeout: 20 });

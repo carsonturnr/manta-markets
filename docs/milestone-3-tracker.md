@@ -16,7 +16,7 @@ manta-snap (every minute)  ──────▶   runs, contracts, quotes      
 ```
 
 1. **Snapshotter (`manta-snap`, Python, in `pricing/`).** Once a minute (a systemd timer on the VM): fetch Deribit's index and option volatilities and Kalshi's open KXBTCD and KXBTC markets over public REST, price every contract with the Milestone 2 code, and write the rows. It also fills in each contract's result once Kalshi settles it. Each run is independent: a failed minute is a missing row, never a stuck process.
-2. **Database (Supabase free tier, used as plain Postgres).** Schema in `db/schema.sql`. The site connects with a read-only role, so a bug or leak on the site can't change data.
+2. **Database (Supabase free tier, used as plain Postgres).** Schema in `db/schema.sql`. The site connects with a read-only role, so a bug or leak on the site can't change data. Both connect through Supabase's session pooler (port 5432): its transaction pooler drops pipelined queries (docs/decisions.md).
 3. **Site (`site/`, Next.js + TypeScript on Vercel).** Server-rendered pages that query Postgres directly; no API layer of our own.
 
 ## Tables
