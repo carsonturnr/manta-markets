@@ -26,3 +26,14 @@ cd pricing
 uv run manta-fair          # live table: Kalshi bid/ask, our fair value, the gap
 uv run pytest              # hand-checked tests of the math
 ```
+
+## Milestone 3: live tracker (in progress)
+
+Once a minute, the VM prices every in-play Kalshi contract and writes Kalshi's bid/ask and our fair value to Postgres (Supabase); a Next.js site shows them side by side with the gap over time. Plan and choices: [docs/milestone-3-tracker.md](docs/milestone-3-tracker.md).
+
+```
+cd pricing
+uv run --env-file ../.env manta-snap --status   # what the tracker database holds
+cd ../site
+npm run dev                                      # the site (needs site/.env.local)
+```

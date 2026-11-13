@@ -1,0 +1,173 @@
+/* Color tokens: light by default, dark under the OS setting or data-theme="dark". */
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --surface-2: #f2f1ee;
+  --grid: #e4e3df;
+  --text: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #7a7974;
+  --kalshi: #2a78d6; /* series 1: Kalshi's bid–ask */
+  --fair: #eb6834; /* series 2: our fair value */
+  --link: #1c5cab;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --surface-2: #242423;
+    --grid: #33332f;
+    --text: #f0efec;
+    --text-2: #c3c2b7;
+    --text-3: #93928a;
+    --kalshi: #3987e5;
+    --fair: #d95926;
+    --link: #86b6ef;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #1a1a19;
+  --surface-2: #242423;
+  --grid: #33332f;
+  --text: #f0efec;
+  --text-2: #c3c2b7;
+  --text-3: #93928a;
+  --kalshi: #3987e5;
+  --fair: #d95926;
+  --link: #86b6ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+h1 {
+  font-size: 24px;
+  margin: 0 0 4px;
+}
+h2 {
+  font-size: 17px;
+  margin: 32px 0 8px;
+}
+.muted {
+  color: var(--text-2);
+}
+.small {
+  font-size: 13px;
+  color: var(--text-3);
+}
+.num {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.warn {
+  border-left: 3px solid var(--fair);
+  padding: 4px 10px;
+  background: var(--surface-2);
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 16px 0;
+}
+.stats div span {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.stats div b {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Tables scroll inside their box on a phone; the page itself never scrolls sideways. */
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 520px;
+  margin-bottom: 16px;
+}
+th,
+td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--grid);
+  text-align: right;
+  white-space: nowrap;
+}
+th {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+.outside {
+  font-weight: 600;
+}
+
+.legend {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-2);
+  margin: 8px 0;
+}
+.key {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 2px;
+}
+.chart {
+  position: relative;
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+.tip {
+  position: absolute;
+  top: 8px;
+  pointer-events: none;
+  background: var(--surface-2);
+  border: 1px solid var(--grid);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+footer {
+  margin-top: 48px;
+  font-size: 13px;
+  color: var(--text-3);
+}

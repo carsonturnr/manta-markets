@@ -3,10 +3,13 @@ name = "manta-pricing"
 version = "0.1.0"
 description = "Fair values for Kalshi's Bitcoin contracts from Deribit option prices"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.3.9",
+]
 
 [project.scripts]
 manta-fair = "manta_pricing.table:main"
+manta-snap = "manta_pricing.snapshot:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

@@ -28,11 +28,14 @@ def get(url: str) -> dict:
 
 
 def kalshi_markets(series: str) -> list[dict]:
+    return kalshi_query(f"series_ticker={series}&status=open")
+
+
+def kalshi_query(query: str) -> list[dict]:
+    """Every market matching a /markets query, across pages."""
     out, cursor = [], ""
     while True:
-        page = get(
-            f"{KALSHI}/markets?series_ticker={series}&status=open&limit=1000&cursor={cursor}"
-        )
+        page = get(f"{KALSHI}/markets?{query}&limit=1000&cursor={cursor}")
         out += page["markets"]
         cursor = page.get("cursor") or ""
         if not cursor or not page["markets"]:

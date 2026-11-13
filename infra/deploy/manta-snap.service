@@ -1,0 +1,13 @@
+# Manta tracker snapshot: Kalshi prices and our fair values to Postgres (docs/milestone-3-tracker.md).
+[Unit]
+Description=Manta tracker snapshot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=manta
+EnvironmentFile=/etc/manta/env
+ExecStart=/opt/manta/pricing/.venv/bin/manta-snap
+# Under a minute, so a slow run never overlaps the next one; a timed-out run is a missing minute.
+TimeoutStartSec=50
