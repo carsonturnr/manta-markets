@@ -32,6 +32,7 @@ type Stats struct {
 	RestHashBad      uint64 `json:"rest_hash_bad"`
 	WSSnapCompares   uint64 `json:"ws_snapshot_compares"`
 	WSSnapMismatches uint64 `json:"ws_snapshot_mismatches"`
+	WSSnapCleared    uint64 `json:"ws_snapshot_cleared"` // an empty snapshot replacing a book (a close)
 	// Snapshots (WebSocket or REST) missing some of their own millisecond's updates, completed
 	// from the feed before comparing or adopting (Polymarket).
 	SnapsCompleted     uint64 `json:"snapshots_completed"`

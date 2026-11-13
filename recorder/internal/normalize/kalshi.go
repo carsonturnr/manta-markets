@@ -84,6 +84,7 @@ func (k *kalshi) Handle(r rawlog.Record) []md.Msg {
 	case "subscribe": // a new WebSocket connection: seq restarts, snapshots follow
 		k.ws = true
 		k.sids = map[int]uint64{}
+		k.retireUnsubscribed(r)
 		k.markStale(r.RecvNs)
 	case "ws":
 		out = append(out, k.wsMsg(r)...)
@@ -98,6 +99,39 @@ func (k *kalshi) Handle(r rawlog.Record) []md.Msg {
 	}
 	k.stats.Msgs += uint64(len(out))
 	return out
+}
+
+// retireUnsubscribed drops the books of markets the new subscription leaves out: they closed, so
+// no snapshot will ever come to make them clean again, and their time stops counting toward
+// coverage. (Without this, every closed market counted as stale until the end of the data.)
+func (k *kalshi) retireUnsubscribed(r rawlog.Record) {
+	var sub struct{ Frames []string }
+	if json.Unmarshal(r.Msg, &sub) != nil {
+		return
+	}
+	live := map[string]bool{}
+	for _, f := range sub.Frames {
+		var frame struct {
+			Params struct {
+				MarketTickers []string `json:"market_tickers"`
+			} `json:"params"`
+		}
+		if json.Unmarshal([]byte(f), &frame) != nil {
+			return // can't tell what's subscribed: retire nothing
+		}
+		for _, t := range frame.Params.MarketTickers {
+			live[t] = true
+		}
+	}
+	if len(live) == 0 {
+		return
+	}
+	for t := range k.books {
+		if !live[t] {
+			delete(k.books, t)
+			k.retire(t, r.RecvNs)
+		}
+	}
 }
 
 func (k *kalshi) markStale(ts int64) {
@@ -183,9 +217,16 @@ func (k *kalshi) wsSnapshot(recv int64, seq uint64, raw json.RawMessage) []md.Ms
 	}
 	if st := k.books[m.Ticker]; st != nil && !st.dirty {
 		k.stats.WSSnapCompares++
-		if !st.book.Equal(b) {
+		switch {
+		case st.book.Equal(b):
+		case len(m.Yes) == 0 && len(m.No) == 0:
+			// Kalshi clears a market's book at its close with an empty snapshot and no deletions
+			// for the old levels: expected, not a lost update.
+			k.stats.WSSnapCleared++
+		default:
 			k.stats.WSSnapMismatches++
-			k.stats.example("kalshi %s ws-snapshot: %v", m.Ticker, st.book.Diff(b, 4))
+			k.stats.example("kalshi %s ws-snapshot at %s: %v", m.Ticker,
+				time.Unix(0, recv).UTC().Format("15:04:05"), st.book.Diff(b, 4))
 		}
 	}
 	k.books[m.Ticker] = &kalshiBook{book: b, changed: recv}

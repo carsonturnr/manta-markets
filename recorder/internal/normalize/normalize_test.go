@@ -163,3 +163,22 @@ func TestUnknownVenue(t *testing.T) {
 		t.Fatal("polymarket is not recorded yet")
 	}
 }
+
+// A market left out of a new subscription closed: it is retired, not counted as stale until the
+// end of the data. KX-1 is clean for 10 s, then dropped; coverage stays 100%.
+func TestKalshiResubscribeRetiresDroppedMarkets(t *testing.T) {
+	n, _ := New("kalshi")
+	sub := func(ns int64, tickers string) rawlog.Record {
+		frame, _ := json.Marshal(`{"cmd":"subscribe","params":{"market_tickers":[` + tickers + `]}}`)
+		return rec("kalshi", "subscribe", ns, `{"label":"conn 0","frames":[`+string(frame)+`]}`)
+	}
+	play(t, n,
+		sub(0, `"KX-1"`),
+		rec("kalshi", "ws", 0, kws("orderbook_snapshot", 1, kSnap)),
+		sub(10*sec, `"KX-2"`),
+		rec("kalshi", "ws", 100*sec, kws("orderbook_snapshot", 1, `{"market_ticker":"KX-2","yes_dollars_fp":[],"no_dollars_fp":[]}`)),
+	)
+	if s := n.Stats(); s.CoveragePct != 100 {
+		t.Fatalf("coverage %.2f%%: the dropped market still counts as stale", s.CoveragePct)
+	}
+}
