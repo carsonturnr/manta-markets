@@ -7,7 +7,7 @@ host=${1:?usage: deploy.sh root@HOST}
 cd "$(dirname "$0")/../.."
 bin=$(mktemp -d)
 trap 'rm -rf "$bin"' EXIT
-(cd recorder && for c in recorder status; do
+(cd recorder && for c in recorder status rawcat; do
   GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$bin/$c" "./cmd/$c"
 done)
 cp infra/deploy/archive.sh "$bin/"
