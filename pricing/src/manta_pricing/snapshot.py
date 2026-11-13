@@ -14,6 +14,7 @@ import argparse
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,7 +22,16 @@ import psycopg
 from psycopg import sql
 
 from manta_pricing.surface import Surface
-from manta_pricing.table import DERIBIT, SERIES, get, kalshi_markets, kalshi_query, price, ts
+from manta_pricing.table import (
+    DERIBIT,
+    KALSHI,
+    SERIES,
+    get,
+    kalshi_markets,
+    kalshi_query,
+    price,
+    ts,
+)
 
 SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 HORIZON_S = 48 * 3600  # within 2 days: the next daily close is always in range, even overnight
@@ -45,6 +55,30 @@ def connect() -> psycopg.Connection:
 
 def in_play(p: float | None) -> bool:
     return p is not None and IN_PLAY[0] <= p <= IN_PLAY[1]
+
+
+def top_of_book(ticker: str) -> tuple[float, float]:
+    """Kalshi's best YES bid and ask from the market's live order book. Not the bid/ask in the
+    market list: that trails the book by up to about a minute (measured 2026-11-13,
+    docs/milestone-4-backtest.md). No bid is 0 and no ask is 1, as in the market list."""
+    book = get(f"{KALSHI}/markets/{ticker}/orderbook")["orderbook_fp"]
+    yes = [float(p) for p, _ in book.get("yes_dollars") or []]
+    no = [float(p) for p, _ in book.get("no_dollars") or []]  # a NO bid at n is a YES ask at 1 − n
+    return (max(yes) if yes else 0.0, round(1 - max(no), 4) if no else 1.0)
+
+
+def live_tops(tickers: list[str]) -> dict[str, tuple[float, float]]:
+    """top_of_book for each ticker, six requests at a time; a failed one is left out."""
+
+    def one(t: str) -> tuple[str, tuple[float, float] | None]:
+        try:
+            return t, top_of_book(t)
+        except Exception as e:
+            print(f"orderbook {t}: {e}", file=sys.stderr)
+            return t, None
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        return {t: top for t, top in pool.map(one, tickers) if top is not None}
 
 
 def coinbase_spot() -> float | None:
@@ -86,8 +120,11 @@ def snapshot(conn: psycopg.Connection) -> None:
                     m["close_time"],
                 )
             )
-            quotes.append((m["ticker"], bid, ask, fair, surf.vol(strike, close, now)))
+            quotes.append((m["ticker"], fair, surf.vol(strike, close, now)))
 
+    # The market list picked the contracts; their stored bid and ask come from the live books.
+    tops = live_tops([q[0] for q in quotes])
+    quotes = [(t, *tops[t], fair, vol) for t, fair, vol in quotes if t in tops]
     at = datetime.fromtimestamp(int(now), UTC)  # whole seconds: the site matches on it exactly
     with conn.transaction(), conn.cursor() as cur:
         cur.execute(
@@ -105,7 +142,9 @@ def snapshot(conn: psycopg.Connection) -> None:
                values (%s, %s, %s, %s, %s, %s)""",
             [(at, *q) for q in quotes],
         )
-    print(f"{at:%Y-%m-%d %H:%M:%S} UTC: index {spot:,.2f}, {len(quotes)} contracts")
+    missed = len(contracts) - len(quotes)
+    note = f" ({missed} order books failed)" if missed else ""
+    print(f"{at:%Y-%m-%d %H:%M:%S} UTC: index {spot:,.2f}, {len(quotes)} contracts{note}")
 
 
 def settle(conn: psycopg.Connection) -> None:

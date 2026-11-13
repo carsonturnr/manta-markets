@@ -40,6 +40,11 @@ async function Gaps() {
         at Kalshi&apos;s ask or selling at its bid would, by our model, have been a good trade.
         Counted over every snapshot, so these are shares of time, not independent events.
       </p>
+      <p className="small">
+        Data note: until Nov 13, 23:45 UTC, Kalshi&apos;s bid and ask came from its market list,
+        which we later measured trailing the live order book by up to a minute; since then they
+        come from the live order book. Early figures overstate disagreement somewhat.
+      </p>
       <GapTable label="time to close" rows={horizon} />
       <GapTable label="hour of day (UTC)" rows={hour} />
     </>
