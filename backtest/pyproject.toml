@@ -7,6 +7,7 @@ dependencies = [
     # Exact pin: a release candidate, and the first release with the Kalshi adapter.
     "nautilus_trader==2.0.0rc9",
     "manta-pricing",
+    "pyarrow>=26.0.1",
 ]
 
 [tool.uv.sources]
@@ -15,6 +16,7 @@ manta-pricing = { path = "../pricing", editable = true }
 [project.scripts]
 manta-catalog = "manta_backtest.catalog:main"
 manta-catalog-check = "manta_backtest.check:main"
+manta-fair-series = "manta_backtest.fairseries:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

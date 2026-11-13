@@ -35,6 +35,12 @@ raw hourly files ──▶ normalize (Go, recorder/cmd/normalize) ──▶ md.v
 
 `manta-catalog` wrote 368 instruments, 3.1 million book deltas and 45,251 trades (56 MB) in 142 s; the normalizer reported 0 delta, REST and snapshot mismatches and 99.93% of market-time verified. `manta-catalog-check` rebuilt each book from the catalog and compared its best bid and ask with the tracker's 2,093 once-a-minute snapshots of the same contracts: 78% identical at the same moment, 100% within 60 seconds. The remaining timing differences are the tracker's source lagging: it reads Kalshi's market list, while the catalog matches Kalshi's order-book endpoint exactly (9,184 of 9,184 comparisons).
 
+## Step 2 results (same 2 hours)
+
+`manta-fair-series` replays the recorded Deribit messages into the Milestone 2 pricing: a running table of each option's implied volatility (`markprice.options` sends changes, plus a full table about every 5 minutes; nothing is priced before the first full table), forward prices from the recorded tickers of the two nearest expiries, and the index. Every 10 s of recorded time it prices every open KXBTCD contract: 170,280 fair values for 368 contracts in 58 s.
+
+Checked against the tracker, which runs the same model on live REST data: over 2,195 matched values the difference is 0.05¢ at the median, 0.65¢ at the 90th percentile, and −0.05¢ on average (no bias). The tail (99th percentile 3.8¢) is in the last hour before a close, where fair value moves fastest with BTC, and comes from timing: the replay prices on a 10 s clock, the tracker at its own moment (index readings differ by a median $6). Kalshi's weekly contracts are out of scope: they need Deribit expiries beyond the two whose forwards are recorded.
+
 ## Known data notes
 
 - At each close Kalshi sends an empty book snapshot (the book is cleared) without deletions for the old levels. Harmless: the market can't be traded after.
