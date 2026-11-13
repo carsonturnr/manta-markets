@@ -41,10 +41,19 @@ export async function getBoard(): Promise<Board | null> {
            deribit_index, coinbase
     from manta.runs order by ts desc limit 1`;
   if (!run) return null;
+  // Each open contract's latest quote. Not only the latest run's: contracts more than 6 hours
+  // from their close are snapshotted every 5 minutes, so look back 6 minutes.
   const quotes = await sql<Quote[]>`
-    select ${contractCols}, q.yes_bid as bid, q.yes_ask as ask, q.fair
-    from manta.quotes q join manta.contracts c using (ticker)
-    where q.ts = (select max(ts) from manta.runs)
+    with latest as (select max(ts) as ts from manta.runs),
+    recent as (
+      select distinct on (q.ticker) q.*
+      from manta.quotes q, latest
+      where q.ts > latest.ts - interval '6 minutes'
+      order by q.ticker, q.ts desc
+    )
+    select ${contractCols}, r.yes_bid as bid, r.yes_ask as ask, r.fair
+    from recent r join manta.contracts c using (ticker), latest
+    where c.close_time > latest.ts
     order by c.close_time, coalesce(c.floor_strike, c.cap_strike)`;
   return {
     at: Number(run.at),

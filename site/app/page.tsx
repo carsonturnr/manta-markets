@@ -64,7 +64,8 @@ async function Live() {
         <b>fair</b>: our probability from Deribit&apos;s options. <b>gap</b>: fair minus
         Kalshi&apos;s mid (halfway between bid and ask), in cents; bold when fair is outside
         Kalshi&apos;s bid–ask, the case a trader could act on. Contracts are listed while either
-        price is between 1¢ and 99¢. No fair value in the final 60 seconds, when part of the
+        price is between 3¢ and 97¢; those more than 6 hours from their close update every 5
+        minutes. No fair value in the final 60 seconds, when part of the
         settlement average is already known.
       </p>
     </>

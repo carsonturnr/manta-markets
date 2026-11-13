@@ -25,7 +25,13 @@ from manta_pricing.table import DERIBIT, SERIES, get, kalshi_markets, kalshi_que
 
 SCHEMA = Path(__file__).resolve().parents[3] / "db" / "schema.sql"
 HORIZON_S = 48 * 3600  # within 2 days: the next daily close is always in range, even overnight
-IN_PLAY = (0.01, 0.99)  # store a contract if Kalshi's mid or our fair value is inside this
+# Store a contract if Kalshi's mid or our fair value is inside this. Outside it, both say the
+# contract is all but certain: nothing to compare, and the rows would fill the 500 MB database.
+IN_PLAY = (0.03, 0.97)
+# Contracts further from their close than this are stored every 5 minutes, not every minute:
+# a day out, prices drift slowly, and minute detail matters in the final hours.
+FAR_S = 6 * 3600
+FAR_EVERY_MIN = 5
 
 
 def connect() -> psycopg.Connection:
@@ -57,11 +63,12 @@ def snapshot(conn: psycopg.Connection) -> None:
     surf = Surface.from_deribit(summaries, now)
     cb = coinbase_spot()
 
+    far_minute = round(now / 60) % FAR_EVERY_MIN == 0  # the timer fires on the minute
     contracts, quotes = [], []
     for series in SERIES:
         for m in kalshi_markets(series):
             close = ts(m["close_time"])
-            if close - now > HORIZON_S:
+            if close - now > HORIZON_S or (close - now > FAR_S and not far_minute):
                 continue
             bid, ask = float(m.get("yes_bid_dollars") or 0), float(m.get("yes_ask_dollars") or 0)
             fair = price(m, surf, spot, now)
