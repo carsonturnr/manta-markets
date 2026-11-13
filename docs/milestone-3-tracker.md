@@ -25,7 +25,7 @@ manta-snap (every minute)  ──────▶   runs, contracts, quotes      
 - `contracts`: one row per Kalshi contract: ticker, series, strike(s), close time, and once settled, Kalshi's result (yes/no) and settlement value (the 60-second BRTI average it settled on).
 - `quotes`: one row per contract per minute: Kalshi yes bid and ask, our fair value, and the volatility used.
 
-**What gets stored.** Only contracts "in play": Kalshi's mid or our fair value between 1¢ and 99¢, closing within 48 hours. 48, not 24: on Friday 2026-11-13 at 21:58 UTC no hourly event was open after the 22:00 close; the next was the following day's 22:00, 24 h 2 min away. That is about 15 to 60 contracts a minute (measured 2026-11-13: 16 to 31), roughly 20 MB a day at most; the 500 MB free tier holds the four-week run. The raw recordings (Milestone 1) keep everything else, including the weekly contracts. 
+**What gets stored.** Only contracts "in play": Kalshi's mid or our fair value between 1¢ and 99¢, closing within 48 hours. 48, not 24: hourly events are listed only about an hour ahead (at 21:58 UTC on 2026-11-13 nothing after the 22:00 close was open but the next day's 22:00, 24 h 2 min away), so a 24 h window can leave the board nearly empty. That is about 15 to 60 contracts a minute (measured 2026-11-13: 16 to 31), roughly 20 MB a day at most; the 500 MB free tier holds the four-week run. The raw recordings (Milestone 1) keep everything else, including the weekly contracts. 
 ## What the site shows
 
 1. **Now:** the next closes, each contract with Kalshi bid/ask, our fair value and the gap (fair − Kalshi mid), flagged when fair is outside the bid–ask.
