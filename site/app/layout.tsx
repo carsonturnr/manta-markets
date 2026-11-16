@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,11 +17,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
         <main>
+          <nav className="site-nav" aria-label="Site">
+            <Link href="/" className="brand">
+              Manta
+            </Link>
+            <Link href="/screener">Screener</Link>
+            <Link href="/">BTC tracker</Link>
+            <Link href="/stats">Gap statistics</Link>
+            <Link href="/quality">Data quality</Link>
+          </nav>
           {children}
           <footer>
-            Manta · Kalshi prices vs a fair value from Deribit&apos;s Bitcoin options. Built on{" "}
+            Manta · analytics for prediction markets: crypto, economics and financial contracts on
+            Kalshi and Polymarket, with fair values from Deribit&apos;s options. Built on{" "}
             <a href="https://github.com/nautechsystems/nautilus_trader">NautilusTrader</a>. Data
-            from Kalshi and Deribit public APIs, snapshotted once a minute. Not investment advice.
+            from the venues&apos; public APIs. Not investment advice.
           </footer>
         </main>
       </body>

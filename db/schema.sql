@@ -48,6 +48,37 @@ create table if not exists manta.quality (
     report  jsonb not null
 );
 
+-- Every open contract Manta covers, for the screener (docs/product.md, step 2): the current state
+-- only, replaced every minute by manta-contracts (recorder/cmd/contracts). History is the raw
+-- recordings. Prices are probabilities; strikes in the underlying's unit (recorder/internal/contracts).
+create table if not exists manta.markets (
+    venue         text not null check (venue in ('kalshi', 'polymarket')),
+    id            text not null,  -- Kalshi ticker, Polymarket condition id
+    -- The allow-lists (recorder/internal/tap), enforced here as well as in code: no sports, ever.
+    family        text not null check (family in (
+        'KXBTCD', 'KXBTC', 'KXBTC15M', 'KXETHD', 'KXETH', 'KXETH15M',
+        'KXFEDDECISION', 'KXFED', 'KXCPI', 'KXCPIYOY', 'KXCPICORE', 'KXCPICOREYOY', 'KXPAYROLLS', 'KXU3',
+        'KXINX', 'KXINXU', 'KXNASDAQ100', 'KXNASDAQ100U', 'KXEURUSD', 'KXEURUSDH', 'KXUSDJPY', 'KXUSDJPYH',
+        'btc-above', 'btc-price', 'eth-above', 'eth-price', 'fed-decision', 'cpi', 'unemployment', 'payrolls')),
+    event         text not null,
+    title         text not null,
+    label         text not null,
+    payoff        text not null check (payoff in ('above', 'below', 'between', 'exact', 'outcome')),
+    low           double precision,
+    high          double precision,
+    close_time    timestamptz not null,
+    bid           double precision,  -- best "yes" bid, null if none
+    ask           double precision,
+    bid_size      double precision,  -- contracts
+    ask_size      double precision,
+    last          double precision,
+    volume_24h    double precision not null,
+    volume_unit   text not null check (volume_unit in ('contracts', 'usd')),
+    open_interest double precision,  -- contracts, Kalshi only
+    updated       timestamptz not null,  -- when the listing was read
+    primary key (venue, id)
+);
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin

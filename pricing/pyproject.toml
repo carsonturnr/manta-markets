@@ -11,6 +11,7 @@ dependencies = [
 manta-fair = "manta_pricing.table:main"
 manta-snap = "manta_pricing.snapshot:main"
 manta-quality = "manta_pricing.quality:main"
+manta-contracts = "manta_pricing.contracts:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

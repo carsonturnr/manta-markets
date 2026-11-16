@@ -130,6 +130,19 @@ func Polymarket(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 
 // polymarketBooks fetches the order books of `tokens` in one request and records the raw response.
 func polymarketBooks(ctx context.Context, w *rawlog.Writer, tokens []string) error {
+	raw, err := PolymarketBooks(ctx, tokens)
+	if err != nil {
+		return err
+	}
+	if err := w.Write("polymarket", "books", raw); err != nil {
+		return writeErr{err}
+	}
+	return nil
+}
+
+// PolymarketBooks returns the raw order books of `tokens` (at most polymarketBooksPerCall), one
+// request: a JSON array of {"asset_id", "bids", "asks", ...}.
+func PolymarketBooks(ctx context.Context, tokens []string) ([]byte, error) {
 	body := make([]map[string]string, len(tokens))
 	for i, t := range tokens {
 		body[i] = map[string]string{"token_id": t}
@@ -137,25 +150,22 @@ func polymarketBooks(ctx context.Context, w *rawlog.Writer, tokens []string) err
 	b, _ := json.Marshal(body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, polymarketCLOB+"/books", bytes.NewReader(b))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("POST /books: %s", resp.Status)
+		return nil, fmt.Errorf("POST /books: %s", resp.Status)
 	}
-	if err := w.Write("polymarket", "books", raw); err != nil {
-		return writeErr{err}
-	}
-	return nil
+	return raw, nil
 }
 
 type polymarketEvent struct {

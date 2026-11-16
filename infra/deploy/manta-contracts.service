@@ -1,0 +1,15 @@
+# Manta screener listing: every open allow-listed Kalshi and Polymarket contract to Postgres
+# (recorder/cmd/contracts, then manta-contracts).
+[Unit]
+Description=Manta screener contracts
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=manta
+EnvironmentFile=/etc/manta/env
+ExecStart=/opt/manta/bin/contracts -out /var/lib/manta/contracts.json
+ExecStart=/opt/manta/pricing/.venv/bin/manta-contracts /var/lib/manta/contracts.json
+# Under a minute (a run takes about 15 s), so a slow run never overlaps the next one.
+TimeoutStartSec=55

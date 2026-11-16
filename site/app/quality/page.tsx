@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { utc } from "@/lib/format";
@@ -16,9 +15,6 @@ export const metadata = { title: "Manta: data quality" };
 export default function QualityPage() {
   return (
     <>
-      <p className="small">
-        <Link href="/">← live contracts</Link>
-      </p>
       <h1>Data quality</h1>
       <p className="muted">
         Everything on Manta comes from our own recorder, which keeps every message the venues send.
@@ -311,7 +307,9 @@ function Families({ report }: { report: Report }) {
                       {VENUES[f.venue]?.name}
                       {f.venue === "kalshi" && <span className="small"> {f.family}</span>}
                     </td>
-                    <td className="num">{r?.contracts ? r.contracts.toLocaleString("en-US") : "–"}</td>
+                    <td className="num">
+                      {r?.contracts ? r.contracts.toLocaleString("en-US") : "–"}
+                    </td>
                     <td className={r || f.note ? "num" : "num status-bad"}>
                       {r ? count(r.records_24h) : (f.note ?? "no data")}
                     </td>

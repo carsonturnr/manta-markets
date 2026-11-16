@@ -1,0 +1,10 @@
+[Unit]
+Description=Manta screener contracts, every minute
+
+[Timer]
+# Half past each minute: manta-snap reads Kalshi on the minute.
+OnCalendar=*:*:30
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

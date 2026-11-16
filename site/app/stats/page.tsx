@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { price, utc } from "@/lib/format";
@@ -9,9 +8,6 @@ export const metadata = { title: "Manta: gap statistics" };
 export default function StatsPage() {
   return (
     <>
-      <p className="small">
-        <Link href="/">← live contracts</Link>
-      </p>
       <h1>Gap statistics</h1>
       <p className="muted">
         Measured from the snapshots since the tracker started. Every figure says how much data it

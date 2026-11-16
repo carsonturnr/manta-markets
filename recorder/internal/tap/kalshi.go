@@ -26,6 +26,16 @@ const (
 	kalshiRestPerRound = 1200
 )
 
+// KalshiSeries is the allow-list of Kalshi series (docs/product.md): what the recorder records
+// and the screener lists (cmd/contracts). Never a sports series.
+var KalshiSeries = []string{
+	"KXBTCD", "KXBTC", "KXBTC15M", "KXETHD", "KXETH", "KXETH15M", // crypto: above/below, range, 15-minute
+	"KXFEDDECISION", "KXFED", // Fed: decision per meeting, rate level
+	"KXCPI", "KXCPIYOY", "KXCPICORE", "KXCPICOREYOY", "KXPAYROLLS", "KXU3", // CPI, payrolls, unemployment
+	"KXINX", "KXINXU", "KXNASDAQ100", "KXNASDAQ100U", // S&P 500 and Nasdaq-100: range, above/below
+	"KXEURUSD", "KXEURUSDH", "KXUSDJPY", "KXUSDJPYH", // FX: daily range, hourly above/below
+}
+
 // AllowedCategories are the only Kalshi series categories Manta records. CLAUDE.md: Bitcoin and
 // other financial contracts only, never sports, not even for testing.
 var AllowedCategories = map[string]bool{"Crypto": true, "Financials": true, "Economics": true}

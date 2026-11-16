@@ -1,7 +1,9 @@
 package tap
 
 import (
+	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -95,6 +97,24 @@ func TestPolymarketFamily(t *testing.T) {
 	} {
 		if got := PolymarketFamily(slug); got != want {
 			t.Errorf("%s: family %q, want %q", slug, got, want)
+		}
+	}
+}
+
+// The database refuses rows of any family not on its own copy of the allow-lists
+// (db/schema.sql, manta.markets): the two must match.
+func TestSchemaAllowList(t *testing.T) {
+	schema, err := os.ReadFile("../../../db/schema.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := slices.Clone(KalshiSeries)
+	for _, f := range polymarketFamilies {
+		ids = append(ids, f.id)
+	}
+	for _, id := range ids {
+		if !strings.Contains(string(schema), "'"+id+"'") {
+			t.Errorf("%s is allow-listed but not in db/schema.sql's manta.markets check", id)
 		}
 	}
 }

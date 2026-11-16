@@ -21,15 +21,9 @@ import (
 	"github.com/carsonturnr/manta-markets/recorder/internal/tap"
 )
 
-// kalshiSeries is the allow-list of Kalshi series (docs/product.md), each checked at startup to be
-// in an allowed category. Never a sports series.
-var kalshiSeries = strings.Join([]string{
-	"KXBTCD", "KXBTC", "KXBTC15M", "KXETHD", "KXETH", "KXETH15M", // crypto: above/below, range, 15-minute
-	"KXFEDDECISION", "KXFED", // Fed: decision per meeting, rate level
-	"KXCPI", "KXCPIYOY", "KXCPICORE", "KXCPICOREYOY", "KXPAYROLLS", "KXU3", // CPI, payrolls, unemployment
-	"KXINX", "KXINXU", "KXNASDAQ100", "KXNASDAQ100U", // S&P 500 and Nasdaq-100: range, above/below
-	"KXEURUSD", "KXEURUSDH", "KXUSDJPY", "KXUSDJPYH", // FX: daily range, hourly above/below
-}, ",")
+// The default Kalshi series are the allow-list in tap.KalshiSeries, each checked at startup to be in
+// an allowed category. Never a sports series.
+var kalshiSeries = strings.Join(tap.KalshiSeries, ",")
 
 var venues = []string{"kalshi", "deribit", "coinbase", "kraken", "polymarket", "binance"}
 
