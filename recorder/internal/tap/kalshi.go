@@ -21,6 +21,9 @@ const (
 	kalshiWSPath = "/trade-api/ws/v2"
 	// Kalshi's basic tier allows 20 reads/s; stay well under it.
 	kalshiReqInterval = 125 * time.Millisecond
+	// REST snapshots per round: 1,200 at 8/s take 2.5 minutes. With more markets than that,
+	// rounds rotate through them, so discovery (same loop) is never held up longer.
+	kalshiRestPerRound = 1200
 )
 
 // AllowedCategories are the only Kalshi series categories Manta records. CLAUDE.md: Bitcoin and
@@ -120,10 +123,11 @@ func Kalshi(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 
 // kalshiStream subscribes to orderbook_delta and trade for every discovered market on one
 // connection, resubscribes when the set changes, and records REST orderbook snapshots every
-// cfg.KalshiRestSnap for rebuild checks. A skipped seq means a lost update: the connection
+// cfg.KalshiRestSnap for rebuild checks (up to kalshiRestPerRound markets a round, in rotation). A skipped seq means a lost update: the connection
 // is dropped and the reconnect delivers fresh snapshots.
 func kalshiStream(ctx context.Context, w *rawlog.Writer, cfg Config, throttle <-chan time.Time) error {
 	var current []string
+	next := 0 // where the next REST snapshot round starts in `current`
 	var cancelConn context.CancelFunc = func() {}
 	errs := make(chan error, 1)
 	defer func() { cancelConn() }()
@@ -178,7 +182,9 @@ func kalshiStream(ctx context.Context, w *rawlog.Writer, cfg Config, throttle <-
 				return err
 			}
 		case <-snapshot.C:
-			if err := kalshiRestRound(ctx, w, current, throttle); err != nil {
+			var batch []string
+			batch, next = rotate(current, next, kalshiRestPerRound)
+			if err := kalshiRestRound(ctx, w, batch, throttle); err != nil {
 				return err
 			}
 		}
@@ -203,6 +209,20 @@ func kalshiSeqCheck() func([]byte) error {
 		}
 		return nil
 	}
+}
+
+// rotate returns up to n items of `all` starting at `start` (wrapping around), and where the next
+// call should start. All of `all` when it has n items or fewer.
+func rotate(all []string, start, n int) ([]string, int) {
+	if len(all) <= n {
+		return all, 0
+	}
+	start %= len(all)
+	batch := append([]string{}, all[start:min(start+n, len(all))]...)
+	if len(batch) < n {
+		batch = append(batch, all[:n-len(batch)]...)
+	}
+	return batch, (start + n) % len(all)
 }
 
 // kalshiRestRound records one REST orderbook per market (stream "orderbook").

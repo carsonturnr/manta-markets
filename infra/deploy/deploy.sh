@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build and deploy the recorder to the VM: infra/deploy/deploy.sh root@HOST
 # First run creates the manta user, /etc/manta/env (from env.example plus the Kalshi key already on
-# the box at /etc/series/), installs zstd, and enables the recorder and the nightly archive.
+# the box at /etc/series/), installs zstd, and enables the recorder and the hourly archive.
 set -euo pipefail
 host=${1:?usage: deploy.sh root@HOST}
 cd "$(dirname "$0")/../.."

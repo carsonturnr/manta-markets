@@ -44,8 +44,12 @@ class DeribitState:
         self.warm = False  # a full volatility table has arrived
 
     def handle(self, rec: dict) -> None:
+        # The recorder also records ETH (since 2026-11-16); ETH options share BTC's expiry codes,
+        # so only BTC messages may update this state.
         if rec["stream"] == "instruments":
-            self.listed = len(rec["msg"].get("result") or [])
+            insts = rec["msg"].get("result") or []
+            if insts and insts[0]["instrument_name"].startswith("BTC-"):
+                self.listed = len(insts)
             return
         if rec["stream"] != "ws":
             return
@@ -59,7 +63,7 @@ class DeribitState:
             # A message covering (nearly) every listed option is the periodic full table.
             if len(data) >= max(500, 0.9 * self.listed):
                 self.warm = True
-        elif channel.startswith("ticker."):
+        elif channel.startswith("ticker.BTC-"):
             self.forward[data["instrument_name"].split("-")[1]] = data["underlying_price"]
 
     def surface(self, now: float) -> Surface:

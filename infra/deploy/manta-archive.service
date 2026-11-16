@@ -1,5 +1,5 @@
 [Unit]
-Description=Manta nightly archive to the Storage Box
+Description=Manta hourly archive to the Storage Box
 
 [Service]
 Type=oneshot

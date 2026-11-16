@@ -1,8 +1,8 @@
 [Unit]
-Description=Run the Manta archive nightly
+Description=Run the Manta archive every hour (10 minutes past, after the hour's files close)
 
 [Timer]
-OnCalendar=*-*-* 03:30:00 UTC
+OnCalendar=*-*-* *:10:00 UTC
 Persistent=true
 
 [Install]

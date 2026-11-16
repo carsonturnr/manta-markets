@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -48,5 +49,24 @@ func TestCheckSeriesRejectsDisallowedCategories(t *testing.T) {
 	}
 	if err := CheckSeries(ctx, nil); err == nil {
 		t.Fatal("empty list accepted")
+	}
+}
+
+func TestRotate(t *testing.T) {
+	all := []string{"a", "b", "c", "d", "e"}
+	got, next := rotate(all, 0, 2)
+	if !slices.Equal(got, []string{"a", "b"}) || next != 2 {
+		t.Fatalf("first: %v %d", got, next)
+	}
+	got, next = rotate(all, 4, 2) // wraps around
+	if !slices.Equal(got, []string{"e", "a"}) || next != 1 {
+		t.Fatalf("wrap: %v %d", got, next)
+	}
+	got, next = rotate(all, 9, 2) // the market list shrank since the last round
+	if !slices.Equal(got, []string{"e", "a"}) || next != 1 {
+		t.Fatalf("shrunk: %v %d", got, next)
+	}
+	if got, _ := rotate(all, 3, 10); len(got) != 5 {
+		t.Fatalf("all: %v", got)
 	}
 }

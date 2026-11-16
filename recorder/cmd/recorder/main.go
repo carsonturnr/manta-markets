@@ -1,6 +1,6 @@
 // Command recorder records raw market data to hourly gzip JSONL files (internal/rawlog): Kalshi's
-// Bitcoin contracts, Deribit's Bitcoin options and index, Bitcoin spot from Coinbase and Kraken,
-// Polymarket's daily Bitcoin contracts, and Binance BTC/USDT. It runs for weeks under systemd: a write failure exits non-zero so it restarts, and
+// crypto, economics and financials series (kalshiSeries), Deribit's Bitcoin and Ether options and
+// indices, Bitcoin spot from Coinbase and Kraken, Polymarket's comparable events, and Binance BTC/USDT. It runs for weeks under systemd: a write failure exits non-zero so it restarts, and
 // every start and disconnect is a status record, so gaps show up in `status`.
 //
 //	go run ./cmd/recorder -out ../data/raw
@@ -21,11 +21,21 @@ import (
 	"github.com/carsonturnr/manta-markets/recorder/internal/tap"
 )
 
+// kalshiSeries is the allow-list of Kalshi series (docs/product.md), each checked at startup to be
+// in an allowed category. Never a sports series.
+var kalshiSeries = strings.Join([]string{
+	"KXBTCD", "KXBTC", "KXBTC15M", "KXETHD", "KXETH", "KXETH15M", // crypto: above/below, range, 15-minute
+	"KXFEDDECISION", "KXFED", // Fed: decision per meeting, rate level
+	"KXCPI", "KXCPIYOY", "KXCPICORE", "KXCPICOREYOY", "KXPAYROLLS", "KXU3", // CPI, payrolls, unemployment
+	"KXINX", "KXINXU", "KXNASDAQ100", "KXNASDAQ100U", // S&P 500 and Nasdaq-100: range, above/below
+	"KXEURUSD", "KXEURUSDH", "KXUSDJPY", "KXUSDJPYH", // FX: daily range, hourly above/below
+}, ",")
+
 var venues = []string{"kalshi", "deribit", "coinbase", "kraken", "polymarket", "binance"}
 
 func main() {
 	out := flag.String("out", "data/raw", "output directory")
-	series := flag.String("kalshi-series", "KXBTCD,KXBTC,KXBTC15M", "Kalshi series to record, comma-separated (category must be allowed)")
+	series := flag.String("kalshi-series", kalshiSeries, "Kalshi series to record, comma-separated (category must be allowed)")
 	discover := flag.Duration("discover", 10*time.Minute, "market and instrument re-discovery interval")
 	kalshiPoll := flag.Duration("kalshi-poll", 10*time.Second, "Kalshi orderbook poll interval per market (no API key)")
 	kalshiRestSnap := flag.Duration("kalshi-rest-snapshot", 5*time.Minute, "Kalshi REST orderbook snapshot interval (WebSocket mode)")

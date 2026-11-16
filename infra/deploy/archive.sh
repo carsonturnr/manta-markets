@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Nightly archive (systemd timer manta-archive): every finished hourly file is copied as-is to the
+# Hourly archive (systemd timer manta-archive): every finished hourly file is copied as-is to the
 # Hetzner Storage Box and verified by checksum. Local copies are deleted only when older than
-# KEEP_DAYS *and* confirmed archived, so recent data always exists twice. `status` keeps counting
+# KEEP_HOURS *and* confirmed archived, so recent data always exists twice. (Nightly with a day kept
+# until 2026-11-16; hourly since the added coverage roughly doubled the volume, to fit the VM's disk.) `status` keeps counting
 # archived hours through index.jsonl.
 #
 # Files stay gzip: recompressing with zstd saves only about 23% at a level fast enough to keep up
@@ -10,7 +11,7 @@
 set -euo pipefail
 . /etc/manta/env
 RAW=${RAW:-/var/lib/manta/raw}
-KEEP_DAYS=${KEEP_DAYS:-1}
+KEEP_HOURS=${KEEP_HOURS:-12}
 BOX="$STORAGEBOX_USER@$STORAGEBOX_USER.your-storagebox.de"
 SSH="ssh -p 23 -i /root/.ssh/storagebox -o BatchMode=yes"
 DONE="$RAW/archived.txt"   # relative paths already on the Storage Box
@@ -18,7 +19,7 @@ touch "$DONE"
 
 /opt/manta/bin/status -in "$RAW" > /dev/null   # index every finished hour first
 current=$(date -u +%Y-%m-%d/%H)
-cutoff=$(date -u -d "-$KEEP_DAYS days" +%Y-%m-%d)
+cutoff=$(date -u -d "-$KEEP_HOURS hours" +%Y-%m-%d/%H)   # compared with "<day>/<hour>" of each file
 
 cd "$RAW"
 failed=0
@@ -42,8 +43,8 @@ if [ -s "$todo" ]; then
 fi
 
 while read -r rel; do
-  day=$(basename "$(dirname "$rel")")
-  if [[ "$day" < "$cutoff" ]] && grep -qxF "$rel" "$DONE"; then rm -f "$rel"; fi
+  hour="$(basename "$(dirname "$rel")")/$(basename "$rel" | cut -c1-2)"   # kalshi/2026-11-16/01-0000.jsonl.gz → 2026-11-16/01
+  if [[ "$hour" < "$cutoff" ]] && grep -qxF "$rel" "$DONE"; then rm -f "$rel"; fi
 done < <(find . -name '*.jsonl.gz' | sed 's|^\./||')
 rsync -a -e "$SSH" "$RAW/index.jsonl" "$DONE" "$BOX:manta/"
 find "$RAW" -mindepth 2 -type d -empty -delete

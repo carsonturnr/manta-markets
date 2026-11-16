@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/carsonturnr/manta-markets/recorder/internal/rawlog"
@@ -18,7 +19,11 @@ const (
 	deribitChannelsPerCall = 100
 )
 
-// Deribit records, over Deribit's public WebSocket (no account needed):
+// deribitCurrencies are the underlyings recorded: Kalshi lists contracts on both.
+var deribitCurrencies = []string{"BTC", "ETH"}
+
+// Deribit records, over Deribit's public WebSocket (no account needed), for each of
+// deribitCurrencies (channel names shown for BTC; ETH's use eth_usd):
 //   - deribit_price_index.btc_usd: Deribit's BTC index, about once a second;
 //   - markprice.options.btc_usd: mark price and implied volatility of every BTC option, in one
 //     message per update (the volatility surface the pricing engine starts from);
@@ -27,8 +32,9 @@ const (
 //     their implied volatilities, and the underlying price, once a second. (100 ms tickers were
 //     2.9 GB/day for no pricing benefit on hourly contracts; the surface above is also 1/s.)
 //
-// The instrument list (strikes and expiries) is recorded at each discovery (stream
-// "instruments"); when the near-expiry set changes, the connection resubscribes.
+// Each currency's instrument list (strikes and expiries) is recorded at each discovery (stream
+// "instruments", one record per currency); when the near-expiry set changes, the connection
+// resubscribes.
 func Deribit(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 	var current []string
 	var cancelConn context.CancelFunc = func() {}
@@ -36,13 +42,17 @@ func Deribit(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 	defer func() { cancelConn() }()
 
 	refresh := func() error {
-		names, err := deribitInstruments(ctx, w, cfg.DeribitDays, cfg.DeribitStrikeBand)
-		if err != nil {
-			if we, ok := err.(writeErr); ok {
-				return we.error
+		var names []string
+		for _, cur := range deribitCurrencies {
+			got, err := deribitInstruments(ctx, w, cur, cfg.DeribitDays, cfg.DeribitStrikeBand)
+			if err != nil {
+				if we, ok := err.(writeErr); ok {
+					return we.error
+				}
+				log.Printf("deribit instruments %s: %v", cur, err)
+				return w.Status("deribit", "discover_error", cur+": "+err.Error())
 			}
-			log.Printf("deribit instruments: %v", err)
-			return w.Status("deribit", "discover_error", err.Error())
+			names = append(names, got...)
 		}
 		if slices.Equal(names, current) {
 			return nil
@@ -53,7 +63,11 @@ func Deribit(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 		cancelConn()
 		connCtx, cancel := context.WithCancel(ctx)
 		cancelConn, current = cancel, names
-		channels := []string{"deribit_price_index.btc_usd", "markprice.options.btc_usd"}
+		var channels []string
+		for _, cur := range deribitCurrencies {
+			idx := strings.ToLower(cur) + "_usd"
+			channels = append(channels, "deribit_price_index."+idx, "markprice.options."+idx)
+		}
 		for _, n := range names {
 			channels = append(channels, "ticker."+n+".agg2")
 		}
@@ -95,13 +109,13 @@ func Deribit(ctx context.Context, w *rawlog.Writer, cfg Config) error {
 	}
 }
 
-// deribitInstruments records the live BTC option list and returns the names of options expiring
-// within `days` whose strike is within `band` (a fraction) of the current index, sorted.
-func deribitInstruments(ctx context.Context, w *rawlog.Writer, days int, band float64) ([]string, error) {
+// deribitInstruments records the live option list of `currency` ("BTC") and returns the names of
+// options expiring within `days` whose strike is within `band` (a fraction) of its index, sorted.
+func deribitInstruments(ctx context.Context, w *rawlog.Writer, currency string, days int, band float64) ([]string, error) {
 	var resp struct {
 		Result []deribitInstrument `json:"result"`
 	}
-	raw, err := getJSON(ctx, deribitAPI+"/get_instruments?currency=BTC&kind=option&expired=false", &resp)
+	raw, err := getJSON(ctx, deribitAPI+"/get_instruments?currency="+currency+"&kind=option&expired=false", &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +127,7 @@ func deribitInstruments(ctx context.Context, w *rawlog.Writer, days int, band fl
 			IndexPrice float64 `json:"index_price"`
 		} `json:"result"`
 	}
-	if _, err := getJSON(ctx, deribitAPI+"/get_index_price?index_name=btc_usd", &index); err != nil {
+	if _, err := getJSON(ctx, deribitAPI+"/get_index_price?index_name="+strings.ToLower(currency)+"_usd", &index); err != nil {
 		return nil, err
 	}
 	return nearMoney(resp.Result, time.Now(), days, index.Result.IndexPrice, band), nil

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -24,13 +25,37 @@ const (
 	polymarketBooksPerCall = 50
 )
 
-// polymarketEvents are Polymarket's daily Bitcoin contracts comparable to Kalshi's: "Bitcoin above
-// ___ on <date>?" (like KXBTCD) and "Bitcoin price on <date>?" (ranges, like KXBTC). An explicit
-// list of URL slug patterns, never a search, so nothing else can be recorded by accident. They
-// settle on the Binance BTC/USDT 1-minute candle close at noon New York time (docs/decisions.md).
-var polymarketEvents = []string{"bitcoin-above-on-%s", "bitcoin-price-on-%s"}
+// polymarketFamily is one kind of Polymarket event comparable to a Kalshi series. Either `dated`
+// is a URL slug with %s for a New York date, or the open events tagged `listTag` are listed and
+// only slugs matching `slug` are kept (economics slugs end in a random suffix, so they can't be
+// spelled out). Either way, an event must also carry every tag in `tags`.
+type polymarketFamily struct {
+	dated   string
+	listTag string
+	slug    *regexp.Regexp
+	tags    []string
+}
 
-// Polymarket records polymarketEvents for today and the next days (New York dates): each
+// polymarketFamilies is the explicit allow-list, never a free search, so nothing else can be
+// recorded by accident (the tags alone are too broad: "inflation" includes egg prices).
+//   - Bitcoin and Ethereum "above ___ on <date>?" (like KXBTCD, KXETHD) and "price on <date>?"
+//     (ranges, like KXBTC, KXETH). They settle on the Binance 1-minute candle close at noon New
+//     York time (docs/decisions.md).
+//   - Fed decision per meeting (KXFEDDECISION), US CPI (KXCPI, KXCPIYOY), unemployment (KXU3)
+//     and payrolls (KXPAYROLLS). The Fed pattern leaves out "fed-decisions-…" parlays; the
+//     unemployment one leaves out Canada's.
+var polymarketFamilies = []polymarketFamily{
+	{dated: "bitcoin-above-on-%s", tags: []string{"bitcoin", "crypto"}},
+	{dated: "bitcoin-price-on-%s", tags: []string{"bitcoin", "crypto"}},
+	{dated: "ethereum-above-on-%s", tags: []string{"ethereum", "crypto"}},
+	{dated: "ethereum-price-on-%s", tags: []string{"ethereum", "crypto"}},
+	{listTag: "fed-rates", slug: regexp.MustCompile(`^fed-decision-in-[a-z]+(-[0-9]+)?$`), tags: []string{"fomc"}},
+	{listTag: "us-cpi", slug: regexp.MustCompile(`^[a-z]+-inflation-us-(annual|monthly)$`), tags: []string{"us-cpi"}},
+	{listTag: "jobs-report", slug: regexp.MustCompile(`^[a-z]+-unemployment-rate-[0-9]{4}$`), tags: []string{"jobs-report"}},
+	{listTag: "jobs-report", slug: regexp.MustCompile(`^how-many-jobs-added-in-[a-z]+-[0-9]{4}$`), tags: []string{"nonfarm-payroll"}},
+}
+
+// Polymarket records polymarketFamilies (dated ones for today and the next days, New York dates): each
 // discovery records the raw event JSON (stream "events"), and every cfg.PolymarketPoll the full
 // order book of each contract's "Yes" outcome (stream "books", one raw response per request).
 // The "No" book is the same book mirrored (a Yes bid at p is a No ask at 1 − p).
@@ -133,12 +158,54 @@ type polymarketEvent struct {
 	} `json:"markets"`
 }
 
-// polymarketDiscover records each event of polymarketEvents for the next `days` New York dates
-// and returns the "Yes" token id of each of their open markets, sorted. A missing event (not
-// listed yet) is normal; an event that fails polymarketAllowed is recorded as a status and skipped.
+// polymarketDiscover records each allow-listed event (polymarketFamilies; dated ones for the next
+// `days` New York dates) and returns the "Yes" token id of each of their open markets, sorted. A
+// missing event (not listed yet) is normal; an event that fails polymarketAllowed is recorded as a
+// status and skipped.
 func polymarketDiscover(ctx context.Context, w *rawlog.Writer, now time.Time, days int) ([]string, error) {
 	var tokens []string
-	for _, slug := range polymarketSlugs(now, days) {
+	for _, f := range polymarketFamilies {
+		slugs, err := f.slugs(ctx, now, days)
+		if err != nil {
+			return nil, err
+		}
+		got, err := polymarketRecordEvents(ctx, w, f, slugs)
+		if err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, got...)
+	}
+	slices.Sort(tokens)
+	return slices.Compact(tokens), nil
+}
+
+// slugs returns the family's event slugs: one per date for a dated family, otherwise the open
+// events listed under its tag whose slug matches.
+func (f polymarketFamily) slugs(ctx context.Context, now time.Time, days int) ([]string, error) {
+	if f.dated != "" {
+		return polymarketSlugs(f.dated, now, days), nil
+	}
+	var listed []struct {
+		Slug string `json:"slug"`
+	}
+	q := url.Values{"tag_slug": {f.listTag}, "closed": {"false"}, "limit": {"200"}}
+	if _, err := getJSON(ctx, polymarketAPI+"/events?"+q.Encode(), &listed); err != nil {
+		return nil, fmt.Errorf("events tagged %s: %w", f.listTag, err)
+	}
+	var slugs []string
+	for _, e := range listed {
+		if f.slug.MatchString(e.Slug) {
+			slugs = append(slugs, e.Slug)
+		}
+	}
+	return slugs, nil
+}
+
+// polymarketRecordEvents fetches and records each event by slug (so only allow-listed events are
+// written) and returns the "Yes" token ids of the allowed ones' open markets.
+func polymarketRecordEvents(ctx context.Context, w *rawlog.Writer, f polymarketFamily, slugs []string) ([]string, error) {
+	var tokens []string
+	for _, slug := range slugs {
 		raw, err := getJSON(ctx, polymarketAPI+"/events?slug="+url.QueryEscape(slug), nil)
 		if err != nil {
 			return nil, err
@@ -154,7 +221,7 @@ func polymarketDiscover(ctx context.Context, w *rawlog.Writer, now time.Time, da
 			return nil, writeErr{err}
 		}
 		for _, e := range events {
-			if ok, why := polymarketAllowed(e); !ok {
+			if ok, why := polymarketAllowed(e, f.tags); !ok {
 				if err := w.Status("polymarket", "rejected", e.Slug+": "+why); err != nil {
 					return nil, writeErr{err}
 				}
@@ -172,29 +239,26 @@ func polymarketDiscover(ctx context.Context, w *rawlog.Writer, now time.Time, da
 			}
 		}
 	}
-	slices.Sort(tokens)
-	return slices.Compact(tokens), nil
+	return tokens, nil
 }
 
-// polymarketSlugs lists the event slugs for `days` New York dates starting today, e.g.
+// polymarketSlugs fills `pattern` with `days` New York dates starting today, e.g.
 // "bitcoin-above-on-november-14-2026". New York, because the contracts are named after the date
 // of their noon-ET close.
-func polymarketSlugs(now time.Time, days int) []string {
+func polymarketSlugs(pattern string, now time.Time, days int) []string {
 	ny, _ := time.LoadLocation("America/New_York")
 	var slugs []string
 	for d := range days {
 		day := now.In(ny).AddDate(0, 0, d)
 		date := fmt.Sprintf("%s-%d-%d", strings.ToLower(day.Month().String()), day.Day(), day.Year())
-		for _, p := range polymarketEvents {
-			slugs = append(slugs, fmt.Sprintf(p, date))
-		}
+		slugs = append(slugs, fmt.Sprintf(pattern, date))
 	}
 	return slugs
 }
 
-// polymarketAllowed is a second guard after the slug list: the event must be tagged both
-// "bitcoin" and "crypto", and nothing sports-related (no sports markets, ever).
-func polymarketAllowed(e polymarketEvent) (bool, string) {
+// polymarketAllowed is a second guard after the slug: the event must carry every tag in `want`,
+// and nothing sports-related (no sports markets, ever).
+func polymarketAllowed(e polymarketEvent, want []string) (bool, string) {
 	tags := map[string]bool{}
 	for _, t := range e.Tags {
 		tags[t.Slug] = true
@@ -204,8 +268,10 @@ func polymarketAllowed(e polymarketEvent) (bool, string) {
 			return false, "tagged " + t
 		}
 	}
-	if !tags["bitcoin"] || !tags["crypto"] {
-		return false, "not tagged bitcoin and crypto"
+	for _, t := range want {
+		if !tags[t] {
+			return false, "not tagged " + t
+		}
 	}
 	return true, ""
 }
