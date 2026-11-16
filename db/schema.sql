@@ -66,6 +66,7 @@ create table if not exists manta.markets (
     payoff        text not null check (payoff in ('above', 'below', 'between', 'exact', 'outcome')),
     low           double precision,
     high          double precision,
+    inclusive     boolean not null default false,  -- the strike itself counts (≥, ≤)
     close_time    timestamptz not null,
     bid           double precision,  -- best "yes" bid, null if none
     ask           double precision,
@@ -78,6 +79,8 @@ create table if not exists manta.markets (
     updated       timestamptz not null,  -- when the listing was read
     primary key (venue, id)
 );
+-- Added 2026-11-16 (step 3), after the table was first created.
+alter table manta.markets add column if not exists inclusive boolean not null default false;
 
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).

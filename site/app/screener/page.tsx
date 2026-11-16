@@ -273,7 +273,9 @@ function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
           {rows.map((r) => (
             <tr key={`${r.venue}/${r.id}`}>
               <td className="contract" title={r.title}>
-                <span>{r.label || r.title}</span>
+                <Link href={`/contract/${r.venue}/${encodeURIComponent(r.id)}`}>
+                  {r.label || r.title}
+                </Link>
                 <span className="small">
                   {FAMILY_NAME.get(r.family) ?? r.family} · {r.venue === "kalshi" ? r.id : r.event}
                 </span>

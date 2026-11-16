@@ -12,9 +12,9 @@ from pathlib import Path
 from manta_pricing.snapshot import connect
 
 COLUMNS = [
-    "venue", "id", "family", "event", "title", "label", "payoff", "low", "high", "close_time",
-    "bid", "ask", "bid_size", "ask_size", "last", "volume_24h", "volume_unit", "open_interest",
-    "updated",
+    "venue", "id", "family", "event", "title", "label", "payoff", "low", "high", "inclusive",
+    "close_time", "bid", "ask", "bid_size", "ask_size", "last", "volume_24h", "volume_unit",
+    "open_interest", "updated",
 ]  # fmt: skip
 
 

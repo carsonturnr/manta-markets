@@ -9,6 +9,7 @@
   --text-3: #7a7974;
   --kalshi: #2a78d6; /* series 1: Kalshi's bid–ask */
   --fair: #eb6834; /* series 2: our fair value */
+  --poly: #c2378a; /* series 3: Polymarket */
   --link: #1c5cab;
   --ok: #2f8a5b; /* status: recorded */
   --bad: #a8690a; /* status: a gap or missing data */
@@ -24,6 +25,7 @@
     --text-3: #93928a;
     --kalshi: #3987e5;
     --fair: #d95926;
+    --poly: #e05aa5;
     --link: #86b6ef;
     --ok: #3fa673;
     --bad: #b8862a;
@@ -39,6 +41,7 @@
   --text-3: #93928a;
   --kalshi: #3987e5;
   --fair: #d95926;
+  --poly: #e05aa5;
   --link: #86b6ef;
   --ok: #3fa673;
   --bad: #b8862a;
@@ -300,6 +303,7 @@ main:has(.wide) {
   white-space: normal;
   min-width: 220px;
 }
+.screener td.contract a,
 .screener td.contract span {
   display: block;
 }
@@ -307,4 +311,36 @@ main:has(.wide) {
   display: flex;
   gap: 16px;
   align-items: baseline;
+}
+
+/* Contract page (/contract/...). */
+.pills {
+  display: flex;
+  gap: 12px;
+}
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 32px;
+}
+.columns > section {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+.columns table {
+  min-width: 0;
+}
+/* A bar behind each order-book size, its width set inline as --w. */
+.book td.level {
+  background: linear-gradient(to left, var(--grid) var(--w), transparent var(--w));
+}
+.book tr.mid td {
+  text-align: center;
+}
+.rules {
+  margin: 8px 0;
+  padding: 4px 16px;
+  border-left: 3px solid var(--grid);
+  color: var(--text-2);
+  font-size: 14px;
 }

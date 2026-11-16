@@ -32,6 +32,9 @@ func TestFromKalshi(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if got.Inclusive != (got.ID == "KXINXU-26NOV16H1600-T7324.9999") {
+			t.Errorf("%s: inclusive %v", got.ID, got.Inclusive)
+		}
 		if got.Payoff != c.payoff || f(got.Low) != c.low || f(got.High) != c.high || f(got.Bid) != c.bid || f(got.Ask) != c.ask {
 			t.Errorf("%s: got %s %v–%v bid %v ask %v", got.ID, got.Payoff, f(got.Low), f(got.High), f(got.Bid), f(got.Ask))
 		}
@@ -46,24 +49,25 @@ func TestParseLabel(t *testing.T) {
 	for _, c := range []struct {
 		family, label, payoff string
 		low, high             any
+		inclusive             bool
 	}{
-		{"btc-above", "62,000", "above", 62000.0, nil},
-		{"btc-price", "<64,000", "below", nil, 64000.0},
-		{"btc-price", "64,000-66,000", "between", 64000.0, 66000.0},
-		{"btc-price", ">82,000", "above", 82000.0, nil},
-		{"cpi", "≤-0.3%", "below", nil, -0.3},
-		{"cpi", "-0.2%", "exact", -0.2, -0.2},
-		{"cpi", "3.3%", "exact", 3.3, 3.3},
-		{"cpi", "≥4.3%", "above", 4.3, nil},
-		{"unemployment", "≤3.8%", "below", nil, 3.8},
-		{"payrolls", "<25k", "below", nil, 25000.0},
-		{"payrolls", "25k to 50k", "between", 25000.0, 50000.0},
-		{"payrolls", "150k+", "above", 150000.0, nil},
-		{"fed-decision", "25 bps decrease", "outcome", nil, nil},
-		{"fed-decision", "No change", "outcome", nil, nil},
+		{"btc-above", "62,000", "above", 62000.0, nil, false},
+		{"btc-price", "<64,000", "below", nil, 64000.0, false},
+		{"btc-price", "64,000-66,000", "between", 64000.0, 66000.0, false},
+		{"btc-price", ">82,000", "above", 82000.0, nil, false},
+		{"cpi", "≤-0.3%", "below", nil, -0.3, true},
+		{"cpi", "-0.2%", "exact", -0.2, -0.2, false},
+		{"cpi", "3.3%", "exact", 3.3, 3.3, false},
+		{"cpi", "≥4.3%", "above", 4.3, nil, true},
+		{"unemployment", "≤3.8%", "below", nil, 3.8, true},
+		{"payrolls", "<25k", "below", nil, 25000.0, false},
+		{"payrolls", "25k to 50k", "between", 25000.0, 50000.0, false},
+		{"payrolls", "150k+", "above", 150000.0, nil, true},
+		{"fed-decision", "25 bps decrease", "outcome", nil, nil, false},
+		{"fed-decision", "No change", "outcome", nil, nil, false},
 	} {
-		p, lo, hi := parseLabel(c.family, c.label)
-		if p != c.payoff || f(lo) != c.low || f(hi) != c.high {
+		p, lo, hi, inc := parseLabel(c.family, c.label)
+		if p != c.payoff || f(lo) != c.low || f(hi) != c.high || inc != c.inclusive {
 			t.Errorf("%s %q: got %s %v–%v, want %s %v–%v", c.family, c.label, p, f(lo), f(hi), c.payoff, c.low, c.high)
 		}
 	}

@@ -9,6 +9,9 @@
 //   - exact:   the result, as published, equals Low (= High), e.g. Polymarket's "CPI is 3.3%"
 //   - outcome: a named result, in Label (e.g. the Fed's "25 bps decrease")
 //
+// Inclusive says the strike itself counts for "above" or "below" (≥, ≤, "150k+", Kalshi's
+// greater_or_equal), so a summary can say "at or above" instead of "above".
+//
 // Prices are probabilities (0.42 = 42¢). Strikes are in the underlying's unit: dollars, index
 // points, percent (3.3 = 3.3%), or jobs.
 package contracts
@@ -24,16 +27,18 @@ import (
 )
 
 type Contract struct {
-	Venue  string    `json:"venue"`  // kalshi | polymarket
-	ID     string    `json:"id"`     // Kalshi ticker, Polymarket condition id
-	Family string    `json:"family"` // Kalshi series, Polymarket family id (tap.PolymarketFamily)
-	Event  string    `json:"event"`  // Kalshi event ticker, Polymarket event slug
-	Title  string    `json:"title"`  // the venue's question
-	Label  string    `json:"label"`  // the venue's short name for this contract: "$74,300 or above"
-	Payoff string    `json:"payoff"` // above | below | between | exact | outcome
-	Low    *float64  `json:"low"`
-	High   *float64  `json:"high"`
-	Close  time.Time `json:"close"` // trading stops
+	Venue  string   `json:"venue"`  // kalshi | polymarket
+	ID     string   `json:"id"`     // Kalshi ticker, Polymarket condition id
+	Family string   `json:"family"` // Kalshi series, Polymarket family id (tap.PolymarketFamily)
+	Event  string   `json:"event"`  // Kalshi event ticker, Polymarket event slug
+	Title  string   `json:"title"`  // the venue's question
+	Label  string   `json:"label"`  // the venue's short name for this contract: "$74,300 or above"
+	Payoff string   `json:"payoff"` // above | below | between | exact | outcome
+	Low    *float64 `json:"low"`
+	High   *float64 `json:"high"`
+	// The strike itself counts (≥ or ≤), for above and below.
+	Inclusive bool      `json:"inclusive"`
+	Close     time.Time `json:"close"` // trading stops
 
 	Bid     *float64 `json:"bid"` // best "yes" bid; nil if none
 	Ask     *float64 `json:"ask"` // best "yes" ask; nil if none
@@ -100,9 +105,9 @@ func FromKalshi(series string, raw []byte) (Contract, error) {
 		Volume24h: float64(m.Volume24h), VolumeUnit: "contracts", OpenInterest: ptr(float64(m.OpenInterest))}
 	switch m.StrikeType {
 	case "greater", "greater_or_equal":
-		c.Payoff, c.Low = "above", m.FloorStrike
+		c.Payoff, c.Low, c.Inclusive = "above", m.FloorStrike, m.StrikeType == "greater_or_equal"
 	case "less", "less_or_equal":
-		c.Payoff, c.High = "below", m.CapStrike
+		c.Payoff, c.High, c.Inclusive = "below", m.CapStrike, m.StrikeType == "less_or_equal"
 	case "between":
 		c.Payoff, c.Low, c.High = "between", m.FloorStrike, m.CapStrike
 	case "custom": // the Fed decision: "Hike >25bps", "Cut 25bps", "Hold"
@@ -164,7 +169,7 @@ func FromPolymarket(family string, e PolymarketEvent, m PolymarketMarket, top *T
 	c := Contract{Venue: "polymarket", ID: m.ConditionID, Family: family, Event: e.Slug,
 		Title: m.Question, Label: m.GroupItemTitle, Close: m.EndDate,
 		Volume24h: float64(m.Volume24hr), VolumeUnit: "usd"}
-	c.Payoff, c.Low, c.High = parseLabel(family, m.GroupItemTitle)
+	c.Payoff, c.Low, c.High, c.Inclusive = parseLabel(family, m.GroupItemTitle)
 	if top != nil {
 		c.Bid, c.BidSize, c.Ask, c.AskSize = top.Bid, top.BidSize, top.Ask, top.AskSize
 	} else {
@@ -203,25 +208,25 @@ func parseNum(s string) float64 {
 // parseLabel reads a Polymarket label into a payoff. In the "above" families a bare number is
 // the strike ("Bitcoin above $62,000"); elsewhere it is an exact result ("CPI is 3.3%").
 // Anything else (the Fed's "25 bps decrease") is a named outcome.
-func parseLabel(family, label string) (payoff string, low, high *float64) {
+func parseLabel(family, label string) (payoff string, low, high *float64, inclusive bool) {
 	l := strings.TrimSpace(label)
 	if m := rangeRe.FindStringSubmatch(l); m != nil {
-		return "between", ptr(parseNum(m[1])), ptr(parseNum(m[2]))
+		return "between", ptr(parseNum(m[1])), ptr(parseNum(m[2])), false
 	}
 	if m := belowRe.FindStringSubmatch(l); m != nil {
-		return "below", nil, ptr(parseNum(m[1]))
+		return "below", nil, ptr(parseNum(m[1])), strings.HasPrefix(l, "≤")
 	}
 	if m := aboveRe.FindStringSubmatch(l); m != nil {
-		return "above", ptr(parseNum(m[1] + m[2])), nil
+		return "above", ptr(parseNum(m[1] + m[2])), nil, !strings.HasPrefix(l, ">")
 	}
 	if m := exactRe.FindStringSubmatch(l); m != nil {
 		v := parseNum(m[1])
-		if strings.HasSuffix(family, "-above") {
-			return "above", ptr(v), nil
+		if strings.HasSuffix(family, "-above") { // "higher than the price in the title"
+			return "above", ptr(v), nil, false
 		}
-		return "exact", ptr(v), ptr(v)
+		return "exact", ptr(v), ptr(v), false
 	}
-	return "outcome", nil, nil
+	return "outcome", nil, nil, false
 }
 
 // BookTop reads the best bid and ask from one CLOB book ({"bids": [{"price", "size"}], ...}).

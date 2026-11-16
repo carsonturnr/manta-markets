@@ -12,6 +12,9 @@ export type Row = {
   title: string;
   label: string; // the venue's own short name: "$74,300 or above", "25 bps decrease"
   payoff: "above" | "below" | "between" | "exact" | "outcome";
+  low: number | null;
+  high: number | null;
+  inclusive: boolean;
   close: number; // unix ms
   bid: number | null; // best "yes" bid, probability
   ask: number | null;
@@ -79,7 +82,7 @@ export async function screen(
   const dir = f.desc ? sql`desc` : sql`asc`;
 
   const rows = await sql`
-    select venue, id, family, event, title, label, payoff,
+    select venue, id, family, event, title, label, payoff, low, high, inclusive,
            extract(epoch from close_time) * 1000 as close, bid, ask,
            bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
            volume_unit as "volumeUnit", open_interest as "openInterest",
@@ -98,4 +101,26 @@ export async function screen(
     at: run?.at == null ? null : Number(run.at),
     ageS: run?.age_s == null ? null : Number(run.age_s),
   };
+}
+
+/** One open contract, whether the BTC tracker has its fair-value history, and the listing's
+ * time; null if it isn't listed (closed, or never covered). */
+export async function getMarket(
+  venue: string,
+  id: string,
+): Promise<{ row: Row; tracked: boolean; at: number } | null> {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 30, expire: 120 });
+  const [r] = await sql`
+    select venue, id, family, event, title, label, payoff, low, high, inclusive,
+           extract(epoch from close_time) * 1000 as close, bid, ask,
+           bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
+           volume_unit as "volumeUnit", open_interest as "openInterest",
+           extract(epoch from updated) * 1000 as at,
+           exists (select 1 from manta.contracts c where c.ticker = m.id) as tracked
+    from manta.markets m
+    where venue = ${venue} and id = ${id}`;
+  if (!r) return null;
+  const { at, tracked, ...row } = r;
+  return { row: { ...row, close: Number(row.close) } as unknown as Row, tracked, at: Number(at) };
 }
