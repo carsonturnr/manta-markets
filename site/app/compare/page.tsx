@@ -14,7 +14,7 @@ export default function ComparePage() {
         The same event on Kalshi and Polymarket, side by side. Pairs come from fixed rules per
         contract family, never from matching text, and each says how equivalent its two sides are.
         Prices are for &ldquo;yes&rdquo;, in cents; refreshed every minute from each venue&apos;s
-        market list. Fees are not included.
+        market list. Crossing prices are checked after both legs&apos; taker fees (step 6).
       </p>
       <ul className="small kinds">
         <li>
@@ -71,15 +71,30 @@ function gap(p: Pair): { cents: number; inside: boolean } | null {
 }
 
 /** If one venue's ask is below the other's bid, buying there and selling on the other locks in
- * the gap, before fees: how many cents, and which way. */
-function crossed(p: Pair): { cents: number; buy: string; sell: string } | null {
+ * the gap: how many cents before fees, and after both legs' taker fees (null if a fee rate is
+ * unknown), per contract. */
+function crossed(p: Pair): { cents: number; net: number | null; buy: string; sell: string } | null {
   const k = p.kalshi;
   const q = p.poly;
+  const net = (gap: number, buyFee: number | null, sellFee: number | null) =>
+    buyFee === null || sellFee === null ? null : (gap - buyFee - sellFee) * 100;
   if (k.ask !== null && q.bid !== null && q.bid - k.ask > 1e-9) {
-    return { cents: (q.bid - k.ask) * 100, buy: "Kalshi", sell: "Polymarket" };
+    const gap = q.bid - k.ask;
+    return {
+      cents: gap * 100,
+      net: net(gap, k.feeAtAsk, q.feeAtBid),
+      buy: "Kalshi",
+      sell: "Polymarket",
+    };
   }
   if (q.ask !== null && k.bid !== null && k.bid - q.ask > 1e-9) {
-    return { cents: (k.bid - q.ask) * 100, buy: "Polymarket", sell: "Kalshi" };
+    const gap = k.bid - q.ask;
+    return {
+      cents: gap * 100,
+      net: net(gap, q.feeAtAsk, k.feeAtBid),
+      buy: "Polymarket",
+      sell: "Kalshi",
+    };
   }
   return null;
 }
@@ -99,13 +114,14 @@ async function Pairs() {
   if (pairs.length === 0) return <p className="muted">No pairs right now.</p>;
   const topics = [...new Set(pairs.map((p) => p.topic))];
   const crossings = pairs.filter((p) => crossed(p) !== null).length;
+  const afterFees = pairs.filter((p) => (crossed(p)?.net ?? 0) > 1e-9).length;
   return (
     <>
       <p className="small">
         {pairs.length} pairs in {topics.length} events
-        {at !== null && <> · listing read {utc(at)}</>} · {crossings} with prices that cross (before
-        fees). Bitcoin and Ether pairs appear only in the hour before noon New York time, the one
-        hour both venues list the same moment.
+        {at !== null && <> · listing read {utc(at)}</>} · {crossings} with prices that cross before
+        fees, {afterFees} after both legs&apos; taker fees. Bitcoin and Ether pairs appear only in
+        the hour before noon New York time, the one hour both venues list the same moment.
       </p>
       {topics.map((t) => {
         const ps = pairs.filter((p) => p.topic === t);
@@ -156,8 +172,13 @@ function PairRow({ p }: { p: Pair }) {
           {p.note && <> · {p.note}</>}
         </span>
         {x && (
-          <span className="small status-bad">
-            Prices cross by {x.cents.toFixed(1)}¢: buy on {x.buy}, sell on {x.sell}, before fees.
+          <span className={x.net !== null && x.net > 1e-9 ? "small status-bad" : "small"}>
+            Prices cross by {x.cents.toFixed(1)}¢: buy on {x.buy}, sell on {x.sell}.{" "}
+            {x.net === null
+              ? "Fees unknown."
+              : x.net > 1e-9
+                ? `${x.net.toFixed(2)}¢ a contract left after both taker fees, up to the best prices' size.`
+                : `Fees take it all: ${x.net.toFixed(2)}¢ a contract after both taker fees.`}
           </span>
         )}
       </td>

@@ -28,7 +28,7 @@ import (
 type output struct {
 	Generated time.Time            `json:"generated"`
 	Contracts []contracts.Contract `json:"contracts"`
-	Pairs     []crossvenue.Pair    `json:"pairs"` // the same event on both venues (step 4)
+	Pairs     []crossvenue.Pair    `json:"pairs"`  // the same event on both venues (step 4)
 	Errors    []string             `json:"errors"` // what was left out, and why
 }
 
@@ -51,11 +51,12 @@ func main() {
 	throttle := time.NewTicker(250 * time.Millisecond)
 	defer throttle.Stop()
 	for _, series := range tap.KalshiSeries {
-		markets, err := tap.KalshiOpenMarkets(ctx, series, throttle.C)
+		terms, markets, err := tap.KalshiOpenMarkets(ctx, series, throttle.C)
 		if err != nil {
 			time.Sleep(2 * time.Second)
-			markets, err = tap.KalshiOpenMarkets(ctx, series, throttle.C)
+			terms, markets, err = tap.KalshiOpenMarkets(ctx, series, throttle.C)
 		}
+		taker, maker := contracts.KalshiFees(terms.FeeType, terms.FeeMultiplier)
 		if err != nil {
 			fail("kalshi "+series, err)
 			continue
@@ -66,6 +67,7 @@ func main() {
 				fail("kalshi "+series, err)
 				continue
 			}
+			c.FeeTaker, c.FeeMaker = taker, maker
 			res.Contracts = append(res.Contracts, c)
 		}
 	}

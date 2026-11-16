@@ -10,6 +10,10 @@ export type Side = {
   bidSize: number | null;
   askSize: number | null;
   fair: number | null; // a bundle's is the sum of its buckets' (null if any has none)
+  // One contract's taker fee when buying at the ask or selling at the bid (a bundle: summed over
+  // its buckets); null if a price or fee rate is missing.
+  feeAtAsk: number | null;
+  feeAtBid: number | null;
 };
 
 export type Pair = {
@@ -34,6 +38,18 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
             where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_labels,
            (select m.fair from manta.markets m
             where m.venue = 'kalshi' and m.id = p.kalshi_ids[1]) as kalshi_fair,
+           (select m.fee_taker * m.ask * (1 - m.ask) from manta.markets m
+            where m.venue = 'kalshi' and m.id = p.kalshi_ids[1]) as kalshi_fee_ask,
+           (select m.fee_taker * m.bid * (1 - m.bid) from manta.markets m
+            where m.venue = 'kalshi' and m.id = p.kalshi_ids[1]) as kalshi_fee_bid,
+           (select case when count(m.fee_taker * m.ask) = cardinality(p.poly_ids)
+                        then sum(m.fee_taker * m.ask * (1 - m.ask)) end
+            from manta.markets m
+            where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_fee_ask,
+           (select case when count(m.fee_taker * m.bid) = cardinality(p.poly_ids)
+                        then sum(m.fee_taker * m.bid * (1 - m.bid)) end
+            from manta.markets m
+            where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_fee_bid,
            (select case when count(m.fair) = cardinality(p.poly_ids) then sum(m.fair) end
             from manta.markets m
             where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_fair
@@ -53,6 +69,8 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
         bidSize: r.kalshi_bid_size,
         askSize: r.kalshi_ask_size,
         fair: r.kalshi_fair,
+        feeAtAsk: r.kalshi_fee_ask,
+        feeAtBid: r.kalshi_fee_bid,
       },
       poly: {
         ids: r.poly_ids,
@@ -61,6 +79,8 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
         bidSize: r.poly_bid_size,
         askSize: r.poly_ask_size,
         fair: r.poly_fair,
+        feeAtAsk: r.poly_fee_ask,
+        feeAtBid: r.poly_fee_bid,
         labels: r.poly_labels ?? [],
       },
     })),

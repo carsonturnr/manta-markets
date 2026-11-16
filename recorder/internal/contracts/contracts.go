@@ -49,6 +49,25 @@ type Contract struct {
 	Volume24h    float64  `json:"volume_24h"`
 	VolumeUnit   string   `json:"volume_unit"`   // "contracts" (Kalshi) or "usd" (Polymarket)
 	OpenInterest *float64 `json:"open_interest"` // contracts; Kalshi only
+
+	// Fees: a trade of C contracts at price P pays rate × C × P × (1 − P), for a taker (an order
+	// matched at once) or a maker (a resting order, when it fills). Nil if the venue's fee type
+	// isn't one this model knows. Kalshi's fee schedule (July 2026): 0.07 for takers, 0.0175 for
+	// makers where the series charges them, times the series' multiplier; Polymarket: the
+	// market's feeSchedule rate for takers, nothing for makers.
+	FeeTaker *float64 `json:"fee_taker"`
+	FeeMaker *float64 `json:"fee_maker"`
+}
+
+// KalshiFees returns the taker and maker rates for a Kalshi series' fee type and multiplier.
+func KalshiFees(feeType string, multiplier float64) (taker, maker *float64) {
+	switch feeType {
+	case "quadratic":
+		return ptr(0.07 * multiplier), ptr(0)
+	case "quadratic_with_maker_fees":
+		return ptr(0.07 * multiplier), ptr(0.0175 * multiplier)
+	}
+	return nil, nil
 }
 
 // num reads a JSON number or a number in a string (both venues use both); empty is 0.
@@ -141,6 +160,24 @@ type PolymarketMarket struct {
 	BestAsk        num       `json:"bestAsk"`
 	LastTradePrice num       `json:"lastTradePrice"`
 	Volume24hr     num       `json:"volume24hr"`
+	FeesEnabled    bool      `json:"feesEnabled"`
+	FeeSchedule    *struct {
+		Exponent  float64 `json:"exponent"`
+		Rate      float64 `json:"rate"`
+		TakerOnly bool    `json:"takerOnly"`
+	} `json:"feeSchedule"`
+}
+
+// fees reads a Polymarket market's fee terms: rate × C × P × (1 − P) for takers when the
+// exponent is 1 (the only form Polymarket's fee page documents), none for makers.
+func (m PolymarketMarket) fees() (taker, maker *float64) {
+	if !m.FeesEnabled {
+		return ptr(0), ptr(0)
+	}
+	if f := m.FeeSchedule; f != nil && f.Exponent == 1 && f.TakerOnly {
+		return ptr(f.Rate), ptr(0)
+	}
+	return nil, nil
 }
 
 // YesToken returns the token id of the market's "Yes" outcome, whose order book is the contract's.
@@ -170,6 +207,7 @@ func FromPolymarket(family string, e PolymarketEvent, m PolymarketMarket, top *T
 		Title: m.Question, Label: m.GroupItemTitle, Close: m.EndDate,
 		Volume24h: float64(m.Volume24hr), VolumeUnit: "usd"}
 	c.Payoff, c.Low, c.High, c.Inclusive = parseLabel(family, m.GroupItemTitle)
+	c.FeeTaker, c.FeeMaker = m.fees()
 	if top != nil {
 		c.Bid, c.BidSize, c.Ask, c.AskSize = top.Bid, top.BidSize, top.Ask, top.AskSize
 	} else {

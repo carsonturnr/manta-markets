@@ -16,7 +16,8 @@ export type Point = { t: number; bid?: number; ask?: number; price?: number };
 export type Range = "6h" | "24h" | "7d";
 export type Rules = { paragraphs: string[]; source: string };
 
-const DEPTH = 10;
+// Levels read per side: the page shows the best 10, the cost calculator walks all of them.
+const DEPTH = 50;
 
 async function get<T>(url: string): Promise<T | null> {
   try {

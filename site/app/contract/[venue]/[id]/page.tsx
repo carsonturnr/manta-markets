@@ -7,6 +7,7 @@ import PriceChart from "@/components/PriceChart";
 import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
 import { getMarket, type Row } from "@/lib/screener";
+import { type Cost, kalshiFee, polymarketFee, walk } from "@/lib/cost";
 import { METHODS, SETTLEMENT, summary } from "@/lib/settlement";
 import {
   type Book,
@@ -62,6 +63,8 @@ async function Contract({
   const { venue, id: rawId } = await params;
   const sp = await searchParams;
   const range = RANGES.find((r) => r === sp.range) ?? "24h";
+  const side = sp.side === "sell" ? "sell" : "buy";
+  const n = Math.min(Math.max(Number.parseInt(String(sp.n ?? "100"), 10) || 100, 1), 1_000_000);
   if (venue !== "kalshi" && venue !== "polymarket") notFound();
   const id = decodeURIComponent(rawId);
   const got = await getMarket(venue, id);
@@ -136,6 +139,11 @@ async function Contract({
       </p>
       <Suspense fallback={<p className="muted">Loading the chart…</p>}>
         <Chart c={c} range={range} yesToken={tokens?.[0]} />
+      </Suspense>
+
+      <h2>Cost to trade</h2>
+      <Suspense fallback={<p className="muted">Loading the order book…</p>}>
+        <CostSection c={c} yesToken={tokens?.[0]} side={side} n={n} range={range} />
       </Suspense>
 
       <div className="columns">
@@ -228,7 +236,9 @@ async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
   if (book.bids.length === 0 && book.asks.length === 0) {
     return <p className="muted">No orders on either side.</p>;
   }
-  const max = Math.max(...book.bids.map((l) => l.size), ...book.asks.map((l) => l.size));
+  // The best 10 levels each side are shown; the calculator above walks up to 50.
+  const shown = { bids: book.bids.slice(0, 10), asks: book.asks.slice(0, 10) };
+  const max = Math.max(...shown.bids.map((l) => l.size), ...shown.asks.map((l) => l.size));
   const bar = (size: number) => ({ "--w": `${(size / max) * 100}%` }) as React.CSSProperties;
   return (
     <>
@@ -241,7 +251,7 @@ async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
             </tr>
           </thead>
           <tbody>
-            {[...book.asks].reverse().map((l) => (
+            {[...shown.asks].reverse().map((l) => (
               <tr key={`a${l.price}`} className="ask">
                 <td className="num">Ask {cents(l.price)}</td>
                 <td className="num level" style={bar(l.size)}>
@@ -257,7 +267,7 @@ async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
                   : "–"}
               </td>
             </tr>
-            {book.bids.map((l) => (
+            {shown.bids.map((l) => (
               <tr key={`b${l.price}`} className="bid">
                 <td className="num">Bid {cents(l.price)}</td>
                 <td className="num level" style={bar(l.size)}>
@@ -269,10 +279,123 @@ async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
         </table>
       </div>
       <p className="small">
-        The best {book.asks.length} asks and {book.bids.length} bids for &ldquo;yes&rdquo;, live
+        The best {shown.asks.length} asks and {shown.bids.length} bids for &ldquo;yes&rdquo;, live
         within seconds.
         {c.venue === "kalshi" &&
           " Kalshi lists bids for “yes” and for “no”; a “no” bid at 26¢ is shown as a “yes” ask at 74¢."}
+      </p>
+    </>
+  );
+}
+
+const usd = (x: number) =>
+  `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const usd4 = (x: number) =>
+  `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+
+async function CostSection({
+  c,
+  yesToken,
+  side,
+  n,
+  range,
+}: {
+  c: Row;
+  yesToken?: string;
+  side: "buy" | "sell";
+  n: number;
+  range: Range;
+}) {
+  const book: Book | null =
+    c.venue === "kalshi" ? await kalshiBook(c.id) : yesToken ? await polyBook(yesToken) : null;
+  const rate = c.feeTaker;
+  const fee = (q: number, p: number) =>
+    rate === null ? 0 : c.venue === "kalshi" ? kalshiFee(rate, q, p) : polymarketFee(rate, q, p);
+  const cost = book ? walk(side, n, side === "buy" ? book.asks : book.bids, fee) : null;
+  return (
+    <>
+      {/* A plain GET form: the result is a URL that can be shared. */}
+      <form className="filters" action="">
+        <label>
+          I want to
+          <select name="side" defaultValue={side}>
+            <option value="buy">buy “yes”</option>
+            <option value="sell">sell “yes”</option>
+          </select>
+        </label>
+        <label>
+          Contracts
+          <input name="n" type="number" min={1} max={1000000} defaultValue={n} />
+        </label>
+        {range !== "24h" && <input type="hidden" name="range" value={range} />}
+        <button type="submit">Calculate</button>
+      </form>
+      {!book ? (
+        unavailable("The order book", c.venue)
+      ) : !cost ? (
+        <p className="muted">No {side === "buy" ? "asks" : "bids"} to trade against.</p>
+      ) : (
+        <CostResult c={c} cost={cost} rate={rate} />
+      )}
+    </>
+  );
+}
+
+function CostResult({ c, cost, rate }: { c: Row; cost: Cost; rate: number | null }) {
+  const buy = cost.side === "buy";
+  const fairUsable = c.fair !== null && c.fairMethod !== "consensus-1";
+  // What the filled contracts are worth at our fair value, against what the trade pays or gets.
+  const atFair = fairUsable ? cost.filled * c.fair! : null;
+  const vsFair = atFair === null ? null : buy ? atFair - cost.total : cost.total - atFair;
+  return (
+    <>
+      <div className="stats">
+        <div>
+          <span>{buy ? "You pay, all in" : "You receive, all in"}</span>
+          <b className="num">{usd(cost.total)}</b>
+        </div>
+        <div>
+          <span>Per contract</span>
+          <b className="num">{cents(cost.perContract)}</b>
+        </div>
+        <div>
+          <span>Average price</span>
+          <b className="num">{cents(cost.average)}</b>
+        </div>
+        <div>
+          <span>Slippage</span>
+          <b className="num">{cents(cost.slippage)}</b>
+        </div>
+        <div>
+          <span>Fee</span>
+          <b className="num">{rate === null ? "unknown" : usd4(cost.fee)}</b>
+        </div>
+      </div>
+      <p className="small">
+        {cost.filled < cost.wanted ? (
+          <span className="status-bad">
+            Only {qty(cost.filled)} of {qty(cost.wanted)} contracts are on offer in the best{" "}
+            {cost.fills.length} levels.{" "}
+          </span>
+        ) : null}
+        {buy ? "Buying" : "Selling"} {qty(cost.filled)} contracts at once takes{" "}
+        {cost.fills.length === 1 ? "one price level" : `${cost.fills.length} price levels`}, from{" "}
+        {cents(cost.best)} to {cents(cost.fills.at(-1)!.price)}: {usd(cost.value)}{" "}
+        {buy ? "paid" : "received"} before fees. Slippage is how much worse the average is than the
+        best price: {usd(cost.slippage * cost.filled)} in all.{" "}
+        {rate === null
+          ? "This market's fee type isn't one we model, so fees are left out."
+          : c.venue === "kalshi"
+            ? `Kalshi's taker fee is ${rate} × contracts × price × (1 − price), rounded up to $0.0001 per fill${c.feeMaker ? `; a resting order that fills later pays a maker fee of ${c.feeMaker} instead` : "; resting orders pay no fee in this market"}.`
+            : `Polymarket's taker fee is ${rate} × contracts × price × (1 − price); resting orders pay none.`}
+        {vsFair !== null && (
+          <>
+            {" "}
+            At our fair value of {cents(c.fair)}, these contracts are worth {usd(atFair!)}: the
+            trade is {usd(Math.abs(vsFair))} {vsFair >= 0 ? "better" : "worse"} than fair, all costs
+            included. Not investment advice.
+          </>
+        )}
       </p>
     </>
   );

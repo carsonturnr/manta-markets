@@ -14,17 +14,29 @@ import (
 // PolymarketBooksPerCall is the most tokens PolymarketBooks takes in one request.
 const PolymarketBooksPerCall = polymarketBooksPerCall
 
-// KalshiOpenMarkets returns the raw JSON of every open market in `series`, following the page
-// cursor. It refuses a series whose category isn't allowed (no sports). `throttle` paces the
-// requests, which share Kalshi's rate limit with the recorder.
-func KalshiOpenMarkets(ctx context.Context, series string, throttle <-chan time.Time) ([]json.RawMessage, error) {
+// KalshiSeriesTerms is a series' category and fee terms, from GET /series/{ticker}. FeeType is
+// "quadratic" (takers pay), "quadratic_with_maker_fees" (makers pay too), or another type the
+// fee model doesn't know.
+type KalshiSeriesTerms struct {
+	Category      string  `json:"category"`
+	FeeType       string  `json:"fee_type"`
+	FeeMultiplier float64 `json:"fee_multiplier"`
+}
+
+// KalshiOpenMarkets returns the series' terms and the raw JSON of every open market in it,
+// following the page cursor. It refuses a series whose category isn't allowed (no sports).
+// `throttle` paces the requests, which share Kalshi's rate limit with the recorder.
+func KalshiOpenMarkets(ctx context.Context, series string, throttle <-chan time.Time) (KalshiSeriesTerms, []json.RawMessage, error) {
 	<-throttle
-	cat, err := seriesCategory(ctx, series)
-	if err != nil {
-		return nil, fmt.Errorf("kalshi series %s: %w", series, err)
+	var info struct {
+		Series KalshiSeriesTerms `json:"series"`
 	}
-	if !AllowedCategories[cat] {
-		return nil, fmt.Errorf("kalshi series %s has category %q: not allowed", series, cat)
+	if _, err := getJSON(ctx, kalshiAPI+"/series/"+url.PathEscape(series), &info); err != nil {
+		return KalshiSeriesTerms{}, nil, fmt.Errorf("kalshi series %s: %w", series, err)
+	}
+	s := info.Series
+	if !AllowedCategories[s.Category] {
+		return s, nil, fmt.Errorf("kalshi series %s has category %q: not allowed", series, s.Category)
 	}
 	var markets []json.RawMessage
 	cursor := ""
@@ -39,11 +51,11 @@ func KalshiOpenMarkets(ctx context.Context, series string, throttle <-chan time.
 		}
 		<-throttle
 		if _, err := getJSON(ctx, kalshiAPI+"/markets?"+q.Encode(), &resp); err != nil {
-			return nil, err
+			return s, nil, err
 		}
 		markets = append(markets, resp.Markets...)
 		if resp.Cursor == "" || len(resp.Markets) == 0 {
-			return markets, nil
+			return s, markets, nil
 		}
 		cursor = resp.Cursor
 	}

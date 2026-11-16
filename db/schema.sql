@@ -86,6 +86,10 @@ alter table manta.markets add column if not exists inclusive boolean not null de
 alter table manta.markets add column if not exists fair double precision;
 alter table manta.markets add column if not exists fair_method text
     check (fair_method in ('options', 'consensus-2', 'consensus-1'));
+-- Added 2026-11-16 (step 6): fee rates. A trade of C contracts at price P pays
+-- rate × C × P × (1 − P); null where the venue's fee type isn't one the model knows.
+alter table manta.markets add column if not exists fee_taker double precision;
+alter table manta.markets add column if not exists fee_maker double precision;
 
 -- The same event on Kalshi and Polymarket (step 4, recorder/internal/crossvenue): replaced with
 -- manta.markets every minute. A side is one contract or, for a "bundle", the sum of Polymarket's

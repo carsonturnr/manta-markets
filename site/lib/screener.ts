@@ -26,6 +26,8 @@ export type Row = {
   openInterest: number | null;
   fair: number | null; // pricing/fairvalues.py
   fairMethod: "options" | "consensus-2" | "consensus-1" | null;
+  feeTaker: number | null; // rate × C × P × (1 − P); lib/cost.ts
+  feeMaker: number | null;
 };
 
 export const SORTS = ["close", "volume", "spread", "bid", "ask", "oi", "edge"] as const;
@@ -92,6 +94,7 @@ export async function screen(
            bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
            volume_unit as "volumeUnit", open_interest as "openInterest", fair,
            fair_method as "fairMethod",
+           fee_taker as "feeTaker", fee_maker as "feeMaker",
            count(*) over () as total
     from manta.markets
     where ${where}
@@ -123,6 +126,7 @@ export async function getMarket(
            bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
            volume_unit as "volumeUnit", open_interest as "openInterest", fair,
            fair_method as "fairMethod",
+           fee_taker as "feeTaker", fee_maker as "feeMaker",
            extract(epoch from updated) * 1000 as at,
            exists (select 1 from manta.contracts c where c.ticker = m.id) as tracked
     from manta.markets m

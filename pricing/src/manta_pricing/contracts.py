@@ -16,7 +16,7 @@ from manta_pricing.snapshot import connect
 COLUMNS = [
     "venue", "id", "family", "event", "title", "label", "payoff", "low", "high", "inclusive",
     "close_time", "bid", "ask", "bid_size", "ask_size", "last", "volume_24h", "volume_unit",
-    "open_interest", "updated", "fair", "fair_method",
+    "open_interest", "updated", "fair", "fair_method", "fee_taker", "fee_maker",
 ]  # fmt: skip
 
 

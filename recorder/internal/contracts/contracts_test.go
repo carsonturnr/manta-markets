@@ -85,3 +85,29 @@ func TestBookTopAndYesToken(t *testing.T) {
 		t.Errorf("yes token %q", m.YesToken())
 	}
 }
+
+// Kalshi's fee schedule (July 2026): takers 0.07, makers 0.0175 only where the series charges
+// them; Polymarket: the feeSchedule rate for takers, nothing for makers.
+func TestFees(t *testing.T) {
+	tk, mk := KalshiFees("quadratic", 1)
+	if f(tk) != 0.07 || f(mk) != 0.0 {
+		t.Errorf("quadratic: %v %v", f(tk), f(mk))
+	}
+	tk, mk = KalshiFees("quadratic_with_maker_fees", 1)
+	if f(tk) != 0.07 || f(mk) != 0.0175 {
+		t.Errorf("with maker fees: %v %v", f(tk), f(mk))
+	}
+	if tk, mk = KalshiFees("flat", 1); tk != nil || mk != nil {
+		t.Error("an unknown fee type must be no fee data, not a guess")
+	}
+	var m PolymarketMarket
+	_ = json.Unmarshal([]byte(`{"feesEnabled":true,"feeSchedule":{"exponent":1,"rate":0.05,"takerOnly":true,"rebateRate":0.25}}`), &m)
+	if tk, mk := m.fees(); f(tk) != 0.05 || f(mk) != 0.0 {
+		t.Errorf("polymarket: %v %v", f(tk), f(mk))
+	}
+	m = PolymarketMarket{}
+	_ = json.Unmarshal([]byte(`{"feesEnabled":true,"feeSchedule":{"exponent":2,"rate":0.05,"takerOnly":true}}`), &m)
+	if tk, _ := m.fees(); tk != nil {
+		t.Error("an undocumented exponent must be no fee data")
+	}
+}

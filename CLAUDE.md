@@ -94,7 +94,7 @@ The trading engine is [NautilusTrader](https://github.com/nautechsystems/nautilu
 
 **Checked 2026-11-12/13** against the live APIs (docs/decisions.md):
 - Kalshi KXBTCD and KXBTC list hourly events about an hour ahead, plus daily (22:00 UTC) and weekly closes; KXBTC15M is 15-minute. All `Crypto`, settled on the 60-second average of the CF Benchmarks index (BRTI).
-- All three have `fee_type: quadratic`, Kalshi's taker-only fee type, so **no maker fee today**. Re-check before relying on it.
+- Fees (Kalshi fee schedule "July 2026, 7.7.26 Update", read 2026-11-16): takers pay 0.07 × M × C × P × (1 − P), makers 0.0175 × M × C × P × (1 − P) only where a series charges them, rounded up so fee + position cost is a whole $0.0001; no settlement fee. Crypto, index and FX series are `quadratic` (no maker fee); Fed, CPI, payrolls and unemployment are `quadratic_with_maker_fees` (makers pay). The API's per-series `fee_type` and `fee_multiplier` are the live source (the PDF's list omits KXPAYROLLS, which the API marks with maker fees). Polymarket (docs.polymarket.com): takers pay rate × C × P × (1 − P), rate 0.07 crypto and 0.05 economics, from each market's `feeSchedule`; makers pay nothing.
 - Kalshi KXBTCD spreads: 96–99% of snapshots at the 1¢ minimum.
 - Kalshi's market list trails the live order book by up to about a minute; read prices from the order book.
 - Polymarket's BTC daily contracts settle on the Binance BTC/USDT 1-minute close at noon New York time. Binance's main host refuses US users; its public data host `data-stream.binance.vision` works.
@@ -107,7 +107,6 @@ The trading engine is [NautilusTrader](https://github.com/nautechsystems/nautilu
 **Still to check:**
 - **Data terms for a commercial product** (Kalshi, Polymarket, Deribit, Binance): showing their data, derived analytics, and an API of derived analytics, with a waitlist and possible paid tiers. Kalshi's permission was for a non-commercial project. Must be settled before the waitlist goes public.
 - **New series:** exact tickers, categories, settlement sources and times for ETH, economics and financials on Kalshi and Polymarket, read from the APIs and each series' rules.
-- **Kalshi taker fee:** roughly 0.07 × contracts × price × (1 − price), rounded up. Confirm against the current fee schedule before the cost-to-trade feature uses it.
 
 ## Tech choices
 
