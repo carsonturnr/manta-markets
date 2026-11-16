@@ -191,3 +191,25 @@ export function summary(c: {
       return `Pays $1 if ${subject} is: ${c.label}`;
   }
 }
+
+// How a fair value was made (manta.markets.fair_method; pricing/fairvalues.py), in words.
+export const METHODS: Record<string, { name: string; short: string; explain: string }> = {
+  options: {
+    name: "Options-implied",
+    short: "options",
+    explain:
+      "From Deribit's options: the volatility the options market expects at this strike and time, applied to the price this contract settles on: Deribit's index (a stand-in for CF Benchmarks') averaged over the final 60 seconds for Kalshi, Binance's 1-minute close for Polymarket.",
+  },
+  "consensus-2": {
+    name: "Two-venue consensus",
+    short: "2 venues",
+    explain:
+      "The probability curve that best fits both Kalshi's and Polymarket's quotes on this event, each quote weighted by how tight its spread is, made consistent across strikes (a higher threshold is never likelier than a lower one) or, for the Fed, across outcomes (they sum to 100%).",
+  },
+  "consensus-1": {
+    name: "One-venue consensus",
+    short: "1 venue",
+    explain:
+      "Fitted to this venue's own quotes on this event only and made consistent across strikes. It adds no outside information: on a well-quoted ladder it repeats the market's price.",
+  },
+};

@@ -101,11 +101,12 @@ The trading engine is [NautilusTrader](https://github.com/nautechsystems/nautilu
 - NautilusTrader 2.0.0rc9 includes the Kalshi adapter (data, limit-order execution, demo and production environments). It is a release candidate: expect bugs.
 - Deribit: daily BTC options expire 08:00 UTC; public market data needs no account.
 - Kalshi gave permission to display its data publicly, confirmed by Carson for the tracker.
+- Deribit ETH options (checked 2026-11-16): daily 08:00 UTC expiries like BTC, about 21 strikes within ±10% of the index, $10 apart; the BTC method applies unchanged.
+- Binance BTC/USDT and ETH/USDT traded about 0.1% above Deribit's index (2026-11-16); Polymarket's crypto fair values use Binance's price for that reason.
 
 **Still to check:**
 - **Data terms for a commercial product** (Kalshi, Polymarket, Deribit, Binance): showing their data, derived analytics, and an API of derived analytics, with a waitlist and possible paid tiers. Kalshi's permission was for a non-commercial project. Must be settled before the waitlist goes public.
 - **New series:** exact tickers, categories, settlement sources and times for ETH, economics and financials on Kalshi and Polymarket, read from the APIs and each series' rules.
-- **Deribit ETH options:** expiries and strike coverage, before reusing the BTC method.
 - **Kalshi taker fee:** roughly 0.07 × contracts × price × (1 − price), rounded up. Confirm against the current fee schedule before the cost-to-trade feature uses it.
 
 ## Tech choices

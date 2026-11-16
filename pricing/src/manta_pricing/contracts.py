@@ -7,14 +7,16 @@ manta.pairs in one transaction, so the site always reads one complete listing.
 
 import argparse
 import json
+import time
 from pathlib import Path
 
+from manta_pricing.fairvalues import fair_values, fetch_crypto
 from manta_pricing.snapshot import connect
 
 COLUMNS = [
     "venue", "id", "family", "event", "title", "label", "payoff", "low", "high", "inclusive",
     "close_time", "bid", "ask", "bid_size", "ask_size", "last", "volume_24h", "volume_unit",
-    "open_interest", "updated",
+    "open_interest", "updated", "fair", "fair_method",
 ]  # fmt: skip
 
 
@@ -30,10 +32,16 @@ def main() -> None:
     ap.add_argument("listing", type=Path, help="the JSON written by contracts -out")
     a = ap.parse_args()
     listing = json.loads(a.listing.read_text())
-    rows = [
-        {**c, "close_time": c["close"], "updated": listing["generated"]}
-        for c in listing["contracts"]
-    ]
+    now = time.time()
+    crypto, errors = fetch_crypto(now)
+    fairs = fair_values(listing["contracts"], listing.get("pairs", []), crypto, now)
+    rows = []
+    for c in listing["contracts"]:
+        fair, method = fairs.get((c["venue"], c["id"]), (None, None))
+        rows.append(
+            {**c, "close_time": c["close"], "updated": listing["generated"], "fair": fair,
+             "fair_method": method}
+        )  # fmt: skip
     with connect() as conn, conn.transaction():
         conn.execute("delete from manta.markets")
         with conn.cursor().copy(f"copy manta.markets ({', '.join(COLUMNS)}) from stdin") as copy:
@@ -46,10 +54,12 @@ def main() -> None:
             [pair_row(p, listing["generated"]) for p in listing.get("pairs", [])],
         )
     print(
-        f"stored {len(rows)} contracts, {len(listing.get('pairs', []))} pairs"
-        f" of {listing['generated']}",
+        f"stored {len(rows)} contracts ({len(fairs)} with a fair value),"
+        f" {len(listing.get('pairs', []))} pairs of {listing['generated']}",
         end="",
     )
+    for e in errors:
+        print(f"; {e}", end="")
     print(f"; left out: {'; '.join(listing['errors'])}" if listing["errors"] else "")
 
 

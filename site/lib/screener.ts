@@ -24,9 +24,11 @@ export type Row = {
   volume: number;
   volumeUnit: "contracts" | "usd";
   openInterest: number | null;
+  fair: number | null; // pricing/fairvalues.py
+  fairMethod: "options" | "consensus-2" | "consensus-1" | null;
 };
 
-export const SORTS = ["close", "volume", "spread", "bid", "ask", "oi"] as const;
+export const SORTS = ["close", "volume", "spread", "bid", "ask", "oi", "edge"] as const;
 export type Sort = (typeof SORTS)[number];
 
 export type Filters = {
@@ -78,6 +80,9 @@ export async function screen(
     bid: sql`bid`,
     ask: sql`ask`,
     oi: sql`open_interest`,
+    // How far the fair value is from the midpoint, either way. Not for one-venue consensus,
+    // which is fitted to the very quotes it would be compared with.
+    edge: sql`case when fair_method <> 'consensus-1' then abs(fair - (bid + ask) / 2) end`,
   }[f.sort];
   const dir = f.desc ? sql`desc` : sql`asc`;
 
@@ -85,7 +90,8 @@ export async function screen(
     select venue, id, family, event, title, label, payoff, low, high, inclusive,
            extract(epoch from close_time) * 1000 as close, bid, ask,
            bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
-           volume_unit as "volumeUnit", open_interest as "openInterest",
+           volume_unit as "volumeUnit", open_interest as "openInterest", fair,
+           fair_method as "fairMethod",
            count(*) over () as total
     from manta.markets
     where ${where}
@@ -115,7 +121,8 @@ export async function getMarket(
     select venue, id, family, event, title, label, payoff, low, high, inclusive,
            extract(epoch from close_time) * 1000 as close, bid, ask,
            bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
-           volume_unit as "volumeUnit", open_interest as "openInterest",
+           volume_unit as "volumeUnit", open_interest as "openInterest", fair,
+           fair_method as "fairMethod",
            extract(epoch from updated) * 1000 as at,
            exists (select 1 from manta.contracts c where c.ticker = m.id) as tracked
     from manta.markets m

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { type Category, FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
 import { type Filters, PAGE, type Row, screen, SORTS, type Sort } from "@/lib/screener";
+import { METHODS } from "@/lib/settlement";
 
 export const metadata = { title: "Manta: screener" };
 
@@ -110,7 +111,12 @@ async function Screener({ searchParams }: { searchParams: Promise<Params> }) {
         Contracts quoted on one side only (no bid or no ask, mostly strikes far from the price) are
         hidden unless &ldquo;Include one-sided&rdquo; is ticked. Open interest (contracts held,
         Kalshi only) is how many contracts are outstanding. Size is how many contracts are offered
-        at the best bid × the best ask.
+        at the best bid × the best ask. Fair is our estimate of the probability, labelled by method:
+        &ldquo;options&rdquo; from Deribit&apos;s options (Bitcoin and Ether); &ldquo;2
+        venues&rdquo; fitted to both venues&apos; quotes; &ldquo;1 venue&rdquo; fitted to one
+        venue&apos;s own quotes, which mostly repeats its price. Edge is fair minus the midpoint:
+        positive when &ldquo;yes&rdquo; looks cheap; none for &ldquo;1 venue&rdquo;, which is fitted
+        to the very quotes it would be compared with. Not investment advice.
       </p>
     </>
   );
@@ -217,6 +223,16 @@ function volume(r: Row): string {
   return r.volumeUnit === "usd" ? `$${n}` : n;
 }
 
+/** Fair value minus the midpoint, in cents: positive when "yes" looks cheap. None for one-venue
+ * consensus, which is fitted to the very quotes it would be compared with. */
+function edge(r: Row): string {
+  if (r.fair === null || r.bid === null || r.ask === null || r.fairMethod === "consensus-1") {
+    return "–";
+  }
+  const e = Math.round((r.fair - (r.bid + r.ask) / 2) * 1000) / 10;
+  return `${e > 0 ? "+" : ""}${e}`;
+}
+
 /** Time to close from the listing's time: "38 min", "5 h 12 min", "3 d". */
 function until(close: number, at: number): string {
   const m = Math.round((close - at) / 60_000);
@@ -267,6 +283,10 @@ function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
             <Th f={f} s="oi">
               Open int.
             </Th>
+            <th title="Our fair value, and its method">Fair</th>
+            <Th f={f} s="edge">
+              Edge
+            </Th>
           </tr>
         </thead>
         <tbody>
@@ -297,6 +317,11 @@ function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
               <td className="num">{cents(r.last)}</td>
               <td className="num">{volume(r)}</td>
               <td className="num">{r.openInterest === null ? "–" : size(r.openInterest)}</td>
+              <td className="num" title={r.fairMethod ? METHODS[r.fairMethod].name : undefined}>
+                {cents(r.fair)}
+                {r.fairMethod && <span className="small"> {METHODS[r.fairMethod].short}</span>}
+              </td>
+              <td className="num">{edge(r)}</td>
             </tr>
           ))}
         </tbody>

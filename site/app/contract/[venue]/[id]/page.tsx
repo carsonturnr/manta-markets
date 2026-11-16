@@ -7,7 +7,7 @@ import PriceChart from "@/components/PriceChart";
 import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
 import { getMarket, type Row } from "@/lib/screener";
-import { SETTLEMENT, summary } from "@/lib/settlement";
+import { METHODS, SETTLEMENT, summary } from "@/lib/settlement";
 import {
   type Book,
   kalshiBook,
@@ -97,9 +97,24 @@ async function Contract({
       </p>
       <Quote c={c} />
       <p className="small">
-        Bid and ask from {venueName}&apos;s market list at {utc(at)}; the order book below is
-        live.
+        Bid and ask from {venueName}&apos;s market list at {utc(at)}; the order book below is live.
       </p>
+      {c.fairMethod && (
+        <p className="small">
+          <b>Fair value: {METHODS[c.fairMethod].name}.</b> {METHODS[c.fairMethod].explain}
+          {c.bid !== null &&
+            c.ask !== null &&
+            c.fair !== null &&
+            c.fairMethod !== "consensus-1" && (
+              <>
+                {" "}
+                It is {Math.abs(Math.round((c.fair - (c.bid + c.ask) / 2) * 1000) / 10)}¢{" "}
+                {c.fair > (c.bid + c.ask) / 2 ? "above" : "below"} the midpoint. Not investment
+                advice.
+              </>
+            )}
+        </p>
+      )}
       {tracked && (
         <p className="small">
           Our options-implied fair value for this contract, minute by minute:{" "}
@@ -162,6 +177,12 @@ function Quote({ c }: { c: Row }) {
         <span>Spread</span>
         <b className="num">{cents(spread)}</b>
       </div>
+      {c.fair !== null && (
+        <div>
+          <span>Fair value</span>
+          <b className="num">{cents(c.fair)}</b>
+        </div>
+      )}
       <div>
         <span>Last trade</span>
         <b className="num">{cents(c.last)}</b>

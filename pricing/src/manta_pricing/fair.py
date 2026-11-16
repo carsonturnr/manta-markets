@@ -44,17 +44,20 @@ def effective_seconds(tau_s: float, window_s: float = AVERAGING_WINDOW_S) -> flo
 @dataclass(frozen=True)
 class Quote:
     """Model inputs for one strike: today's price S, the strike's volatility, the smile's slope
-    there (dσ/dK, per dollar), and the time to close in seconds."""
+    there (dσ/dK, per dollar), the time to close in seconds, and the averaging window the venue
+    settles on (Kalshi: 60 s; Polymarket's single 1-minute candle close: 0)."""
 
     spot: float
     strike: float
     vol: float
     vol_slope: float
     tau_s: float
+    window_s: float = AVERAGING_WINDOW_S
 
 
 def prob_above(q: Quote) -> float:
-    """P(60-second average at the close > strike), with the smile correction.
+    """P(the settlement value > strike), with the smile correction. The settlement value is the
+    average over the final `window_s` seconds (Kalshi), or the price at the close if 0.
 
     Log-normal model: P = N(d2), with d2 = (ln(S/K) − v/2)/√v and v = σ² × τ_eff (in years).
 
@@ -65,7 +68,7 @@ def prob_above(q: Quote) -> float:
     product is a probability. With the usual downside skew (σ falls as K rises), the correction
     raises the "above" probability.
     """
-    t = effective_seconds(q.tau_s) / YEAR_S
+    t = effective_seconds(q.tau_s, q.window_s) / YEAR_S
     v = q.vol * q.vol * t
     if v <= 0:
         return 1.0 if q.spot > q.strike else 0.0

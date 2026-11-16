@@ -9,6 +9,7 @@ export type Side = {
   ask: number | null;
   bidSize: number | null;
   askSize: number | null;
+  fair: number | null; // a bundle's is the sum of its buckets' (null if any has none)
 };
 
 export type Pair = {
@@ -30,7 +31,12 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
            extract(epoch from p.updated) * 1000 as at,
            (select array_agg(m.label order by coalesce(m.low, m.high))
             from manta.markets m
-            where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_labels
+            where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_labels,
+           (select m.fair from manta.markets m
+            where m.venue = 'kalshi' and m.id = p.kalshi_ids[1]) as kalshi_fair,
+           (select case when count(m.fair) = cardinality(p.poly_ids) then sum(m.fair) end
+            from manta.markets m
+            where m.venue = 'polymarket' and m.id = any(p.poly_ids)) as poly_fair
     from manta.pairs p
     order by p.close_time, p.topic, p.ord`;
   return {
@@ -46,6 +52,7 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
         ask: r.kalshi_ask,
         bidSize: r.kalshi_bid_size,
         askSize: r.kalshi_ask_size,
+        fair: r.kalshi_fair,
       },
       poly: {
         ids: r.poly_ids,
@@ -53,6 +60,7 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
         ask: r.poly_ask,
         bidSize: r.poly_bid_size,
         askSize: r.poly_ask_size,
+        fair: r.poly_fair,
         labels: r.poly_labels ?? [],
       },
     })),

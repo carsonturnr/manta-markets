@@ -81,6 +81,11 @@ create table if not exists manta.markets (
 );
 -- Added 2026-11-16 (step 3), after the table was first created.
 alter table manta.markets add column if not exists inclusive boolean not null default false;
+-- Added 2026-11-16 (step 5): the fair value and its method (pricing/fairvalues.py): 'options'
+-- (Deribit, BTC and ETH), 'consensus-2' (both venues' books), 'consensus-1' (one venue's).
+alter table manta.markets add column if not exists fair double precision;
+alter table manta.markets add column if not exists fair_method text
+    check (fair_method in ('options', 'consensus-2', 'consensus-1'));
 
 -- The same event on Kalshi and Polymarket (step 4, recorder/internal/crossvenue): replaced with
 -- manta.markets every minute. A side is one contract or, for a "bundle", the sum of Polymarket's

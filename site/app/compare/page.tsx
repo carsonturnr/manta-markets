@@ -32,6 +32,13 @@ export default function ComparePage() {
           <b>Near</b>: equivalent except in the case stated under it.
         </li>
         <li>
+          <b>Fair</b>: our fair value (as on the screener). Economics pairs share one consensus
+          curve, so both sides get the same number. Bitcoin and Ether are priced from options on
+          what each venue settles on: Kalshi on an index averaged over 60 seconds, Polymarket on
+          Binance&apos;s price, which trades about 0.1% above the index. Two numbers there are the
+          settlement difference, measured.
+        </li>
+        <li>
           <b>Gap</b>: Kalshi&apos;s midpoint minus Polymarket&apos;s, in cents. For a bundle, whose
           midpoint is skewed by its buckets&apos; combined spread, it is how far Kalshi&apos;s
           midpoint lies outside the bundle&apos;s bid–ask range, or &ldquo;inside&rdquo;.
@@ -77,6 +84,15 @@ function crossed(p: Pair): { cents: number; buy: string; sell: string } | null {
   return null;
 }
 
+/** Each side's fair value, or one number when they agree to a tenth of a cent. */
+function fairs(p: Pair): string {
+  const k = p.kalshi.fair;
+  const q = p.poly.fair;
+  if (k === null && q === null) return "–";
+  if (k !== null && q !== null && Math.abs(k - q) < 0.0005) return cents(k);
+  return `${cents(k)} / ${cents(q)}`;
+}
+
 async function Pairs() {
   await connection(); // request time only: the build never queries the database
   const { pairs, at } = await getPairs();
@@ -104,6 +120,9 @@ async function Pairs() {
                     <th>Question</th>
                     <th>Kalshi bid / ask</th>
                     <th>Polymarket bid / ask</th>
+                    <th title="Our fair value for each side; one number when both come from the same consensus curve">
+                      Fair
+                    </th>
                     <th title="Kalshi's midpoint minus Polymarket's, in cents; for a bundle, how far Kalshi's midpoint lies outside the bundle's bid–ask range">
                       Gap
                     </th>
@@ -158,6 +177,7 @@ function PairRow({ p }: { p: Pair }) {
           </Link>
         )}
       </td>
+      <td className="num">{fairs(p)}</td>
       <td className="num">
         {g === null ? "–" : g.inside ? "inside" : `${g.cents > 0 ? "+" : ""}${g.cents.toFixed(1)}`}
       </td>
