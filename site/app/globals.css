@@ -10,6 +10,7 @@
   --kalshi: #2a78d6; /* series 1: Kalshi's bid–ask */
   --fair: #eb6834; /* series 2: our fair value */
   --poly: #c2378a; /* series 3: Polymarket */
+  --seq: #1f6f8b; /* sequential magnitude (heatmaps): one hue, mixed toward the surface */
   --link: #1c5cab;
   --ok: #2f8a5b; /* status: recorded */
   --bad: #a8690a; /* status: a gap or missing data */
@@ -26,6 +27,7 @@
     --kalshi: #3987e5;
     --fair: #d95926;
     --poly: #e05aa5;
+    --seq: #4fa3c4;
     --link: #86b6ef;
     --ok: #3fa673;
     --bad: #b8862a;
@@ -42,6 +44,7 @@
   --kalshi: #3987e5;
   --fair: #d95926;
   --poly: #e05aa5;
+  --seq: #4fa3c4;
   --link: #86b6ef;
   --ok: #3fa673;
   --bad: #b8862a;
@@ -354,4 +357,19 @@ main:has(.wide) {
   border-left: 3px solid var(--grid);
   color: var(--text-2);
   font-size: 14px;
+}
+
+/* Liquidity heatmap (/liquidity): a family per row, an hour of day per column. */
+.heatmap {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) repeat(24, minmax(14px, 1fr));
+  gap: 2px;
+  align-items: center;
+  min-width: 640px;
+}
+/* An hour with no sample yet: an outline, so it can't be mistaken for a narrow spread. */
+.hcell {
+  height: 16px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--grid);
 }

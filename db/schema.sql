@@ -115,6 +115,20 @@ create table if not exists manta.pairs (
     primary key (topic, question)
 );
 
+-- Liquidity samples (step 6b, pricing/liquidity.py): one row per contract family every 15
+-- minutes. "Active" contracts are quoted on both sides with a midpoint from 5¢ to 95¢; spread
+-- and size are medians over them (size: the smaller of the best bid's and ask's, in contracts).
+create table if not exists manta.liquidity (
+    ts        timestamptz not null,
+    venue     text not null,
+    family    text not null,
+    contracts integer not null,  -- open contracts in the family
+    active    integer not null,
+    spread    double precision,  -- null with no active contract
+    size      double precision,
+    primary key (ts, venue, family)
+);
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin

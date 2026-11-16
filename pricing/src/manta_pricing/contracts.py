@@ -8,9 +8,11 @@ manta.pairs in one transaction, so the site always reads one complete listing.
 import argparse
 import json
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from manta_pricing.fairvalues import fair_values, fetch_crypto
+from manta_pricing.liquidity import EVERY_MIN, samples
 from manta_pricing.snapshot import connect
 
 COLUMNS = [
@@ -47,6 +49,14 @@ def main() -> None:
         with conn.cursor().copy(f"copy manta.markets ({', '.join(COLUMNS)}) from stdin") as copy:
             for r in rows:
                 copy.write_row([r[c] for c in COLUMNS])
+        # Every 15 minutes (the timer fires at :30 past each minute), a liquidity sample.
+        at = datetime.fromtimestamp(now, UTC).replace(second=0, microsecond=0)
+        if at.minute % EVERY_MIN == 0:
+            conn.cursor().executemany(
+                "insert into manta.liquidity values (%s, %s, %s, %s, %s, %s, %s)"
+                " on conflict do nothing",
+                [(at, *s) for s in samples(listing["contracts"])],
+            )
         conn.execute("delete from manta.pairs")
         conn.cursor().executemany(
             "insert into manta.pairs values"
