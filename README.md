@@ -1,8 +1,8 @@
 # Manta
 
-Options-implied fair values for Kalshi's Bitcoin contracts, a public tracker of where Kalshi and the options market disagree, and a small market maker on Kalshi. Work in progress: Milestone 1 (the recorder) is running; Milestone 2 (pricing) has a live demo.
+An analytics terminal for prediction markets: a screener, live order books, cross-venue comparison, fair values, implied distributions, and a cost-to-trade calculator for Kalshi and Polymarket's crypto, economics and financial contracts (never sports). A market maker on Kalshi is built on top, paper traded. Live: https://mantamarkets.vercel.app. Product spec: [docs/product.md](docs/product.md).
 
-**Built on [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), used as an installed library for exchange connections, backtesting and order handling. Manta's own code is the recorder, the pricing, the strategy and the measurement.
+**Uses [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), as an installed library, for the history catalog, backtesting and paper trading. Manta's own code is the recorder, the pricing and analytics, the site, the strategy and the measurement.
 
 ## Milestone 1: recorder
 

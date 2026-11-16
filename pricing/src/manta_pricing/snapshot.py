@@ -14,6 +14,7 @@ import argparse
 import os
 import sys
 import time
+import urllib.error
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,16 +69,27 @@ def top_of_book(ticker: str) -> tuple[float, float]:
 
 
 def live_tops(tickers: list[str]) -> dict[str, tuple[float, float]]:
-    """top_of_book for each ticker, six requests at a time; a failed one is left out."""
+    """top_of_book for each ticker, three requests at a time; a failed one is left out.
+
+    Kalshi rate-limits reads: six at a time drew HTTP 429 ("too many requests") on 7% of runs
+    (2026-11-13 to 15). Three at a time, and a refused request is retried after a short pause.
+    """
 
     def one(t: str) -> tuple[str, tuple[float, float] | None]:
-        try:
-            return t, top_of_book(t)
-        except Exception as e:
-            print(f"orderbook {t}: {e}", file=sys.stderr)
-            return t, None
+        for attempt in range(3):
+            try:
+                return t, top_of_book(t)
+            except urllib.error.HTTPError as e:
+                if e.code != 429 or attempt == 2:
+                    print(f"orderbook {t}: {e}", file=sys.stderr)
+                    return t, None
+                time.sleep(0.5 * 2**attempt)  # 0.5 s, then 1 s
+            except Exception as e:
+                print(f"orderbook {t}: {e}", file=sys.stderr)
+                return t, None
+        return t, None
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         return {t: top for t, top in pool.map(one, tickers) if top is not None}
 
 
