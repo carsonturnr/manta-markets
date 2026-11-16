@@ -12,7 +12,7 @@ export default function Home() {
         Kalshi sells yes/no contracts on Bitcoin&apos;s price at the top of each hour. Deribit&apos;s
         options imply a probability for the same question. This page puts the two side by side,
         once a minute. Prices are in cents, which is the same as a probability in percent.{" "}
-        <Link href="/stats">Gap statistics →</Link>
+        <Link href="/stats">Gap statistics →</Link> · <Link href="/quality">Data quality →</Link>
       </p>
       <Suspense fallback={<p className="muted">Loading the latest snapshot…</p>}>
         <Live />

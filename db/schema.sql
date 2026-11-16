@@ -40,6 +40,14 @@ create table if not exists manta.quotes (
 );
 create index if not exists quotes_ts on manta.quotes (ts);
 
+-- The recorder's latest data-quality report (recorder/cmd/status -json, stored by manta-quality
+-- every 15 minutes): one row, replaced each time. Read by the site's /quality page.
+create table if not exists manta.quality (
+    id      boolean primary key default true check (id),  -- only ever one row
+    updated timestamptz not null,
+    report  jsonb not null
+);
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin

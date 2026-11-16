@@ -10,6 +10,7 @@ dependencies = [
 [project.scripts]
 manta-fair = "manta_pricing.table:main"
 manta-snap = "manta_pricing.snapshot:main"
+manta-quality = "manta_pricing.quality:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

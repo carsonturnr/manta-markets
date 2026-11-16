@@ -82,3 +82,19 @@ func TestPolymarketEconomicsSlugs(t *testing.T) {
 		}
 	}
 }
+
+func TestPolymarketFamily(t *testing.T) {
+	for slug, want := range map[string]string{
+		"bitcoin-above-on-november-16-2026":          "btc-above",
+		"ethereum-price-on-november-17-2026":         "eth-price",
+		"fed-decision-in-december-20260729232808632": "fed-decision",
+		"november-inflation-us-monthly":              "cpi",
+		"how-many-jobs-added-in-november-2026":       "payrolls",
+		"south-africa-annual-inflation-2026":         "",
+		"super-bowl-champion-2027":                   "",
+	} {
+		if got := PolymarketFamily(slug); got != want {
+			t.Errorf("%s: family %q, want %q", slug, got, want)
+		}
+	}
+}

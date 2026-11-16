@@ -10,6 +10,8 @@
   --kalshi: #2a78d6; /* series 1: Kalshi's bid–ask */
   --fair: #eb6834; /* series 2: our fair value */
   --link: #1c5cab;
+  --ok: #2f8a5b; /* status: recorded */
+  --bad: #a8690a; /* status: a gap or missing data */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -23,6 +25,8 @@
     --kalshi: #3987e5;
     --fair: #d95926;
     --link: #86b6ef;
+    --ok: #3fa673;
+    --bad: #b8862a;
   }
 }
 :root[data-theme="dark"] {
@@ -36,6 +40,8 @@
   --kalshi: #3987e5;
   --fair: #d95926;
   --link: #86b6ef;
+  --ok: #3fa673;
+  --bad: #b8862a;
 }
 
 * {
@@ -170,4 +176,60 @@ footer {
   margin-top: 48px;
   font-size: 13px;
   color: var(--text-3);
+}
+
+/* Data-quality page (/quality). */
+/* Status words stay in text colors; a colored marker before them carries the status. */
+.status-ok,
+.status-bad {
+  font-weight: 600;
+}
+.status-ok::before {
+  content: "● ";
+  color: var(--ok);
+}
+.status-bad::before {
+  content: "▲ ";
+  color: var(--bad);
+}
+.timeline {
+  min-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.timeline-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+.timeline-cells {
+  display: grid;
+  grid-template-columns: repeat(56, minmax(0, 1fr));
+  gap: 2px;
+}
+.timeline-cells span {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.cell {
+  height: 14px;
+  border-radius: 2px;
+}
+.cell-ok {
+  background: var(--ok);
+}
+/* Stripes as well as color, so a gap reads without telling green from amber. */
+.cell-gap {
+  background: repeating-linear-gradient(135deg, var(--bad) 0 3px, var(--surface) 3px 5px);
+}
+.cell-none {
+  background: var(--grid);
+}
+.checks {
+  padding-left: 20px;
+}
+.checks li {
+  margin-bottom: 8px;
 }

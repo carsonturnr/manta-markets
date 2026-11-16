@@ -1,0 +1,16 @@
+# Manta data-quality report: recorder coverage, gaps and families to Postgres for the site's
+# /quality page (recorder/cmd/status -json, then manta-quality).
+[Unit]
+Description=Manta data-quality report
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=manta
+EnvironmentFile=/etc/manta/env
+# status re-reads the current hour's files each run (about a minute); the recorder comes first.
+Nice=10
+ExecStart=/opt/manta/bin/status -in /var/lib/manta/raw -json /var/lib/manta/quality.json
+ExecStart=/opt/manta/pricing/.venv/bin/manta-quality /var/lib/manta/quality.json
+TimeoutStartSec=12min

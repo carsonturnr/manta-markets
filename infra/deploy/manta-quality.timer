@@ -1,0 +1,9 @@
+[Unit]
+Description=Manta data-quality report, every 15 minutes
+
+[Timer]
+# Off the archive's :10, which removes old files that status might be listing.
+OnCalendar=*-*-* *:02,17,32,47:00 UTC
+
+[Install]
+WantedBy=timers.target

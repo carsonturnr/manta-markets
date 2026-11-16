@@ -28,8 +28,10 @@ const (
 // polymarketFamily is one kind of Polymarket event comparable to a Kalshi series. Either `dated`
 // is a URL slug with %s for a New York date, or the open events tagged `listTag` are listed and
 // only slugs matching `slug` are kept (economics slugs end in a random suffix, so they can't be
-// spelled out). Either way, an event must also carry every tag in `tags`.
+// spelled out). Either way, an event must also carry every tag in `tags`. `id` names the family
+// in the data-quality report (cmd/status).
 type polymarketFamily struct {
+	id      string
 	dated   string
 	listTag string
 	slug    *regexp.Regexp
@@ -45,14 +47,25 @@ type polymarketFamily struct {
 //     and payrolls (KXPAYROLLS). The Fed pattern leaves out "fed-decisions-…" parlays; the
 //     unemployment one leaves out Canada's.
 var polymarketFamilies = []polymarketFamily{
-	{dated: "bitcoin-above-on-%s", tags: []string{"bitcoin", "crypto"}},
-	{dated: "bitcoin-price-on-%s", tags: []string{"bitcoin", "crypto"}},
-	{dated: "ethereum-above-on-%s", tags: []string{"ethereum", "crypto"}},
-	{dated: "ethereum-price-on-%s", tags: []string{"ethereum", "crypto"}},
-	{listTag: "fed-rates", slug: regexp.MustCompile(`^fed-decision-in-[a-z]+(-[0-9]+)?$`), tags: []string{"fomc"}},
-	{listTag: "us-cpi", slug: regexp.MustCompile(`^[a-z]+-inflation-us-(annual|monthly)$`), tags: []string{"us-cpi"}},
-	{listTag: "jobs-report", slug: regexp.MustCompile(`^[a-z]+-unemployment-rate-[0-9]{4}$`), tags: []string{"jobs-report"}},
-	{listTag: "jobs-report", slug: regexp.MustCompile(`^how-many-jobs-added-in-[a-z]+-[0-9]{4}$`), tags: []string{"nonfarm-payroll"}},
+	{id: "btc-above", dated: "bitcoin-above-on-%s", tags: []string{"bitcoin", "crypto"}},
+	{id: "btc-price", dated: "bitcoin-price-on-%s", tags: []string{"bitcoin", "crypto"}},
+	{id: "eth-above", dated: "ethereum-above-on-%s", tags: []string{"ethereum", "crypto"}},
+	{id: "eth-price", dated: "ethereum-price-on-%s", tags: []string{"ethereum", "crypto"}},
+	{id: "fed-decision", listTag: "fed-rates", slug: regexp.MustCompile(`^fed-decision-in-[a-z]+(-[0-9]+)?$`), tags: []string{"fomc"}},
+	{id: "cpi", listTag: "us-cpi", slug: regexp.MustCompile(`^[a-z]+-inflation-us-(annual|monthly)$`), tags: []string{"us-cpi"}},
+	{id: "unemployment", listTag: "jobs-report", slug: regexp.MustCompile(`^[a-z]+-unemployment-rate-[0-9]{4}$`), tags: []string{"jobs-report"}},
+	{id: "payrolls", listTag: "jobs-report", slug: regexp.MustCompile(`^how-many-jobs-added-in-[a-z]+-[0-9]{4}$`), tags: []string{"nonfarm-payroll"}},
+}
+
+// PolymarketFamily returns the id of the allow-listed family an event slug belongs to, or "".
+func PolymarketFamily(slug string) string {
+	for _, f := range polymarketFamilies {
+		dated := f.dated != "" && strings.HasPrefix(slug, strings.TrimSuffix(f.dated, "%s"))
+		if dated || f.slug != nil && f.slug.MatchString(slug) {
+			return f.id
+		}
+	}
+	return ""
 }
 
 // Polymarket records polymarketFamilies (dated ones for today and the next days, New York dates): each

@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
-# Deploy the tracker snapshotter to the VM: infra/deploy/deploy-snap.sh root@HOST
-# Separate from deploy.sh, which restarts the recorder: this one never touches it.
-# Copies DATABASE_URL from the local .env into /etc/manta/env, applies db/schema.sql, and
-# enables the every-minute timer. The VM runs the venv's script directly, not uv.
+# Deploy the site's data jobs to the VM: infra/deploy/deploy-snap.sh root@HOST
+#   - the tracker snapshotter (manta-snap, every minute)
+#   - the data-quality report (status -json + manta-quality, every 15 minutes)
+# Separate from deploy.sh, which restarts the recorder: this one never touches it (it only
+# replaces the status binary). Copies DATABASE_URL from the local .env into /etc/manta/env,
+# applies db/schema.sql, and enables the timers. The VM runs the venv's scripts directly, not uv.
 set -euo pipefail
 host=${1:?usage: deploy-snap.sh root@HOST}
 cd "$(dirname "$0")/../.."
 db_url=$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
 site_pw=$(grep '^SITE_DB_PASSWORD=' .env | cut -d= -f2-)
-ssh "$host" "mkdir -p /opt/manta/pricing /opt/manta/db"
+bin=$(mktemp -d)
+trap 'rm -rf "$bin"' EXIT
+(cd recorder && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -o "$bin/status" ./cmd/status)
+ssh "$host" "mkdir -p /opt/manta/pricing /opt/manta/db /opt/manta/bin"
+scp -q "$bin/status" "$host:/opt/manta/status.new"
 rsync -a --delete --exclude .venv --exclude __pycache__ --exclude .pytest_cache --exclude .ruff_cache \
   pricing/ "$host:/opt/manta/pricing/"
 rsync -a --delete db/ "$host:/opt/manta/db/"
-rsync -a infra/deploy/manta-snap.service infra/deploy/manta-snap.timer "$host:/etc/systemd/system/"
+rsync -a infra/deploy/manta-snap.service infra/deploy/manta-snap.timer \
+  infra/deploy/manta-quality.service infra/deploy/manta-quality.timer "$host:/etc/systemd/system/"
 # The secrets go over ssh's stdin, never on a command line (where `ps` would show them).
 printf '%s\n%s\n' "$db_url" "$site_pw" | ssh "$host" 'set -euo pipefail
   read -r db_url; read -r site_pw
@@ -20,13 +27,15 @@ printf '%s\n%s\n' "$db_url" "$site_pw" | ssh "$host" 'set -euo pipefail
   echo "DATABASE_URL=$db_url" >> /etc/manta/env.new
   chmod 640 /etc/manta/env.new && chown root:manta /etc/manta/env.new && mv /etc/manta/env.new /etc/manta/env
   chown -R root:root /opt/manta/pricing /opt/manta/db
+  install -m 755 -o root -g root /opt/manta/status.new /opt/manta/bin/status && rm /opt/manta/status.new
   cd /opt/manta/pricing
   UV_PYTHON_INSTALL_DIR=/opt/manta/python uv sync -q --frozen --no-dev
   chmod -R a+rX /opt/manta/pricing /opt/manta/db /opt/manta/python
   set -a; . /etc/manta/env; set +a
   SITE_DB_PASSWORD=$site_pw .venv/bin/manta-snap --init
-  chmod 644 /etc/systemd/system/manta-snap.*
+  chmod 644 /etc/systemd/system/manta-snap.* /etc/systemd/system/manta-quality.*
   systemctl daemon-reload
-  systemctl enable -q --now manta-snap.timer
-  systemctl start manta-snap.service
-  journalctl -u manta-snap --no-pager -n 3 -o cat'
+  systemctl enable -q --now manta-snap.timer manta-quality.timer
+  systemctl start manta-snap.service manta-quality.service
+  journalctl -u manta-snap --no-pager -n 3 -o cat
+  journalctl -u manta-quality --no-pager -n 2 -o cat'
