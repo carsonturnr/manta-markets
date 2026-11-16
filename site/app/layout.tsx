@@ -22,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Manta
             </Link>
             <Link href="/screener">Screener</Link>
+            <Link href="/compare">Cross-venue</Link>
             <Link href="/">BTC tracker</Link>
             <Link href="/stats">Gap statistics</Link>
             <Link href="/quality">Data quality</Link>

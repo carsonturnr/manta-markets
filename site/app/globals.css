@@ -299,13 +299,24 @@ main:has(.wide) {
 .screener th a {
   color: var(--text-2);
 }
-.screener td.contract {
+.screener td.contract,
+.compare td.contract {
   white-space: normal;
   min-width: 220px;
 }
 .screener td.contract a,
-.screener td.contract span {
+.screener td.contract span,
+.compare td.contract span {
   display: block;
+}
+.compare td.contract {
+  min-width: 320px;
+}
+.kinds {
+  padding-left: 20px;
+}
+.kinds li {
+  margin-bottom: 4px;
 }
 .pager {
   display: flex;

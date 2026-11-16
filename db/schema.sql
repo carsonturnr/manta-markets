@@ -82,6 +82,30 @@ create table if not exists manta.markets (
 -- Added 2026-11-16 (step 3), after the table was first created.
 alter table manta.markets add column if not exists inclusive boolean not null default false;
 
+-- The same event on Kalshi and Polymarket (step 4, recorder/internal/crossvenue): replaced with
+-- manta.markets every minute. A side is one contract or, for a "bundle", the sum of Polymarket's
+-- buckets above Kalshi's threshold (bid and ask summed, size the smallest bucket's).
+create table if not exists manta.pairs (
+    topic           text not null,  -- "Fed decision, Dec 2026 meeting"
+    question        text not null,  -- "No change"
+    kind            text not null check (kind in ('same', 'bundle', 'near')),
+    note            text not null,  -- what differs, for "near"
+    close_time      timestamptz not null,
+    ord             integer not null,  -- order within the topic
+    kalshi_ids      text[] not null,
+    kalshi_bid      double precision,
+    kalshi_ask      double precision,
+    kalshi_bid_size double precision,
+    kalshi_ask_size double precision,
+    poly_ids        text[] not null,
+    poly_bid        double precision,
+    poly_ask        double precision,
+    poly_bid_size   double precision,
+    poly_ask_size   double precision,
+    updated         timestamptz not null,
+    primary key (topic, question)
+);
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin

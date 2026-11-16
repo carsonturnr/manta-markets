@@ -1,8 +1,8 @@
-"""Store the screener's contracts (step 2, docs/product.md).
+"""Store the screener's contracts and the cross-venue pairs (steps 2 and 4, docs/product.md).
 
 On the VM, manta-contracts.service runs `contracts -out FILE` (recorder/cmd/contracts) and then
-`manta-contracts FILE`, every minute. The file replaces every row of manta.markets in one
-transaction, so the site always reads one complete listing.
+`manta-contracts FILE`, every minute. The file replaces every row of manta.markets and
+manta.pairs in one transaction, so the site always reads one complete listing.
 """
 
 import argparse
@@ -16,6 +16,13 @@ COLUMNS = [
     "close_time", "bid", "ask", "bid_size", "ask_size", "last", "volume_24h", "volume_unit",
     "open_interest", "updated",
 ]  # fmt: skip
+
+
+def pair_row(p: dict, updated: str) -> list:
+    k, q = p["kalshi"], p["polymarket"]
+    side = [k["ids"], k["bid"], k["ask"], k["bid_size"], k["ask_size"]]
+    side += [q["ids"], q["bid"], q["ask"], q["bid_size"], q["ask_size"]]
+    return [p["topic"], p["question"], p["kind"], p["note"], p["close"], p["order"], *side, updated]
 
 
 def main() -> None:
@@ -32,7 +39,17 @@ def main() -> None:
         with conn.cursor().copy(f"copy manta.markets ({', '.join(COLUMNS)}) from stdin") as copy:
             for r in rows:
                 copy.write_row([r[c] for c in COLUMNS])
-    print(f"stored {len(rows)} contracts of {listing['generated']}", end="")
+        conn.execute("delete from manta.pairs")
+        conn.cursor().executemany(
+            "insert into manta.pairs values"
+            " (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            [pair_row(p, listing["generated"]) for p in listing.get("pairs", [])],
+        )
+    print(
+        f"stored {len(rows)} contracts, {len(listing.get('pairs', []))} pairs"
+        f" of {listing['generated']}",
+        end="",
+    )
     print(f"; left out: {'; '.join(listing['errors'])}" if listing["errors"] else "")
 
 

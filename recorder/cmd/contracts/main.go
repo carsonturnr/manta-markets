@@ -5,7 +5,8 @@
 //
 // Kalshi: every open market of each allow-listed series (tap.KalshiSeries), from its market list.
 // Polymarket: every market of each allow-listed event (tap.PolymarketOpenEvents), with the best
-// bid and ask from the CLOB order books. On the VM, manta-contracts.service runs it every minute
+// bid and ask from the CLOB order books. Then the pairs of contracts on the same event on both
+// venues (internal/crossvenue). On the VM, manta-contracts.service runs it every minute
 // and stores the result (pricing: manta-contracts).
 //
 // A series or event that fails is logged and left out; the run fails only if nothing was listed.
@@ -20,12 +21,14 @@ import (
 	"time"
 
 	"github.com/carsonturnr/manta-markets/recorder/internal/contracts"
+	"github.com/carsonturnr/manta-markets/recorder/internal/crossvenue"
 	"github.com/carsonturnr/manta-markets/recorder/internal/tap"
 )
 
 type output struct {
 	Generated time.Time            `json:"generated"`
 	Contracts []contracts.Contract `json:"contracts"`
+	Pairs     []crossvenue.Pair    `json:"pairs"` // the same event on both venues (step 4)
 	Errors    []string             `json:"errors"` // what was left out, and why
 }
 
@@ -74,6 +77,10 @@ func main() {
 	if len(res.Contracts) == 0 {
 		log.Fatal("no contracts listed")
 	}
+	res.Pairs = crossvenue.Pairs(res.Contracts)
+	if res.Pairs == nil {
+		res.Pairs = []crossvenue.Pair{}
+	}
 	b, err := json.Marshal(res)
 	if err != nil {
 		log.Fatal(err)
@@ -85,7 +92,7 @@ func main() {
 	if err := os.Rename(*out+".tmp", *out); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%d contracts, %d errors", len(res.Contracts), len(res.Errors))
+	log.Printf("%d contracts, %d pairs, %d errors", len(res.Contracts), len(res.Pairs), len(res.Errors))
 }
 
 // polymarket appends every open market of the allow-listed events, priced from the CLOB books.
