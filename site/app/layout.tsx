@@ -25,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/compare">Cross-venue</Link>
             <Link href="/distributions">Distributions</Link>
             <Link href="/liquidity">Liquidity</Link>
+            <Link href="/replay">Replay</Link>
             <Link href="/">BTC tracker</Link>
             <Link href="/stats">Gap statistics</Link>
             <Link href="/quality">Data quality</Link>

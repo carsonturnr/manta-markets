@@ -1,0 +1,19 @@
+# Manta replay files: minute-by-minute Kalshi books per event and hour, for the site's replay
+# (infra/deploy/replay.sh, recorder/cmd/replay). Capped so it can never crowd out the recorder:
+# half of one CPU, 1.5 GB of memory (the raw reader holds a whole compressed hour, up to
+# ~650 MB), lowest CPU and disk priority. An hour takes about 14 minutes.
+[Unit]
+Description=Manta replay files
+
+[Service]
+Type=oneshot
+User=manta
+EnvironmentFile=/etc/manta/env
+Environment=GOMEMLIMIT=1GiB
+ExecStart=/opt/manta/replay.sh
+CPUQuota=50%
+MemoryMax=1500M
+Nice=19
+IOSchedulingClass=idle
+# A backfill of 11 hours takes about 2.5 hours; the timer never starts a second copy.
+TimeoutStartSec=4h

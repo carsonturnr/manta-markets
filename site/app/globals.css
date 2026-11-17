@@ -387,3 +387,30 @@ main:has(.wide) {
 tr.selected td {
   background: var(--surface-2);
 }
+
+/* /replay: the minute controls and the list of past closes */
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.replay-controls button {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid var(--grid);
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.replay-controls input[type="range"] {
+  flex: 1;
+  min-width: 160px;
+}
+.replay-list {
+  columns: 2 280px;
+  padding-left: 18px;
+}

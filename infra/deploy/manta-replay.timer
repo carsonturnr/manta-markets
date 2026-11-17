@@ -1,0 +1,11 @@
+[Unit]
+Description=Manta replay files, every hour
+
+[Timer]
+# Five past the hour: the recorder has closed the hour's file; the archive runs at :10 and
+# only removes files older than 12 hours.
+OnCalendar=*:05:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
