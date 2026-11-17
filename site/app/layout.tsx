@@ -27,7 +27,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/liquidity">Liquidity</Link>
             <Link href="/replay">Replay</Link>
             <Link href="/">BTC tracker</Link>
-            <Link href="/stats">Gap statistics</Link>
+            <Link href="/stats">Accuracy</Link>
             <Link href="/quality">Data quality</Link>
           </nav>
           {children}

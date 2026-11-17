@@ -3,6 +3,7 @@
 // request only (the page awaits connection() first).
 import { cacheLife } from "next/cache";
 import { sql } from "./db";
+import type { EventScore } from "./scoring";
 
 const STATS = { stale: 60, revalidate: 120, expire: 240 };
 
@@ -103,7 +104,10 @@ export type CalRow = {
 /** Calibration: group predictions into 10¢ buckets and compare the average prediction with how
  *  often those contracts actually paid out. A well-calibrated price pays out 25% of the time when
  *  it says 25¢. All four times before the close are pooled. */
-export async function calibration(): Promise<{ rows: CalRow[]; events: number }> {
+export async function calibration(): Promise<{
+  rows: CalRow[];
+  events: number;
+}> {
   "use cache";
   cacheLife(STATS);
   const rows = await sql<CalRow[]>`
@@ -145,4 +149,57 @@ export async function basis(): Promise<BasisRow[]> {
       on r.ts between e.close_time - interval '70 seconds' and e.close_time + interval '10 seconds'
     group by e.close_time, e.settlement order by e.close_time desc`;
   return rows.map((r) => ({ ...r, close: Number(r.close) }));
+}
+
+// The accuracy page's predictions (step 9, pricing/accuracy.py): one per contract at 5 minutes,
+// 1 hour, 1 day and 1 week before it is decided, across both venues. As in the tracker, only
+// contracts in play are scored: the venue's mid or our fair value between 3¢ and 97¢. Far from
+// that, both say the outcome is all but known, and those easy calls would flatter every score.
+const scored = () => sql`
+  with p as (
+    select *, (bid + ask) / 2 as mid from manta.predictions where result is not null
+  )
+  select * from p where mid between 0.03 and 0.97 or fair between 0.03 and 0.97`;
+
+/** Squared errors summed per close and horizon; lib/scoring.ts turns them into scores. */
+export async function eventScores(): Promise<EventScore[]> {
+  "use cache";
+  cacheLife(STATS);
+  const rows = await sql<EventScore[]>`
+    with s as (${scored()})
+    select venue, family, event, horizon, count(*)::int as n,
+           sum((mid - result) ^ 2) as "seVenue",
+           count(fair)::int as "nFair",
+           coalesce(sum((mid - result) ^ 2) filter (where fair is not null), 0) as "seVenueF",
+           coalesce(sum((fair - result) ^ 2), 0) as "seFair"
+    from s group by 1, 2, 3, 4`;
+  return [...rows]; // a plain array: "use cache" must serialize the result
+}
+
+export type CalPoint = {
+  who: string; // kalshi, polymarket (the venue's mid) or fair (ours, both venues)
+  bucket: number; // 0 = 0–10¢, …, 9 = 90–100¢
+  n: number;
+  pred: number; // the average prediction in the bucket
+  hit: number; // the share that paid out
+};
+
+/** Calibration across every horizon and family: when a price said this much, how often did the
+ *  contract pay out? */
+export async function calibrationAll(): Promise<{
+  points: CalPoint[];
+  events: number;
+}> {
+  "use cache";
+  cacheLife(STATS);
+  const points = await sql<CalPoint[]>`
+    with s as (${scored()}),
+    v as (select venue as who, mid as p, result from s
+          union all select 'fair', fair, result from s where fair is not null)
+    select who, least(floor(p * 10), 9)::int as bucket, count(*)::int as n, avg(p) as pred,
+           avg(result::float) as hit
+    from v group by 1, 2 order by 1, 2`;
+  const [{ events }] = await sql`
+    with s as (${scored()}) select count(distinct event)::int as events from s`;
+  return { points: [...points], events };
 }

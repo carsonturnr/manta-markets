@@ -152,6 +152,26 @@ create table if not exists manta.distributions (
     primary key (venue, event)
 );
 
+-- Predictions for the accuracy page (step 9, pricing/accuracy.py): one row per contract and
+-- horizon, the venue's quote and our fair value taken that long before the contract is decided;
+-- the result is filled in once the venue settles it. Never replaced, so this is history.
+create table if not exists manta.predictions (
+    venue       text not null,
+    id          text not null,
+    family      text not null,
+    event       text not null,
+    horizon     integer not null,      -- minutes before `decided`: 5, 60, 1440 or 10080
+    ts          timestamptz not null,  -- when it was taken
+    decided     timestamptz not null,  -- the close; Polymarket economics: the paired Kalshi close
+    bid         double precision not null,
+    ask         double precision not null,
+    fair        double precision,
+    fair_method text,
+    result      smallint check (result in (0, 1)),  -- 1: the contract paid out
+    primary key (venue, id, horizon)
+);
+create index if not exists predictions_pending on manta.predictions (decided) where result is null;
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin
