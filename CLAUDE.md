@@ -104,8 +104,9 @@ The trading engine is [NautilusTrader](https://github.com/nautechsystems/nautilu
 - Deribit ETH options (checked 2026-11-16): daily 08:00 UTC expiries like BTC, about 21 strikes within ±10% of the index, $10 apart; the BTC method applies unchanged.
 - Binance BTC/USDT and ETH/USDT traded about 0.1% above Deribit's index (2026-11-16); Polymarket's crypto fair values use Binance's price for that reason.
 
+- **Data terms for a commercial product** (Kalshi, Polymarket, Deribit, Binance): Carson confirmed 2026-11-17 that they allow showing their data, derived analytics and an API of derived analytics in this product, with a waitlist and possible paid tiers. Still no bulk redistribution of raw venue data.
+
 **Still to check:**
-- **Data terms for a commercial product** (Kalshi, Polymarket, Deribit, Binance): showing their data, derived analytics, and an API of derived analytics, with a waitlist and possible paid tiers. Kalshi's permission was for a non-commercial project. Must be settled before the waitlist goes public.
 - **New series:** exact tickers, categories, settlement sources and times for ETH, economics and financials on Kalshi and Polymarket, read from the APIs and each series' rules.
 
 ## Tech choices

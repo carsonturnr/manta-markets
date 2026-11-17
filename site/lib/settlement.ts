@@ -204,12 +204,12 @@ export const METHODS: Record<string, { name: string; short: string; explain: str
     name: "Two-venue consensus",
     short: "2 venues",
     explain:
-      "The probability curve that best fits both Kalshi's and Polymarket's quotes on this event, each quote weighted by how tight its spread is, made consistent across strikes (a higher threshold is never likelier than a lower one) or, for the Fed, across outcomes (they sum to 100%).",
+      "The probability curve that best fits both Kalshi's and Polymarket's quotes on this event, each quote weighted by how tight its spread is, made consistent across strikes (a higher threshold is never likelier than a lower one) or, for the Fed, across outcomes (they sum to 100%). A threshold with no quote, or quoted more than 20¢ wide, is left out of the fit; it is read off the curve between the quotes that are.",
   },
   "consensus-1": {
     name: "One-venue consensus",
     short: "1 venue",
     explain:
-      "Fitted to this venue's own quotes on this event only and made consistent across strikes. It adds no outside information: on a well-quoted ladder it repeats the market's price.",
+      "Fitted to this venue's own quotes on this event only and made consistent across strikes. It adds no outside information: on a well-quoted ladder it repeats the market's price. Thresholds with no quote or quoted more than 20¢ wide are left out of the fit, and a ladder quoted only that wide gets no fair value.",
   },
 };

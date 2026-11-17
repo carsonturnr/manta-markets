@@ -80,6 +80,7 @@ LADDERS = {
 }
 OUTCOMES = {"KXFEDDECISION", "fed-decision"}
 MIN_POINTS = 3  # fewer quotes than this make no consensus worth showing
+MAX_SPREAD = 0.20  # a threshold quote wider than this is no reading (informative)
 MAX_OVERROUND = 0.10  # bucket midpoints adding up past $1.10: drop the unbid ones (bucket_mids)
 
 
@@ -246,6 +247,8 @@ def ladder_points(members: list[dict], step: float) -> list[Point]:
                 points.append(bucket_sum(e, below, mids, from_top=False))
         else:
             for c in cs:
+                if not informative(c):
+                    continue
                 m, w = mid_and_weight(c.get("bid"), c.get("ask"))
                 if c["payoff"] == "above":
                     x = c["low"] - step if c.get("inclusive") else c["low"]
@@ -254,6 +257,17 @@ def ladder_points(members: list[dict], step: float) -> list[Point]:
                     x = c["high"] if c.get("inclusive") else c["high"] - step
                     points.append(Point(x, 1 - m, w))
     return points
+
+
+def informative(c: dict) -> bool:
+    """Whether a threshold contract's quote says enough to be a reading of the curve. One with
+    neither a bid nor an ask says nothing (read as 0 to 1, it would count as 50¢); one quoted
+    wider than MAX_SPREAD says little more (3¢ bid, 45¢ ask: a 24¢ midpoint at every strike of a
+    thin ladder, which the fit would report as a consensus)."""
+    bid, ask = c.get("bid"), c.get("ask")
+    if bid is None and ask is None:
+        return False
+    return (1.0 if ask is None else ask) - (0.0 if bid is None else bid) <= MAX_SPREAD + 1e-9
 
 
 def bucket_mids(cs: list[dict]) -> dict[str, float]:

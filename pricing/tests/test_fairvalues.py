@@ -170,3 +170,27 @@ def test_an_event_that_adds_up_keeps_every_midpoint():
         c("kalshi", "KXEURUSD", "C", "between", low=3.0, high=4.0, ask=0.10),
     ]
     assert bucket_mids(cs)["C"] == pytest.approx(0.05)
+
+
+def test_unquoted_and_wide_quotes_are_no_reading():
+    # 80¢, 50¢ and 20¢ at 7000/7100/7200; between them, an unquoted strike and one offered at
+    # 99¢ with no bid. Before, each read as about 50¢ and pulled the curve up past 7100.
+    q = [c("kalshi", "KXINXU", f"S{x}", "above", low=x, bid=p - 0.01, ask=p + 0.01)
+         for x, p in ((7000, 0.8), (7100, 0.5), (7200, 0.2))]  # fmt: skip
+    blank = c("kalshi", "KXINXU", "S7150", "above", low=7150)
+    offered = c("kalshi", "KXINXU", "S7175", "above", low=7175, ask=0.99)
+    out = fair_values([*q, blank, offered], [], {}, NOW)
+    # They still get a fair value, read off the curve between the real quotes.
+    assert out[("kalshi", "S7150")][0] == pytest.approx(0.35)
+    assert out[("kalshi", "S7175")][0] == pytest.approx(0.275)
+    assert out[("kalshi", "S7100")][0] == pytest.approx(0.5)
+
+
+def test_a_ladder_quoted_only_wide_has_no_consensus():
+    # Tomorrow's S&P on 2026-11-17: 3¢ bid, 45¢ ask at every strike.
+    wide = [c("kalshi", "KXINXU", f"S{x}", "above", low=x, bid=0.03, ask=0.45)
+            for x in (7500, 7505, 7510, 7515)]  # fmt: skip
+    assert fair_values(wide, [], {}, NOW) == {}
+    # 20¢ wide is still a reading.
+    edge = [{**w, "bid": 0.2, "ask": 0.4} for w in wide]
+    assert len(fair_values(edge, [], {}, NOW)) == 4

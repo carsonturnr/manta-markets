@@ -70,7 +70,7 @@ Each step ends in something that runs and can be shown.
 
 ## Must be checked before the waitlist goes public
 
-- **Data terms for a commercial product:** Kalshi, Polymarket, Deribit and Binance, for showing their data and analytics derived from it, and for an API of derived analytics. Kalshi's earlier permission covered displaying data in a non-commercial project. No bulk redistribution of raw venue data in any case.
+- **Data terms for a commercial product** (settled: Carson confirmed 2026-11-17 that the venues allow it): Kalshi, Polymarket, Deribit and Binance, for showing their data and analytics derived from it, and for an API of derived analytics. Kalshi's earlier permission covered displaying data in a non-commercial project. No bulk redistribution of raw venue data in any case.
 - **Personal data:** waitlist and account emails stored with row-level security, a published privacy policy, deletion on request.
 
 ## Costs to approve when reached
