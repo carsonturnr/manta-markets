@@ -129,6 +129,29 @@ create table if not exists manta.liquidity (
     primary key (ts, venue, family)
 );
 
+-- Implied distributions (step 7, pricing/distribution.py): one row per ladder event, replaced
+-- every minute with manta.markets. `curve` is the fitted [[x, P(value > x)], …]; quantiles,
+-- mean and volatility are null where the quotes don't reach (see the module's docstring).
+create table if not exists manta.distributions (
+    venue       text not null,  -- kalshi, polymarket, or both (economics combined across venues)
+    family      text not null,
+    event       text not null,
+    title       text not null,
+    close_time  timestamptz not null,
+    method      text not null,  -- consensus-2 or consensus-1, as for fair values
+    curve       jsonb not null,
+    median      double precision,
+    q25         double precision,
+    q75         double precision,
+    mean        double precision,
+    sd          double precision,
+    vol         double precision,  -- annualized, from the quartiles (prices only)
+    deribit_vol double precision,  -- Deribit's at-the-money volatility at the same close (crypto)
+    spread      double precision,  -- median bid–ask spread of the ladder's two-sided quotes
+    updated     timestamptz not null,
+    primary key (venue, event)
+);
+
 -- The site's login: read-only on this schema. Its password is set outside git
 -- (manta-snap --init sets it from SITE_DB_PASSWORD).
 do $$ begin

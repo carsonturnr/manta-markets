@@ -373,3 +373,17 @@ main:has(.wide) {
   border-radius: 2px;
   box-shadow: inset 0 0 0 1px var(--grid);
 }
+
+/* /distributions: small multiples of the term structure, two across on wide screens */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 8px 24px;
+}
+.grid-2 h3 {
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+tr.selected td {
+  background: var(--surface-2);
+}

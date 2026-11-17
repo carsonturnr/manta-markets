@@ -17,7 +17,13 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
-from manta_pricing.consensus import Point, curve_at, falling_fit, mid_and_weight, normalized
+from manta_pricing.consensus import (
+    Point,
+    curve_at,
+    falling_fit,
+    mid_and_weight,
+    normalized,
+)
 from manta_pricing.fair import AVERAGING_WINDOW_S, Quote, prob_above, prob_between
 from manta_pricing.surface import Surface
 from manta_pricing.table import DERIBIT, get
@@ -74,6 +80,7 @@ LADDERS = {
 }
 OUTCOMES = {"KXFEDDECISION", "fed-decision"}
 MIN_POINTS = 3  # fewer quotes than this make no consensus worth showing
+MAX_OVERROUND = 0.10  # bucket midpoints adding up past $1.10: drop the unbid ones (bucket_mids)
 
 
 BINANCE = (
@@ -229,13 +236,14 @@ def ladder_points(members: list[dict], step: float) -> list[Point]:
     points = []
     for _, cs in group_by(members, "event").items():
         if any(c["payoff"] in ("between", "exact") for c in cs):
+            mids = bucket_mids(cs)
             buckets = [(lower_edge(c, step), c) for c in cs]
             edges = sorted({e for e, _ in buckets if e is not None})
             for e in edges:
                 above = [c for x, c in buckets if x is not None and x >= e - 1e-9]
                 below = [c for x, c in buckets if x is None or x < e - 1e-9]
-                points.append(bucket_sum(e, above, from_top=True))
-                points.append(bucket_sum(e, below, from_top=False))
+                points.append(bucket_sum(e, above, mids, from_top=True))
+                points.append(bucket_sum(e, below, mids, from_top=False))
         else:
             for c in cs:
                 m, w = mid_and_weight(c.get("bid"), c.get("ask"))
@@ -248,10 +256,25 @@ def ladder_points(members: list[dict], step: float) -> list[Point]:
     return points
 
 
-def bucket_sum(e: float, buckets: list[dict], from_top: bool) -> Point:
+def bucket_mids(cs: list[dict]) -> dict[str, float]:
+    """Each bucket's midpoint for summing. All of an event's buckets together are worth exactly
+    $1. When their midpoints add up to more than $1 + MAX_OVERROUND, the excess sits in buckets
+    nobody bids on (offered at 1–3¢, hundreds of them in Kalshi's $5 Ether ranges), and those
+    count as 0: their price is somewhere between 0 and the ask, and summed by the hundred any
+    positive guess invents probability (300 Ether buckets, 8 with a bid, read as 317% a year).
+    An event that already adds up (EUR/USD's 15 buckets: 99.5¢) keeps every midpoint."""
+    mids = {c["id"]: mid_and_weight(c.get("bid"), c.get("ask"))[0] for c in cs}
+    if sum(mids.values()) > 1 + MAX_OVERROUND:
+        for c in cs:
+            if not c.get("bid"):
+                mids[c["id"]] = 0.0
+    return mids
+
+
+def bucket_sum(e: float, buckets: list[dict], mids: dict[str, float], from_top: bool) -> Point:
     """P(value > e) read from a set of buckets: their total (from the top) or one minus it (from
     the bottom), weighted 1/(sum of their spreads)²."""
-    mid = sum(mid_and_weight(c.get("bid"), c.get("ask"))[0] for c in buckets)
+    mid = sum(mids[c["id"]] for c in buckets)
     spread = sum(max((c.get("ask") or 1.0) - (c.get("bid") or 0.0), 0.01) for c in buckets)
     p = min(mid, 1.0) if from_top else max(1.0 - mid, 0.0)
     return Point(e, p, 1 / spread**2)

@@ -4,7 +4,7 @@ from math import sqrt
 import pytest
 
 from manta_pricing.fair import YEAR_S, norm_cdf
-from manta_pricing.fairvalues import Crypto, fair_values
+from manta_pricing.fairvalues import Crypto, bucket_mids, bucket_sum, fair_values
 from manta_pricing.surface import Smile, Surface
 
 NOW = datetime(2026, 11, 17, 16, 0, tzinfo=UTC).timestamp()
@@ -145,3 +145,28 @@ def test_fed_outcomes_sum_to_one_across_venues():
     assert out[("kalshi", "KH")] == out[("polymarket", "PH")]  # the same bet, one fair value
     assert out[("kalshi", "KH")][0] + out[("kalshi", "KU")][0] == pytest.approx(1)
     assert out[("kalshi", "KH")][1] == "consensus-2"
+
+
+def test_unbid_buckets_count_as_zero_when_the_event_adds_up_past_a_dollar():
+    # One live bucket at 30/32¢ (mid 31¢) and 40 with no bid offered at 2¢ (mid 1¢ each): the
+    # midpoints add up to 71¢ + 40¢ = $1.11, past $1.10, so the unbid ones count as 0 and
+    # P(> 2) reads 31¢, not 31 + 40 = 71¢.
+    live = c("kalshi", "KXINX", "L", "between", low=2.0, high=3.0, bid=0.30, ask=0.32)
+    low = c("kalshi", "KXINX", "B", "between", low=1.0, high=2.0, bid=0.39, ask=0.41)
+    dead = [
+        c("kalshi", "KXINX", f"D{i}", "between", low=3.0 + i, high=4.0 + i, ask=0.02)
+        for i in range(40)
+    ]
+    cs = [low, live, *dead]
+    mids = bucket_mids(cs)
+    assert bucket_sum(2.0, [live, *dead], mids, from_top=True).p == pytest.approx(0.31)
+
+
+def test_an_event_that_adds_up_keeps_every_midpoint():
+    # 40¢ + 50¢ + an unbid bucket at 0/10¢ (mid 5¢) = 95¢: nothing is dropped.
+    cs = [
+        c("kalshi", "KXEURUSD", "A", "between", low=1.0, high=2.0, bid=0.39, ask=0.41),
+        c("kalshi", "KXEURUSD", "B", "between", low=2.0, high=3.0, bid=0.49, ask=0.51),
+        c("kalshi", "KXEURUSD", "C", "between", low=3.0, high=4.0, ask=0.10),
+    ]
+    assert bucket_mids(cs)["C"] == pytest.approx(0.05)

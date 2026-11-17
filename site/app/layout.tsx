@@ -23,6 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
             <Link href="/screener">Screener</Link>
             <Link href="/compare">Cross-venue</Link>
+            <Link href="/distributions">Distributions</Link>
             <Link href="/liquidity">Liquidity</Link>
             <Link href="/">BTC tracker</Link>
             <Link href="/stats">Gap statistics</Link>
