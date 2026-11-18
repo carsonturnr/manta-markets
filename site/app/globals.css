@@ -414,3 +414,103 @@ tr.selected td {
   columns: 2 280px;
   padding-left: 18px;
 }
+
+.replay-families {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 14px;
+}
+
+/* Landing page and waitlist (step 10). */
+.hero {
+  margin: 8px 0 8px;
+}
+.hero h1 {
+  font-size: 30px;
+}
+.lede {
+  font-size: 17px;
+  line-height: 1.5;
+  max-width: 680px;
+}
+.tools {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.tools li {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--grid);
+}
+.tools li span {
+  color: var(--text-2);
+}
+@media (max-width: 560px) {
+  .tools li {
+    grid-template-columns: 1fr;
+  }
+}
+.waitlist {
+  max-width: 520px;
+}
+.waitlist > label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+.waitlist-row {
+  display: flex;
+  gap: 8px;
+}
+.waitlist-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--grid);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+.waitlist-row button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 1px solid var(--text);
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--surface);
+  cursor: pointer;
+}
+.waitlist-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.waitlist-consent {
+  display: block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.waitlist-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.waitlist-error {
+  color: var(--bad);
+  font-size: 14px;
+}
+.waitlist-done {
+  font-weight: 600;
+}
+.prose {
+  max-width: 680px;
+  line-height: 1.55;
+}

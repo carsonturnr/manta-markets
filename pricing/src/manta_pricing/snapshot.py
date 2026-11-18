@@ -216,10 +216,15 @@ def status(conn: psycopg.Connection) -> None:
 def init(conn: psycopg.Connection) -> None:
     with conn.transaction():
         conn.execute(SCHEMA.read_text())
-        pw = os.environ.get("SITE_DB_PASSWORD")
-        if pw:
-            conn.execute(sql.SQL("alter role manta_site password {}").format(sql.Literal(pw)))
-    print("schema applied" + ("; manta_site password set" if pw else ""))
+        done = []
+        logins = (("manta_site", "SITE_DB_PASSWORD"), ("manta_signup", "SIGNUP_DB_PASSWORD"))
+        for role, var in logins:
+            pw = os.environ.get(var)
+            if pw:
+                query = sql.SQL("alter role {} password {}")
+                conn.execute(query.format(sql.Identifier(role), sql.Literal(pw)))
+                done.append(f"{role} password set")
+    print("; ".join(["schema applied", *done]))
 
 
 def main() -> None:

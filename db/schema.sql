@@ -182,3 +182,28 @@ end $$;
 grant usage on schema manta to manta_site;
 grant select on all tables in schema manta to manta_site;
 alter default privileges in schema manta grant select on tables to manta_site;
+
+-- The waitlist (step 10): email addresses and when they signed up, nothing else. Covered by the
+-- privacy policy (/privacy); deleted on request by the admin login. Kept after the grants above,
+-- which give manta_site every table: it must not read this one.
+--   - Row-level security is on, and the only policy lets manta_signup insert. No login but the
+--     table's owner (the admin) can read, change or delete a row.
+--   - manta_signup is the site's sign-up login: it may insert an email and nothing else, so even
+--     a bug in the public site can't read the list. Its password is set outside git
+--     (manta-snap --init sets it from SIGNUP_DB_PASSWORD).
+create table if not exists manta.waitlist (
+    email   text primary key check (email = lower(email) and length(email) <= 254
+                                    and email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
+    created timestamptz not null default now()
+);
+alter table manta.waitlist enable row level security;
+revoke all on manta.waitlist from manta_site;
+do $$ begin
+    if not exists (select from pg_roles where rolname = 'manta_signup') then
+        create role manta_signup login;
+    end if;
+end $$;
+grant usage on schema manta to manta_signup;
+grant insert (email) on manta.waitlist to manta_signup;
+drop policy if exists signup_insert on manta.waitlist;
+create policy signup_insert on manta.waitlist for insert to manta_signup with check (true);

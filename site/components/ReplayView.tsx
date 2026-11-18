@@ -1,9 +1,11 @@
 "use client";
-// A past close, minute by minute: each strike's Kalshi bid–ask as a bar and our fair value as a
-// dot, Bitcoin's price as a vertical line, and after the close the settlement value. A client
-// component for the slider and play button; the server sends the whole replay once.
+// A past close, minute by minute: each strike's Kalshi bid–ask as a bar and, for Bitcoin, our
+// fair value as a dot and Bitcoin's price as a vertical line; at the final minute the settlement
+// value. A client component for the slider and play button; the server sends the whole replay
+// once.
 import { useEffect, useState } from "react";
 import type { Replay } from "@/lib/replay";
+import { fmtValue } from "@/lib/units";
 
 const W = 840;
 const H = 320;
@@ -16,6 +18,9 @@ const c = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000) / 
 const qty = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(Math.round(n)));
 
 export default function ReplayView({ r }: { r: Replay }) {
+  const v = (x: number) => fmtValue(r.family, x); // a strike or the settlement, in its unit
+  const hasFair = r.markets.some((m) => m.fair.some((f) => f !== null));
+  const hasIndex = r.index.some((x) => x !== null);
   const [i, setI] = useState(0);
   const [playing, setPlaying] = useState(false);
   const last = r.times.length - 1;
@@ -87,21 +92,26 @@ export default function ReplayView({ r }: { r: Replay }) {
       <p className="num">
         <strong>{hm(t)} UTC</strong> · {toClose} min to the close
         {index !== null && <> · Bitcoin {usd(index)} (Deribit index)</>}
-        {final && r.settlement !== null && <> · then settled on {usd(r.settlement)}</>}
+        {final && r.settlement !== null && <> · then settled on {v(r.settlement)}</>}
       </p>
       <div className="legend">
         <span>
           <span className="key" style={{ background: "var(--kalshi)", opacity: 0.6 }} />
           Kalshi bid–ask per strike
         </span>
-        <span>
-          <span className="key" style={{ background: "var(--fair)", borderRadius: 5, width: 10 }} />
-          Fair value (options)
-        </span>
-        <span>
-          <span className="key" style={{ background: "var(--text-3)", height: 2 }} />
-          Bitcoin now{r.settlement !== null && ", dashed: settlement"}
-        </span>
+        {hasFair && (
+          <span>
+            <span className="key" style={{ background: "var(--fair)", borderRadius: 5, width: 10 }} />
+            Fair value (options)
+          </span>
+        )}
+        {(hasIndex || r.settlement !== null) && (
+          <span>
+            <span className="key" style={{ background: "var(--text-3)", height: 2 }} />
+            {hasIndex ? "Bitcoin now" : "Dashed"}
+            {r.settlement !== null && (hasIndex ? ", dashed: settlement" : ": settlement")}
+          </span>
+        )}
       </div>
       <div className="chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Kalshi prices by strike at ${hm(t)} UTC`}>
@@ -115,7 +125,7 @@ export default function ReplayView({ r }: { r: Replay }) {
           ))}
           {strikeTicks(s0, s1).map((s) => (
             <text key={s} x={x(s)} y={H - 8} textAnchor="middle" fontSize="12" fill="var(--text-3)">
-              {usd(s)}
+              {v(s)}
             </text>
           ))}
           {index !== null && index >= s0 && index <= s1 && (
@@ -147,7 +157,7 @@ export default function ReplayView({ r }: { r: Replay }) {
                     fill="var(--kalshi)"
                     fillOpacity={0.6}
                   >
-                    <title>{`above ${usd(m.strike)}: bid ${c(q[0])}, ask ${c(q[1])}`}</title>
+                    <title>{`above ${v(m.strike)}: bid ${c(q[0])}, ask ${c(q[1])}`}</title>
                   </rect>
                 )}
                 {f !== null && <circle cx={x(m.strike)} cy={y(f)} r={3} fill="var(--fair)" />}
@@ -165,7 +175,7 @@ export default function ReplayView({ r }: { r: Replay }) {
               <th>Pays if above</th>
               <th>Bid (size)</th>
               <th>Ask (size)</th>
-              <th>Fair</th>
+              {hasFair && <th>Fair</th>}
               <th>Trades in the minute</th>
               <th>Settled</th>
             </tr>
@@ -173,21 +183,21 @@ export default function ReplayView({ r }: { r: Replay }) {
           <tbody>
             {active.length === 0 && (
               <tr>
-                <td colSpan={6} className="muted">
+                <td colSpan={hasFair ? 6 : 5} className="muted">
                   Nothing between 3¢ and 97¢ this minute.
                 </td>
               </tr>
             )}
             {active.map(({ m, k, q }) => (
               <tr key={m.ticker}>
-                <td className="num">{usd(m.strike)}</td>
+                <td className="num">{v(m.strike)}</td>
                 <td className="num">
                   {c(q![0])} <span className="muted">({qty(q![2])})</span>
                 </td>
                 <td className="num">
                   {c(q![1])} <span className="muted">({qty(q![3])})</span>
                 </td>
-                <td className="num">{c(m.fair[i])}</td>
+                {hasFair && <td className="num">{c(m.fair[i])}</td>}
                 <td className="num">
                   {tradesBy.get(k) ? `${tradesBy.get(k)!.n} · ${qty(tradesBy.get(k)!.sz)} contracts` : "–"}
                 </td>

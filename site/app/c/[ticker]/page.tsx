@@ -10,7 +10,7 @@ export default function ContractPage({ params }: PageProps<"/c/[ticker]">) {
   return (
     <>
       <p className="small">
-        <Link href="/">← all contracts</Link>
+        <Link href="/tracker">← all contracts</Link>
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         {params.then(({ ticker }) => (
