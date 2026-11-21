@@ -1,6 +1,6 @@
 # Manta
 
-An analytics terminal for prediction markets: a screener, live order books, cross-venue comparison, fair values, implied distributions, and a cost-to-trade calculator for Kalshi and Polymarket's crypto, economics and financial contracts (never sports). A market maker on Kalshi is built on top, paper traded. Live: https://mantamarkets.vercel.app. Product spec: [docs/product.md](docs/product.md).
+An analytics terminal for prediction markets: a screener, live order books, cross-venue comparison, fair values, implied distributions, and a cost-to-trade calculator for Kalshi and Polymarket's crypto, economics and financial contracts (never sports). A market maker on Kalshi is built on top, paper traded. Live: https://mantamarkets.com. Product spec: [docs/product.md](docs/product.md).
 
 **Uses [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), as an installed library, for the history catalog, backtesting and paper trading. Manta's own code is the recorder, the pricing and analytics, the site, the strategy and the measurement.
 

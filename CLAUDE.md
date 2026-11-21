@@ -61,7 +61,7 @@ The trading engine is [NautilusTrader](https://github.com/nautechsystems/nautilu
 
 - **Recorder:** Kalshi BTC series, Deribit options and index, Coinbase, Kraken, Polymarket BTC daily contracts, Binance BTC/USDT; crash-safe, gaps logged, archived nightly. Must keep running: four weeks of recording is part of the definition of done.
 - **Pricing engine:** options-implied fair value for Kalshi BTC contracts (docs/milestone-2-pricing.md).
-- **Live tracker:** https://mantamarkets.vercel.app, Kalshi vs fair value, gap and accuracy statistics (docs/milestone-3-tracker.md).
+- **Live tracker:** https://mantamarkets.com/tracker, Kalshi vs fair value, gap and accuracy statistics (docs/milestone-3-tracker.md).
 - **Market-maker groundwork:** recordings → Nautilus catalog, fair values over recorded time, both validated (docs/milestone-4-backtest.md).
 
 ### Next (docs/product.md). Do these in order; each ends demoable.
@@ -149,4 +149,4 @@ infra/deploy/        VM deploy, systemd units, nightly archive to the Storage Bo
 docs/                product spec, per-milestone plans, decisions.md (dated decisions)
 ```
 
-Infra: the VM `series-1` (Hetzner CX23, Helsinki, <vm-ip>) runs the recorder and the snapshotter; recordings archive nightly to the Storage Box `manta-archive` (1 TB, <storagebox-user>); the site is the Vercel project `site` (team <vercel-team>, https://mantamarkets.vercel.app) on Supabase (us-east-2). Secrets live in `.env` (local), `/etc/manta/env` (VM) and Vercel's environment settings, never in git.
+Infra: the VM `series-1` (Hetzner CX23, Helsinki, <vm-ip>) runs the recorder and the snapshotter; recordings archive nightly to the Storage Box `manta-archive` (1 TB, <storagebox-user>); the site is the Vercel project `site` (team <vercel-team>, https://mantamarkets.com; domain registered at Namecheap 2026-11-21, DNS records there; www and mantamarkets.vercel.app redirect to it) on Supabase (us-east-2). Secrets live in `.env` (local), `/etc/manta/env` (VM) and Vercel's environment settings, never in git.
