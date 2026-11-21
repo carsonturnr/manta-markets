@@ -1,5 +1,6 @@
-// The privacy policy (step 10): what the waitlist collects and what happens to it, in plain
-// English. It must stay true to the code: lib/waitlist.ts, db/schema.sql (manta.waitlist).
+// The privacy policy (steps 10 and 11): what the waitlist and accounts collect and what happens
+// to it, in plain English. It must stay true to the code: lib/waitlist.ts, lib/account.ts,
+// pricing/alerts.py, db/schema.sql (manta.waitlist, manta.watchlist, manta.alerts).
 export const metadata = { title: "Manta: privacy" };
 
 const CONTACT = "privacy@mantamarkets.com";
@@ -8,7 +9,7 @@ export default function Privacy() {
   return (
     <div className="prose">
       <h1>Privacy policy</h1>
-      <p className="muted">Effective 17 November 2026.</p>
+      <p className="muted">Effective 21 November 2026.</p>
 
       <p>
         Manta is run by Carson Turner. This page explains what personal data Manta collects, why,
@@ -18,13 +19,20 @@ export default function Privacy() {
 
       <h2>What we collect</h2>
       <p>
-        Only what you give us when you join the waitlist: your email address, and the time you
-        signed up. Nothing else is asked for or stored with it.
+        <b>The waitlist:</b> your email address and the time you signed up. Nothing else is asked
+        for or stored with it.
+      </p>
+      <p>
+        <b>An account:</b> signing in is handled by Clerk, which keeps your email address (and, if
+        you sign in with Google, the name and picture Google shares). Manta&apos;s own database
+        holds only Clerk&apos;s ID for your account, never your email address, next to what you
+        save: the contracts on your watchlist, your alerts, and when each alert fired.
       </p>
       <p>
         Everything else on this site (prices, order books, fair values, statistics) is market data
-        from the venues&apos; public APIs and contains no personal data. The site sets no cookies
-        and uses no analytics, advertising or tracking scripts.
+        from the venues&apos; public APIs and contains no personal data. The only cookies are the
+        ones Clerk needs to keep you signed in. The site uses no analytics, advertising or tracking
+        scripts.
       </p>
       <p>
         Like any website, the company that hosts it (Vercel) keeps routine request logs, such as IP
@@ -34,25 +42,39 @@ export default function Privacy() {
 
       <h2>Why, and on what basis</h2>
       <p>
-        To email you about Manta: when accounts open, and occasional news about the product. We rely
-        on your consent, given by ticking the box when you sign up. You can withdraw it at any time,
-        and we&apos;ll delete your address.
+        <b>The waitlist:</b> to email you about Manta: when accounts open, and occasional news about
+        the product. We rely on your consent, given by ticking the box when you sign up. You can
+        withdraw it at any time, and we&apos;ll delete your address.
+      </p>
+      <p>
+        <b>An account:</b> to provide what you ask for: your watchlist, and the alert emails you set
+        up. When an alert fires, its email is sent to the address Clerk has for you, which is read
+        at that moment and not kept. Accounts get no marketing email.
       </p>
 
       <h2>Where it is kept, and who can see it</h2>
       <p>
         In a database hosted by Supabase in the United States (Ohio). The table is protected by
         row-level security: the website&apos;s sign-up connection can add an address but cannot read
-        the list, and only the administrator&apos;s login can read or delete it. The website itself
-        is hosted by Vercel. Supabase and Vercel process the data only to provide their services to
-        us.
+        the list, and only the administrator&apos;s login can read or delete it. Watchlists and
+        alerts are protected the same way: the website&apos;s account connection can reach only the
+        signed-in person&apos;s rows. The website itself is hosted by Vercel, accounts by Clerk, and
+        alert emails are sent through Resend, all in the United States. They process the data only
+        to provide their services to us.
       </p>
-      <p>We don&apos;t sell, rent or share your email address with anyone else.</p>
+      <p>We don&apos;t sell, rent or share your data with anyone else.</p>
 
       <h2>How long</h2>
       <p>
-        Until you ask us to delete it, or until the waitlist ends: if Manta stops, or once accounts
-        open and you have been told, addresses that didn&apos;t become accounts are deleted.
+        <b>The waitlist:</b> until you ask us to delete it, or until the waitlist ends: if Manta
+        stops, or once accounts open and you have been told, addresses that didn&apos;t become
+        accounts are deleted.
+      </p>
+      <p>
+        <b>An account:</b> until you delete it. You can delete your account yourself from the
+        account menu (your picture, top right, then Manage account); your watchlist, alerts and
+        their history are then deleted from Manta&apos;s database within a day. Deleting an alert
+        deletes its history.
       </p>
 
       <h2>Your rights</h2>
