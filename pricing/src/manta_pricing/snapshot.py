@@ -213,7 +213,10 @@ def status(conn: psycopg.Connection) -> None:
     print(f"size:      {size} (Supabase free tier: 500 MB)")
 
 
-def init(conn: psycopg.Connection) -> None:
+def init(conn: psycopg.Connection, passwords: bool = False) -> None:
+    """Applies db/schema.sql; with `passwords`, also sets the logins' passwords from the
+    environment. Only when they change: setting one, even to the same value, makes Supabase's
+    pooler refuse that login for a short while (seen 2026-11-21), and every deploy runs this."""
     with conn.transaction():
         conn.execute(SCHEMA.read_text())
         done = []
@@ -224,7 +227,7 @@ def init(conn: psycopg.Connection) -> None:
         )
         for role, var in logins:
             pw = os.environ.get(var)
-            if pw:
+            if passwords and pw:
                 query = sql.SQL("alter role {} password {}")
                 conn.execute(query.format(sql.Identifier(role), sql.Literal(pw)))
                 done.append(f"{role} password set")
@@ -235,10 +238,13 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--status", action="store_true", help="show what the database holds")
     ap.add_argument("--init", action="store_true", help="create tables and the site's login")
+    ap.add_argument(
+        "--passwords", action="store_true", help="with --init: set the logins' passwords too"
+    )
     a = ap.parse_args()
     with connect() as conn:
         if a.init:
-            init(conn)
+            init(conn, a.passwords)
         elif a.status:
             status(conn)
         else:

@@ -39,7 +39,8 @@ printf '%s\n%s\n' "$db_url" "$site_pw" | ssh "$host" 'set -euo pipefail
   UV_PYTHON_INSTALL_DIR=/opt/manta/python uv sync -q --frozen --no-dev
   chmod -R a+rX /opt/manta/pricing /opt/manta/db /opt/manta/python
   set -a; . /etc/manta/env; set +a
-  SITE_DB_PASSWORD=$site_pw .venv/bin/manta-snap --init
+  # Schema only: passwords are set by hand (manta-snap --init --passwords) when one changes.
+  .venv/bin/manta-snap --init
   chmod 644 /etc/systemd/system/manta-snap.* /etc/systemd/system/manta-quality.* /etc/systemd/system/manta-contracts.*
   systemctl daemon-reload
   systemctl enable -q --now manta-snap.timer manta-quality.timer manta-contracts.timer

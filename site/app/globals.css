@@ -514,3 +514,75 @@ tr.selected td {
   max-width: 680px;
   line-height: 1.55;
 }
+
+/* Accounts (step 11): the nav's sign-in, watch and alerts on contract pages, /account. */
+.nav-account {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.link-button {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--link);
+  text-decoration: none;
+  cursor: pointer;
+}
+.watch {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--grid);
+  border-radius: 8px;
+}
+.watch > form button,
+.alert-form button {
+  font: inherit;
+  font-size: 14px;
+  padding: 5px 12px;
+  border: 1px solid var(--grid);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.alert-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+.alert-list li form {
+  display: inline;
+  margin-left: 8px;
+}
+.alert-list li form button {
+  padding: 0;
+  border: 0;
+  color: var(--link);
+  background: none;
+}
+.alert-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.alert-form select,
+.alert-form input {
+  font: inherit;
+  padding: 5px 8px;
+  border: 1px solid var(--grid);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+.alert-form input {
+  width: 6em;
+}
+.alert-form p {
+  flex-basis: 100%;
+  margin: 0;
+}

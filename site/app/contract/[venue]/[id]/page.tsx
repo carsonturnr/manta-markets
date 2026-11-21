@@ -1,9 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
+import { SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import AlertForm from "@/components/AlertForm";
 import AutoRefresh from "@/components/AutoRefresh";
 import PriceChart from "@/components/PriceChart";
+import { getAlerts, isPaired, isWatched } from "@/lib/account";
+import { deleteAlert, toggleWatch } from "@/lib/accountActions";
+import { describe } from "@/lib/alerts";
 import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
 import { getMarket, type Row } from "@/lib/screener";
@@ -125,6 +131,10 @@ async function Contract({
         </p>
       )}
 
+      <Suspense fallback={null}>
+        <Watch venue={venue} id={c.id} />
+      </Suspense>
+
       <h2>Price</h2>
       <p className="pills small">
         {RANGES.map((r) =>
@@ -166,6 +176,54 @@ async function Contract({
         <RulesSection c={c} />
       </Suspense>
     </>
+  );
+}
+
+/** Watch and alerts for the signed-in user (lib/account.ts); a sign-in prompt otherwise. */
+async function Watch({ venue, id }: { venue: string; id: string }) {
+  const { userId } = await auth();
+  if (!userId) {
+    return (
+      <p className="small">
+        <SignInButton mode="modal">
+          <button type="button" className="link-button">
+            Sign in
+          </button>
+        </SignInButton>{" "}
+        to watch this contract or get an email alert when it moves.
+      </p>
+    );
+  }
+  const [watched, alerts, paired] = await Promise.all([
+    isWatched(userId, venue, id),
+    getAlerts(userId, venue, id),
+    isPaired(venue, id),
+  ]);
+  return (
+    <section className="watch">
+      <form action={toggleWatch.bind(null, venue, id)}>
+        <button type="submit">{watched ? "★ Watching" : "☆ Watch"}</button>{" "}
+        <Link href="/account" className="small">
+          Your watchlist and alerts
+        </Link>
+      </form>
+      {alerts.length > 0 && (
+        <ul className="alert-list small">
+          {alerts.map((a) => (
+            <li key={a.alertId}>
+              {describe(a.kind, a.threshold)}
+              {a.met && <b> · met now</b>}
+              <form action={deleteAlert.bind(null, a.alertId)}>
+                <button type="submit" className="link-button" aria-label="Delete this alert">
+                  Delete
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      <AlertForm venue={venue} id={id} paired={paired} />
+    </section>
   );
 }
 

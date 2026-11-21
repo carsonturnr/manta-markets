@@ -8,13 +8,14 @@ manta.pairs in one transaction, so the site always reads one complete listing.
 
 import argparse
 import json
+import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
 from psycopg.types.json import Jsonb
 
-from manta_pricing import accuracy
+from manta_pricing import accuracy, alerts
 from manta_pricing.distribution import Distribution, distributions
 from manta_pricing.fairvalues import fair_values, fetch_crypto
 from manta_pricing.liquidity import EVERY_MIN, samples
@@ -99,6 +100,15 @@ def main() -> None:
                 accuracy.settle(conn)
         except Exception as e:  # noqa: BLE001 - retried in 5 minutes; the listing is stored
             print(f"settling predictions: {e}")
+    # Alerts read the listing just stored (alerts.py); they need both keys, set on the VM.
+    if os.environ.get("RESEND_API_KEY") and os.environ.get("CLERK_SECRET_KEY"):
+        try:
+            with connect() as conn:
+                alerts.check(conn, at)
+                if at.hour == 3 and at.minute == 0:
+                    alerts.sweep(conn)
+        except Exception as e:  # noqa: BLE001 - checked again next minute
+            print(f"checking alerts: {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

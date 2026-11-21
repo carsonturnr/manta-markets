@@ -246,6 +246,10 @@ create table if not exists manta.alerts (
     fired     timestamptz,                     -- the last email
     ended     timestamptz                      -- the contract closed: no longer checked
 );
+-- The contract's close, copied by the alert job while it is listed: an alert whose contract is
+-- missing from the listing ends only once this has passed, so a listing that failed to load
+-- part of a venue can't end alerts.
+alter table manta.alerts add column if not exists closes timestamptz;
 create index if not exists alerts_user on manta.alerts (user_id);
 -- Each time an alert fires: when, the value that met it, and whether the email went out.
 create table if not exists manta.alert_log (
