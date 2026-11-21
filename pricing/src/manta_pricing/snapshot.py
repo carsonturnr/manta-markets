@@ -217,7 +217,11 @@ def init(conn: psycopg.Connection) -> None:
     with conn.transaction():
         conn.execute(SCHEMA.read_text())
         done = []
-        logins = (("manta_site", "SITE_DB_PASSWORD"), ("manta_signup", "SIGNUP_DB_PASSWORD"))
+        logins = (
+            ("manta_site", "SITE_DB_PASSWORD"),
+            ("manta_signup", "SIGNUP_DB_PASSWORD"),
+            ("manta_account", "ACCOUNT_DB_PASSWORD"),
+        )
         for role, var in logins:
             pw = os.environ.get(var)
             if pw:

@@ -207,3 +207,78 @@ grant usage on schema manta to manta_signup;
 grant insert (email) on manta.waitlist to manta_signup;
 drop policy if exists signup_insert on manta.waitlist;
 create policy signup_insert on manta.waitlist for insert to manta_signup with check (true);
+
+-- Accounts (step 11): watchlists and alerts. Sign-in is Clerk's: it keeps the accounts and their
+-- email addresses, so these tables hold only Clerk's user id ("user_…"), never an email. The
+-- alert job (pricing/alerts.py, on the VM with the admin login) looks an address up from Clerk
+-- when it sends, and keeps nothing.
+--   - manta_account is the site's login for these tables and nothing else. Every request first
+--     sets manta.user_id to the signed-in user (site/lib/account.ts), and row-level security
+--     shows and accepts only that user's rows, so a query missing its "where user_id = …" still
+--     can't reach anyone else's. Its password is set outside git (manta-snap --init sets it from
+--     ACCOUNT_DB_PASSWORD).
+--   - manta_site (read-only, every table by default) is refused these, as with the waitlist.
+create table if not exists manta.watchlist (
+    user_id text not null check (user_id ~ '^user_[A-Za-z0-9]{1,64}$'),
+    venue   text not null,
+    id      text not null,  -- manta.markets (venue, id); kept after the contract closes
+    added   timestamptz not null default now(),
+    primary key (user_id, venue, id)
+);
+-- An alert watches one contract for one condition, checked every minute:
+--   above / below  the midpoint (halfway between bid and ask) is at least / at most `threshold`
+--   spread         ask − bid is at least `threshold`
+--   depth          the smaller of the best bid's and best ask's size is under `threshold`
+--                  contracts, or a side is empty
+--   venues         the contract's midpoint and the other venue's for the same event
+--                  (manta.pairs) differ by at least `threshold`
+-- Prices are in dollars (0.05 = 5¢). It emails when its condition starts to hold (`met` goes
+-- from false to true), at most once an hour, and not again until the condition has stopped.
+create table if not exists manta.alerts (
+    alert_id  bigint generated always as identity primary key,
+    user_id   text not null check (user_id ~ '^user_[A-Za-z0-9]{1,64}$'),
+    venue     text not null,
+    id        text not null,
+    kind      text not null check (kind in ('above', 'below', 'spread', 'depth', 'venues')),
+    threshold double precision not null check (threshold >= 0),
+    created   timestamptz not null default now(),
+    met       boolean not null default false,  -- the condition held at the last check
+    fired     timestamptz,                     -- the last email
+    ended     timestamptz                      -- the contract closed: no longer checked
+);
+create index if not exists alerts_user on manta.alerts (user_id);
+-- Each time an alert fires: when, the value that met it, and whether the email went out.
+create table if not exists manta.alert_log (
+    alert_id bigint not null references manta.alerts on delete cascade,
+    user_id  text not null,
+    ts       timestamptz not null,
+    value    double precision,  -- null for "depth" when a side is empty
+    emailed  boolean not null,
+    primary key (alert_id, ts)
+);
+alter table manta.watchlist enable row level security;
+alter table manta.alerts enable row level security;
+alter table manta.alert_log enable row level security;
+revoke all on manta.watchlist, manta.alerts, manta.alert_log from manta_site;
+do $$ begin
+    if not exists (select from pg_roles where rolname = 'manta_account') then
+        create role manta_account login;
+    end if;
+end $$;
+grant usage on schema manta to manta_account;
+grant select, insert, delete on manta.watchlist to manta_account;
+grant select, delete on manta.alerts to manta_account;
+grant insert (user_id, venue, id, kind, threshold) on manta.alerts to manta_account;
+grant select on manta.alert_log to manta_account;
+-- current_setting(…, true) is null when unset, and null matches no row.
+drop policy if exists own_rows on manta.watchlist;
+create policy own_rows on manta.watchlist for all to manta_account
+    using (user_id = current_setting('manta.user_id', true))
+    with check (user_id = current_setting('manta.user_id', true));
+drop policy if exists own_rows on manta.alerts;
+create policy own_rows on manta.alerts for all to manta_account
+    using (user_id = current_setting('manta.user_id', true))
+    with check (user_id = current_setting('manta.user_id', true));
+drop policy if exists own_rows on manta.alert_log;
+create policy own_rows on manta.alert_log for select to manta_account
+    using (user_id = current_setting('manta.user_id', true));
