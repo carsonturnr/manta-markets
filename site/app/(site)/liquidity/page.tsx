@@ -9,9 +9,9 @@ export const metadata = { title: "Manta: liquidity" };
 
 export default function LiquidityPage() {
   return (
-    <div className="wide">
+    <>
       <h1>Liquidity</h1>
-      <p className="muted">
+      <p>
         How cheap each contract family is to trade, and when. Sampled every 15 minutes from the
         venues&apos; market lists. Only active contracts count: quoted on both sides, with a
         midpoint from 5¢ to 95¢ (strikes far from the price sit at 0/1¢ and would drown every
@@ -22,7 +22,7 @@ export default function LiquidityPage() {
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Liquidity />
       </Suspense>
-    </div>
+    </>
   );
 }
 
@@ -48,8 +48,11 @@ async function Liquidity() {
   );
   return (
     <>
-      <h2>Now</h2>
-      <p className="small">Sample of {at === null ? "–" : utc(at)}.</p>
+      <section className="panel stack">
+        <header className="ph">
+          <h2>Now</h2>
+          <span className="right m3">Sample of {at === null ? "–" : utc(at)}</span>
+        </header>
       <div className="table-wrap">
         <table>
           <thead>
@@ -69,7 +72,9 @@ async function Liquidity() {
                     {NAME.get(`${r.venue}/${r.family}`) ?? r.family}
                   </Link>
                 </td>
-                <td style={{ textAlign: "left" }}>{venueName(r.venue)}</td>
+                <td style={{ textAlign: "left" }} className={`venue ${r.venue}`}>
+                  {venueName(r.venue)}
+                </td>
                 <td className="num">
                   {r.active} / {r.contracts}
                 </td>
@@ -80,17 +85,20 @@ async function Liquidity() {
           </tbody>
         </table>
       </div>
-      <p className="small">
+      <p className="note">
         Kalshi prices move in 1¢ steps, so 1¢ is its narrowest spread; Polymarket&apos;s move in
         0.1¢ steps. Size is in contracts (Polymarket: shares, the same thing).
       </p>
-      <Heatmap rows={rows.map((r) => `${r.venue}/${r.family}`)} hours={hours} />
-      <p className="small">
-        {samples} {samples === 1 ? "sample" : "samples"} since {since === null ? "–" : utc(since)} (
-        {days.toFixed(1)} days).{" "}
-        {days < 3 &&
-          "Too little yet to say much about the hour of day: each cell rests on a few samples, all from the same day or two. It fills in as days accumulate."}
-      </p>
+      </section>
+      <section className="panel stack">
+        <Heatmap rows={rows.map((r) => `${r.venue}/${r.family}`)} hours={hours} />
+        <p className="note">
+          {samples} {samples === 1 ? "sample" : "samples"} since{" "}
+          {since === null ? "–" : utc(since)} ({days.toFixed(1)} days).{" "}
+          {days < 3 &&
+            "Too little yet to say much about the hour of day: each cell rests on a few samples, all from the same day or two. It fills in as days accumulate."}
+        </p>
+      </section>
     </>
   );
 }
@@ -109,8 +117,11 @@ function Heatmap({ rows, hours }: { rows: string[]; hours: HourCell[] }) {
   const shown = rows.filter((k) => hours.some((h) => `${h.venue}/${h.family}` === k));
   return (
     <>
-      <h2>Spread by hour of day</h2>
-      <div className="legend">
+      <header className="ph">
+        <h2>Spread by hour of day</h2>
+        <span className="right m3">median, last 14 days, UTC</span>
+      </header>
+      <div className="legend pad-x">
         <span>Median spread, last 14 days, by hour (UTC). Narrow</span>
         {[0.001, 0.01, 0.05, 0.2].map((s) => (
           <span key={s}>
@@ -120,7 +131,7 @@ function Heatmap({ rows, hours }: { rows: string[]; hours: HourCell[] }) {
         ))}
         <span>wide · outlined: no sample in that hour yet</span>
       </div>
-      <div className="table-wrap">
+      <div className="table-wrap pad">
         <div className="heatmap">
           <span />
           {Array.from({ length: 24 }, (_, h) => (

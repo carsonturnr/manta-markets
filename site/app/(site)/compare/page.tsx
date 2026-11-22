@@ -1,22 +1,27 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getPairs, type Pair, type Side } from "@/lib/compare";
+import { crossed, gap, getPairs, type Pair } from "@/lib/compare";
 import { utc } from "@/lib/format";
 
 export const metadata = { title: "Manta: cross-venue" };
 
 export default function ComparePage() {
   return (
-    <div className="wide">
+    <>
       <h1>Cross-venue</h1>
-      <p className="muted">
+      <p>
         The same event on Kalshi and Polymarket, side by side. Pairs come from fixed rules per
         contract family, never from matching text, and each says how equivalent its two sides are.
         Prices are for &ldquo;yes&rdquo;, in cents; refreshed every minute from each venue&apos;s
         market list. Crossing prices are checked after both legs&apos; taker fees (step 6).
       </p>
-      <ul className="small kinds">
+      <Suspense fallback={<p className="muted">Loading…</p>}>
+        <Pairs />
+      </Suspense>
+      <h2>How to read this</h2>
+      <section className="panel pad prose-sm">
+      <ul className="kinds">
         <li>
           <b>Same bet</b>: the identical outcome, settled on the same source (the Fed&apos;s
           decision).
@@ -44,61 +49,12 @@ export default function ComparePage() {
           midpoint lies outside the bundle&apos;s bid–ask range, or &ldquo;inside&rdquo;.
         </li>
       </ul>
-      <Suspense fallback={<p className="muted">Loading…</p>}>
-        <Pairs />
-      </Suspense>
-    </div>
+      </section>
+    </>
   );
 }
 
 const cents = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000) / 10}`);
-const mid = (s: Side) => (s.bid !== null && s.ask !== null ? (s.bid + s.ask) / 2 : null);
-
-/** How far apart the venues are, in cents. A single contract against a single contract: the
- * difference of their midpoints. Against a bundle, whose midpoint is skewed by its buckets'
- * combined spread: how far Kalshi's midpoint lies outside the bundle's bid–ask range, 0 inside. */
-function gap(p: Pair): { cents: number; inside: boolean } | null {
-  const km = mid(p.kalshi);
-  if (km === null) return null;
-  if (p.kind !== "bundle") {
-    const qm = mid(p.poly);
-    return qm === null ? null : { cents: (km - qm) * 100, inside: false };
-  }
-  const { bid, ask } = p.poly;
-  if (bid === null || ask === null) return null;
-  if (km >= bid && km <= ask) return { cents: 0, inside: true };
-  return { cents: (km < bid ? km - bid : km - ask) * 100, inside: false };
-}
-
-/** If one venue's ask is below the other's bid, buying there and selling on the other locks in
- * the gap: how many cents before fees, and after both legs' taker fees (null if a fee rate is
- * unknown), per contract. */
-function crossed(p: Pair): { cents: number; net: number | null; buy: string; sell: string } | null {
-  const k = p.kalshi;
-  const q = p.poly;
-  const net = (gap: number, buyFee: number | null, sellFee: number | null) =>
-    buyFee === null || sellFee === null ? null : (gap - buyFee - sellFee) * 100;
-  if (k.ask !== null && q.bid !== null && q.bid - k.ask > 1e-9) {
-    const gap = q.bid - k.ask;
-    return {
-      cents: gap * 100,
-      net: net(gap, k.feeAtAsk, q.feeAtBid),
-      buy: "Kalshi",
-      sell: "Polymarket",
-    };
-  }
-  if (q.ask !== null && k.bid !== null && k.bid - q.ask > 1e-9) {
-    const gap = k.bid - q.ask;
-    return {
-      cents: gap * 100,
-      net: net(gap, q.feeAtAsk, k.feeAtBid),
-      buy: "Polymarket",
-      sell: "Kalshi",
-    };
-  }
-  return null;
-}
-
 /** Each side's fair value, or one number when they agree to a tenth of a cent. */
 function fairs(p: Pair): string {
   const k = p.kalshi.fair;
@@ -117,18 +73,40 @@ async function Pairs() {
   const afterFees = pairs.filter((p) => (crossed(p)?.net ?? 0) > 1e-9).length;
   return (
     <>
+      <div className="tiles">
+        <div className="panel tile">
+          <span>Pairs</span>
+          <b>{pairs.length}</b>
+          <small>in {topics.length} events</small>
+        </div>
+        <div className="panel tile">
+          <span>Prices cross before fees</span>
+          <b>{crossings}</b>
+          <small>one venue&apos;s ask below the other&apos;s bid</small>
+        </div>
+        <div className="panel tile">
+          <span>Still cross after fees</span>
+          <b className={afterFees > 0 ? "up" : undefined}>{afterFees}</b>
+          <small>after both legs&apos; taker fees</small>
+        </div>
+        <div className="panel tile">
+          <span>Listing read</span>
+          <b>{at !== null ? utc(at, false) : "–"}</b>
+          <small>refreshed every minute</small>
+        </div>
+      </div>
       <p className="small">
-        {pairs.length} pairs in {topics.length} events
-        {at !== null && <> · listing read {utc(at)}</>} · {crossings} with prices that cross before
-        fees, {afterFees} after both legs&apos; taker fees. Bitcoin and Ether pairs appear only in
-        the hour before noon New York time, the one hour both venues list the same moment.
+        Bitcoin and Ether pairs appear only in the hour before noon New York time, the one hour
+        both venues list the same moment.
       </p>
       {topics.map((t) => {
         const ps = pairs.filter((p) => p.topic === t);
         return (
-          <section key={t}>
-            <h2>{t}</h2>
-            <p className="small">Kalshi closes {utc(ps[0].close)}.</p>
+          <section key={t} className="panel stack">
+            <header className="ph">
+              <h2>{t}</h2>
+              <span className="right m3">Kalshi closes {utc(ps[0].close)}</span>
+            </header>
             <div className="table-wrap">
               <table className="compare">
                 <thead>

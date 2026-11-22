@@ -30,6 +30,16 @@ export type Row = {
   feeMaker: number | null;
 };
 
+// manta.markets' columns renamed to Row's shape, shared by every query that returns rows. Built per
+// call (see lib/queries.ts): a module-level postgres.js fragment is a Promise shared across caches.
+export const rowCols = () => sql`
+  venue, id, family, event, title, label, payoff, low, high, inclusive,
+  extract(epoch from close_time) * 1000 as close, bid, ask,
+  bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
+  volume_unit as "volumeUnit", open_interest as "openInterest", fair,
+  fair_method as "fairMethod",
+  fee_taker as "feeTaker", fee_maker as "feeMaker"`;
+
 export const SORTS = ["close", "volume", "spread", "bid", "ask", "oi", "edge"] as const;
 export type Sort = (typeof SORTS)[number];
 
@@ -89,12 +99,7 @@ export async function screen(
   const dir = f.desc ? sql`desc` : sql`asc`;
 
   const rows = await sql`
-    select venue, id, family, event, title, label, payoff, low, high, inclusive,
-           extract(epoch from close_time) * 1000 as close, bid, ask,
-           bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
-           volume_unit as "volumeUnit", open_interest as "openInterest", fair,
-           fair_method as "fairMethod",
-           fee_taker as "feeTaker", fee_maker as "feeMaker",
+    select ${rowCols()},
            count(*) over () as total
     from manta.markets
     where ${where}
@@ -121,12 +126,7 @@ export async function getMarket(
   "use cache";
   cacheLife({ stale: 30, revalidate: 30, expire: 120 });
   const [r] = await sql`
-    select venue, id, family, event, title, label, payoff, low, high, inclusive,
-           extract(epoch from close_time) * 1000 as close, bid, ask,
-           bid_size as "bidSize", ask_size as "askSize", last, volume_24h as volume,
-           volume_unit as "volumeUnit", open_interest as "openInterest", fair,
-           fair_method as "fairMethod",
-           fee_taker as "feeTaker", fee_maker as "feeMaker",
+    select ${rowCols()},
            extract(epoch from updated) * 1000 as at,
            exists (select 1 from manta.contracts c where c.ticker = m.id) as tracked
     from manta.markets m

@@ -87,3 +87,51 @@ export async function getPairs(): Promise<{ pairs: Pair[]; at: number | null }> 
     at: rows.length ? Number(rows[0].at) : null,
   };
 }
+
+// Shared by the cross-venue page and the dashboard.
+const mid = (s: Side) => (s.bid !== null && s.ask !== null ? (s.bid + s.ask) / 2 : null);
+
+/** How far apart the venues are, in cents. A single contract against a single contract: the
+ * difference of their midpoints. Against a bundle, whose midpoint is skewed by its buckets'
+ * combined spread: how far Kalshi's midpoint lies outside the bundle's bid–ask range, 0 inside. */
+export function gap(p: Pair): { cents: number; inside: boolean } | null {
+  const km = mid(p.kalshi);
+  if (km === null) return null;
+  if (p.kind !== "bundle") {
+    const qm = mid(p.poly);
+    return qm === null ? null : { cents: (km - qm) * 100, inside: false };
+  }
+  const { bid, ask } = p.poly;
+  if (bid === null || ask === null) return null;
+  if (km >= bid && km <= ask) return { cents: 0, inside: true };
+  return { cents: (km < bid ? km - bid : km - ask) * 100, inside: false };
+}
+
+/** If one venue's ask is below the other's bid, buying there and selling on the other locks in
+ * the gap: how many cents before fees, and after both legs' taker fees (null if a fee rate is
+ * unknown), per contract. */
+export function crossed(p: Pair): { cents: number; net: number | null; buy: string; sell: string } | null {
+  const k = p.kalshi;
+  const q = p.poly;
+  const net = (gap: number, buyFee: number | null, sellFee: number | null) =>
+    buyFee === null || sellFee === null ? null : (gap - buyFee - sellFee) * 100;
+  if (k.ask !== null && q.bid !== null && q.bid - k.ask > 1e-9) {
+    const gap = q.bid - k.ask;
+    return {
+      cents: gap * 100,
+      net: net(gap, k.feeAtAsk, q.feeAtBid),
+      buy: "Kalshi",
+      sell: "Polymarket",
+    };
+  }
+  if (q.ask !== null && k.bid !== null && k.bid - q.ask > 1e-9) {
+    const gap = k.bid - q.ask;
+    return {
+      cents: gap * 100,
+      net: net(gap, q.feeAtAsk, k.feeAtBid),
+      buy: "Polymarket",
+      sell: "Kalshi",
+    };
+  }
+  return null;
+}

@@ -90,3 +90,5 @@ docs/                  product.md, milestone plans, decisions.md
 
 ## Learned rules
 
+- Site (Next 16, Cache Components): a client component that calls `usePathname()` or `useSearchParams()` must sit inside `<Suspense>`, or every page errors with "URL data outside of <Suspense>" (components/NavLinks.tsx).
+- Site: the CSS minifier shortens hex colours (`#00ff77` → `#0f7`), so code reading CSS tokens with getComputedStyle must accept 3-digit hex (components/CandleChart.tsx `alpha`).

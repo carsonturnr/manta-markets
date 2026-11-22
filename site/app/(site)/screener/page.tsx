@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { pct, ProbBar } from "@/components/EventCard";
+import LiveForm from "@/components/LiveForm";
+import { mid, outcomeLabel, usableFair } from "@/lib/outcomes";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { type Category, FAMILIES } from "@/lib/families";
@@ -12,18 +15,9 @@ type Params = Record<string, string | string[] | undefined>;
 
 export default function ScreenerPage({ searchParams }: { searchParams: Promise<Params> }) {
   return (
-    <div className="wide">
-      <h1>Screener</h1>
-      <p className="muted">
-        Every open contract Manta covers on Kalshi and Polymarket: crypto, economics and financials.
-        Prices are in cents, the same as a probability in percent; the bid and ask are for
-        &ldquo;yes&rdquo;. Refreshed every minute from each venue&apos;s market list, which can
-        trail the live order book by up to a minute.
-      </p>
-      <Suspense fallback={<p className="muted">Loading…</p>}>
-        <Screener searchParams={searchParams} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<p className="muted">Loading…</p>}>
+      <Screener searchParams={searchParams} />
+    </Suspense>
   );
 }
 
@@ -78,54 +72,68 @@ async function Screener({ searchParams }: { searchParams: Promise<Params> }) {
   const { rows, total, at, ageS } = await screen(f);
   const pages = Math.ceil(total / PAGE);
   return (
-    <>
-      <Form f={f} />
-      <p className="small">
-        {total.toLocaleString("en-US")} contracts match
-        {at !== null && (
-          <>
-            {" "}
-            · listing read {utc(at)}
-            {ageS !== null && ageS > 180 && (
-              <span className="status-bad"> ({Math.round(ageS / 60)} min old)</span>
+    <div className="screener-layout">
+      <aside className="panel">
+        <header className="ph">
+          <h2>Filters</h2>
+          <Link href="/screener" className="right small">
+            Reset
+          </Link>
+        </header>
+        <Form f={f} />
+      </aside>
+      <section className="panel">
+        <header className="ph">
+          <h1 className="h2">Markets</h1>
+          <span className="m3 num">
+            {total.toLocaleString("en-US")} contracts match
+            {at !== null && (
+              <>
+                {" "}
+                · listing read {utc(at)}
+                {ageS !== null && ageS > 180 && (
+                  <span className="status-bad"> ({Math.round(ageS / 60)} min old)</span>
+                )}
+              </>
             )}
-          </>
-        )}
-      </p>
-      {rows.length === 0 ? (
-        <p className="muted">No contracts match these filters.</p>
-      ) : (
-        <Table rows={rows} f={f} at={at ?? 0} />
-      )}
-      {pages > 1 && (
-        <p className="pager">
-          {f.page > 0 && <Link href={href(f, { page: f.page - 1 })}>← previous</Link>}
-          <span className="small">
-            page {f.page + 1} of {pages}
           </span>
-          {f.page + 1 < pages && <Link href={href(f, { page: f.page + 1 })}>next →</Link>}
+          <span className="right m3">Prices for &ldquo;yes&rdquo;: 37¢ is a 37% chance</span>
+        </header>
+        {rows.length === 0 ? (
+          <p className="muted pad">No contracts match these filters.</p>
+        ) : (
+          <Table rows={rows} f={f} at={at ?? 0} />
+        )}
+        {pages > 1 && (
+          <p className="pager">
+            {f.page > 0 && <Link href={href(f, { page: f.page - 1 })}>← previous</Link>}
+            <span className="small">
+              page {f.page + 1} of {pages}
+            </span>
+            {f.page + 1 < pages && <Link href={href(f, { page: f.page + 1 })}>next →</Link>}
+          </p>
+        )}
+        <p className="note">
+          Refreshed every minute from each venue&apos;s market list, which can trail the live order
+          book by up to a minute. Volume is in each venue&apos;s own unit: contracts on Kalshi,
+          dollars traded on Polymarket. Contracts quoted on one side only (mostly strikes far from
+          the price) are hidden unless &ldquo;Include one-sided&rdquo; is ticked. Chance is the
+          midpoint between bid and ask. Manta&apos;s estimate is our fair value: from Deribit&apos;s
+          options for Bitcoin and Ether, from both venues&apos; quotes elsewhere; none where only
+          one venue quotes, since it would only repeat that venue&apos;s price. Gap is our estimate
+          minus the chance, in points: positive (green) when &ldquo;yes&rdquo; looks cheap. Size,
+          last trade and open interest are on each contract&apos;s page. Not investment advice.
         </p>
-      )}
-      <p className="small">
-        Volume is in each venue&apos;s own unit: contracts on Kalshi, dollars traded on Polymarket.
-        Contracts quoted on one side only (no bid or no ask, mostly strikes far from the price) are
-        hidden unless &ldquo;Include one-sided&rdquo; is ticked. Open interest (contracts held,
-        Kalshi only) is how many contracts are outstanding. Size is how many contracts are offered
-        at the best bid × the best ask. Fair is our estimate of the probability, labelled by method:
-        &ldquo;options&rdquo; from Deribit&apos;s options (Bitcoin and Ether); &ldquo;2
-        venues&rdquo; fitted to both venues&apos; quotes; &ldquo;1 venue&rdquo; fitted to one
-        venue&apos;s own quotes, which mostly repeats its price. Edge is fair minus the midpoint:
-        positive when &ldquo;yes&rdquo; looks cheap; none for &ldquo;1 venue&rdquo;, which is fitted
-        to the very quotes it would be compared with. Not investment advice.
-      </p>
-    </>
+      </section>
+    </div>
   );
 }
 
-// A plain GET form: works without JavaScript, and the result is a URL that can be shared.
+// A GET form that applies as it changes (components/LiveForm); the result is a URL that can be
+// shared, and the Apply button still works without JavaScript.
 function Form({ f }: { f: Filters }) {
   return (
-    <form className="filters" action="/screener">
+    <LiveForm className="filters" action="/screener">
       <label>
         Venue
         <select name="venue" defaultValue={f.venue}>
@@ -180,7 +188,7 @@ function Form({ f }: { f: Filters }) {
       </label>
       <label>
         Search
-        <input name="q" defaultValue={f.q} placeholder="e.g. 7,325 or KXFED" />
+        <input type="text" name="q" defaultValue={f.q} placeholder="e.g. 7,325 or KXFED" />
       </label>
       <label className="check">
         <input type="checkbox" name="traded" value="1" defaultChecked={f.traded} />
@@ -192,11 +200,13 @@ function Form({ f }: { f: Filters }) {
       </label>
       {f.sort !== "close" && <input type="hidden" name="sort" value={f.sort} />}
       {f.desc && <input type="hidden" name="dir" value="desc" />}
-      <button type="submit">Apply</button>
-      <Link href="/screener" className="small">
+      <noscript>
+        <button type="submit">Apply</button>
+      </noscript>
+      <Link href="/screener" className="small reset">
         Reset
       </Link>
-    </form>
+    </LiveForm>
   );
 }
 
@@ -204,12 +214,6 @@ function Form({ f }: { f: Filters }) {
 function cents(p: number | null): string {
   if (p === null) return "–";
   return String(Math.round(p * 1000) / 10);
-}
-
-function size(n: number | null): string {
-  if (n === null) return "–";
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : String(Math.round(n));
 }
 
 function volume(r: Row): string {
@@ -225,12 +229,18 @@ function volume(r: Row): string {
 
 /** Fair value minus the midpoint, in cents: positive when "yes" looks cheap. None for one-venue
  * consensus, which is fitted to the very quotes it would be compared with. */
-function edge(r: Row): string {
+function edge(r: Row): number | null {
   if (r.fair === null || r.bid === null || r.ask === null || r.fairMethod === "consensus-1") {
-    return "–";
+    return null;
   }
-  const e = Math.round((r.fair - (r.bid + r.ask) / 2) * 1000) / 10;
-  return `${e > 0 ? "+" : ""}${e}`;
+  return Math.round((r.fair - (r.bid + r.ask) / 2) * 1000) / 10;
+}
+
+/** The edge as a chip: green when fair is above the midpoint, red when below. */
+function Edge({ e }: { e: number | null }) {
+  if (e === null) return <span className="m3">–</span>;
+  const cls = e > 0 ? "edge up" : e < 0 ? "edge down" : "edge";
+  return <span className={cls}>{e > 0 ? `+${e}` : e < 0 ? `−${-e}` : "0"}</span>;
 }
 
 /** Time to close from the listing's time: "38 min", "5 h 12 min", "3 d". */
@@ -257,35 +267,30 @@ function Th({ f, s, children }: { f: Filters; s: Sort; children: React.ReactNode
 
 function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
   return (
-    <div className="table-wrap">
-      <table className="screener">
+    <div className="table-wrap scroll screener-table">
+      <table className="screener num">
         <thead>
           <tr>
-            <th>Contract</th>
-            <th style={{ textAlign: "left" }}>Venue</th>
-            <Th f={f} s="close">
-              Closes in
-            </Th>
+            <th>Market</th>
+            <th>Chance</th>
             <Th f={f} s="bid">
               Bid
             </Th>
             <Th f={f} s="ask">
               Ask
             </Th>
+            <th title="Our fair value, and its method">Manta&apos;s estimate</th>
+            <Th f={f} s="edge">
+              Gap
+            </Th>
             <Th f={f} s="spread">
               Spread
             </Th>
-            <th>Size</th>
-            <th>Last</th>
             <Th f={f} s="volume">
-              Vol 24 h
+              Volume 24 h
             </Th>
-            <Th f={f} s="oi">
-              Open int.
-            </Th>
-            <th title="Our fair value, and its method">Fair</th>
-            <Th f={f} s="edge">
-              Edge
+            <Th f={f} s="close">
+              Closes
             </Th>
           </tr>
         </thead>
@@ -293,35 +298,37 @@ function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
           {rows.map((r) => (
             <tr key={`${r.venue}/${r.id}`}>
               <td className="contract" title={r.title}>
-                <Link href={`/contract/${r.venue}/${encodeURIComponent(r.id)}`}>
-                  {r.label || r.title}
+                <Link href={`/m/${r.venue}/${encodeURIComponent(r.event)}?o=${encodeURIComponent(r.id)}`}>
+                  {outcomeLabel(r)}
                 </Link>
-                <span className="small">
-                  {FAMILY_NAME.get(r.family) ?? r.family} · {r.venue === "kalshi" ? r.id : r.event}
+                <span className="sub">
+                  <span className={`venue ${r.venue}`}>{r.venue === "kalshi" ? "Kalshi" : "Polymarket"}</span>{" "}
+                  · {FAMILY_NAME.get(r.family) ?? r.family}
                 </span>
               </td>
-              <td style={{ textAlign: "left" }}>
-                {r.venue === "kalshi" ? "Kalshi" : "Polymarket"}
+              <td>
+                <span className="chance">
+                  <ProbBar o={r} />
+                  <b>{pct(mid(r))}</b>
+                </span>
               </td>
-              <td className="num" title={utc(r.close)}>
+              <td className="m2">{cents(r.bid)}</td>
+              <td className="m2">{cents(r.ask)}</td>
+              <td title={r.fairMethod ? METHODS[r.fairMethod].name : undefined}>
+                {usableFair(r) === null ? (
+                  <span className="m3">–</span>
+                ) : (
+                  pct(usableFair(r))
+                )}
+              </td>
+              <td>
+                <Edge e={edge(r)} />
+              </td>
+              <td>{r.bid !== null && r.ask !== null ? cents(r.ask - r.bid) : "–"}</td>
+              <td>{volume(r)}</td>
+              <td className="m2" title={utc(r.close)}>
                 {until(r.close, at)}
               </td>
-              <td className="num">{cents(r.bid)}</td>
-              <td className="num">{cents(r.ask)}</td>
-              <td className="num">
-                {r.bid !== null && r.ask !== null ? cents(r.ask - r.bid) : "–"}
-              </td>
-              <td className="num">
-                {size(r.bidSize)} × {size(r.askSize)}
-              </td>
-              <td className="num">{cents(r.last)}</td>
-              <td className="num">{volume(r)}</td>
-              <td className="num">{r.openInterest === null ? "–" : size(r.openInterest)}</td>
-              <td className="num" title={r.fairMethod ? METHODS[r.fairMethod].name : undefined}>
-                {cents(r.fair)}
-                {r.fairMethod && <span className="small"> {METHODS[r.fairMethod].short}</span>}
-              </td>
-              <td className="num">{edge(r)}</td>
             </tr>
           ))}
         </tbody>
