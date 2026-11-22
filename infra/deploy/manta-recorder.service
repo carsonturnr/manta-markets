@@ -7,7 +7,9 @@ Wants=network-online.target
 [Service]
 User=manta
 EnvironmentFile=/etc/manta/env
-ExecStart=/opt/manta/bin/recorder -out /var/lib/manta/raw
+# -relay-addr: live Kalshi books for the site's server (internal/relay), TLS with the certificate in
+# /etc/manta/relay.crt, port 8791 opened in ufw by deploy.sh.
+ExecStart=/opt/manta/bin/recorder -out /var/lib/manta/raw -relay-addr :8791
 # A crash or write failure exits non-zero: restart, and the gap shows up in `status`.
 # The disk guard exits 0 on purpose: stay down until someone frees space.
 Restart=on-failure
