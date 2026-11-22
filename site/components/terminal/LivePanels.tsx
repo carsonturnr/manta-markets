@@ -4,6 +4,7 @@
 import BuyBox from "@/components/BuyBox";
 import { bookMid, cumulative, depthNear, imbalance } from "@/lib/book";
 import type { Level } from "@/lib/cost";
+import { useEffect, useRef } from "react";
 import { useLive } from "./Live";
 
 const c = (p: number) => `${Math.round(p * 1000) / 10}¢`;
@@ -22,6 +23,18 @@ function Fresh() {
 /** The order book: asks above, bids below, a bar for each level's size, the spread between. */
 export function BookPanel({ fair }: { fair: number | null }) {
   const { book } = useLive();
+  const mid = useRef<HTMLTableRowElement>(null);
+  const loaded = book !== null;
+  // Asks sit above the spread, so a short panel would show only the far asks: centre the spread
+  // once when the book arrives, then leave the scroll to the reader.
+  useEffect(() => {
+    const r = mid.current;
+    const body = r?.closest(".t-body");
+    if (!r || !body) return;
+    const a = r.getBoundingClientRect();
+    const b = body.getBoundingClientRect();
+    body.scrollTop += a.top - b.top - (b.height - a.height) / 2;
+  }, [loaded]);
   if (!book) return <p className="t-empty">Loading the book…</p>;
   const asks = book.asks.slice(0, 12);
   const bids = book.bids.slice(0, 12);
@@ -54,7 +67,7 @@ export function BookPanel({ fair }: { fair: number | null }) {
         </thead>
         <tbody>
           {asks.map((l, i) => row(l, askTot[i].total, "ask")).reverse()}
-          <tr className="t-spread">
+          <tr className="t-spread" ref={mid}>
             <td colSpan={3}>
               {spread !== null ? `spread ${c(spread)}` : "one-sided"}
               {m !== null && ` · mid ${c(m)}`}
