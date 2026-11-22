@@ -92,3 +92,4 @@ docs/                  product.md, milestone plans, decisions.md
 
 - Site (Next 16, Cache Components): a client component that calls `usePathname()` or `useSearchParams()` must sit inside `<Suspense>`, or every page errors with "URL data outside of <Suspense>" (components/NavLinks.tsx).
 - Site: the CSS minifier shortens hex colours (`#00ff77` → `#0f7`), so code reading CSS tokens with getComputedStyle must accept 3-digit hex (components/CandleChart.tsx `alpha`).
+- Site (Next 16 PPR + Clerk 7.9): loading `@clerk/nextjs`'s client code renames Clerk's provider (`displayName`); if the build's prerender and a request see different names, React discards the server HTML on every page (error #419, `$RX` in the HTML). components/ClerkFirst.tsx loads it first in app/layout.tsx; keep it. Check with `next build && next start`: the dev server never shows this.

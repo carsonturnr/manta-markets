@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
+import ClerkFirst from "@/components/ClerkFirst";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable}`}>
       <body>
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkFirst>
+          <ClerkProvider>{children}</ClerkProvider>
+        </ClerkFirst>
       </body>
     </html>
   );
