@@ -40,7 +40,9 @@ const best = (levels: Level[], bids: boolean) =>
 
 export async function kalshiBook(ticker: string): Promise<Book | null> {
   "use cache";
-  cacheLife({ stale: 5, revalidate: 5, expire: 30 });
+  // 2 s: the terminal polls every 2 s, and the cache is shared by every viewer, so the venue
+  // sees at most one request per market every 2 s (Kalshi allows 20 reads a second).
+  cacheLife({ stale: 2, revalidate: 2, expire: 30 });
   type R = { orderbook_fp: { yes_dollars?: [string, string][]; no_dollars?: [string, string][] } };
   const r = await get<R>(
     `${KALSHI}/markets/${encodeURIComponent(ticker)}/orderbook?depth=${DEPTH}`,
@@ -63,7 +65,7 @@ export async function kalshiBook(ticker: string): Promise<Book | null> {
 
 export async function kalshiTrades(ticker: string): Promise<Trade[] | null> {
   "use cache";
-  cacheLife({ stale: 15, revalidate: 15, expire: 60 });
+  cacheLife({ stale: 3, revalidate: 3, expire: 60 });
   type R = {
     trades: {
       created_time: string;
@@ -72,7 +74,7 @@ export async function kalshiTrades(ticker: string): Promise<Trade[] | null> {
       taker_side: string;
     }[];
   };
-  const r = await get<R>(`${KALSHI}/markets/trades?ticker=${encodeURIComponent(ticker)}&limit=30`);
+  const r = await get<R>(`${KALSHI}/markets/trades?ticker=${encodeURIComponent(ticker)}&limit=60`);
   if (!r) return null;
   // The taker buying "no" is selling "yes".
   return r.trades.map((x) => ({
@@ -180,7 +182,9 @@ export async function polyRules(slug: string): Promise<Rules | null> {
 
 export async function polyBook(yesToken: string): Promise<Book | null> {
   "use cache";
-  cacheLife({ stale: 5, revalidate: 5, expire: 30 });
+  // 2 s: the terminal polls every 2 s, and the cache is shared by every viewer, so the venue
+  // sees at most one request per market every 2 s (Kalshi allows 20 reads a second).
+  cacheLife({ stale: 2, revalidate: 2, expire: 30 });
   type L = { price: string; size: string };
   const r = await get<{ bids: L[]; asks: L[] }>(`${CLOB}/book?token_id=${yesToken}`);
   if (!r) return null;
@@ -190,7 +194,7 @@ export async function polyBook(yesToken: string): Promise<Book | null> {
 
 export async function polyTrades(conditionId: string, yesToken: string): Promise<Trade[] | null> {
   "use cache";
-  cacheLife({ stale: 15, revalidate: 15, expire: 60 });
+  cacheLife({ stale: 3, revalidate: 3, expire: 60 });
   type T = {
     token_id: string;
     side: "BUY" | "SELL";
@@ -198,7 +202,7 @@ export async function polyTrades(conditionId: string, yesToken: string): Promise
     price: number;
     timestamp: number;
   };
-  const r = await get<{ data: T[] }>(`${DATA}/trades?conditionId=${conditionId}&limit=30`);
+  const r = await get<{ data: T[] }>(`${DATA}/trades?conditionId=${conditionId}&limit=60`);
   if (!r) return null;
   // Only time, side, price and size are kept: the feed also names each trader's wallet, which
   // this page has no reason to show.

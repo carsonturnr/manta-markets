@@ -44,10 +44,11 @@ Every series and every Polymarket event pattern is on an explicit allow-list, ch
 **Accounts**
 10. **Waitlist**, then accounts.
 11. **Watchlists and alerts.** Save contracts; get notified when a condition is met (e.g. Kalshi and Polymarket differ by 5¢, the spread widens, depth disappears).
-12. **API.** Our analytics (fair values, distributions, cost-to-trade, cross-venue differences) with keys and rate limits. No redistribution of raw venue data.
+12. **Trader workspace** (/terminal). One full-screen screen of panels a trader keeps open: a market monitor, chart, live order book and depth, trade tape with large trades flagged, event board, liquidity (spread, depth near the mid, book imbalance) and a cost ticket; plus what only Manta has: fair value with its own track record beside it, a cross-venue arbitrage scanner that walks both books after fees, the implied distribution, alerts from any panel, and a catalyst calendar of the releases contracts settle on. Preset layouts and a ⌘K command bar. Books and trades are polled every 2 seconds at first; a WebSocket relay from the recorder makes them live.
+13. **API.** Our analytics (fair values, distributions, cost-to-trade, cross-venue differences) with keys and rate limits. No redistribution of raw venue data.
 
 **On top**
-13. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader, then paper traded on Kalshi's demo environment. Paper trading only until Carson decides otherwise.
+14. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader, then paper traded on Kalshi's demo environment. Paper trading only until Carson decides otherwise.
 
 ## Build order
 
@@ -65,8 +66,9 @@ Each step ends in something that runs and can be shown.
 9. Accuracy research page.
 10. Waitlist and product shell (after the data-terms checks).
 11. Accounts, watchlists and alerts.
-12. API.
-13. Market maker.
+12. Trader workspace.
+13. API.
+14. Market maker.
 
 ## Must be checked before the waitlist goes public
 

@@ -1,4 +1,4 @@
-// The public site's frame: header, page, footer.
+// The public site's frame: header, page, footer. The terminal (/terminal) has its own.
 import Link from "next/link";
 import { Suspense } from "react";
 import AccountNav from "@/components/AccountNav";
@@ -23,8 +23,8 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             <kbd>/</kbd>
           </form>
           <AccountNav />
-          <Link href="/screener" className="btn btn-sm">
-            Browse markets
+          <Link href="/terminal" className="btn btn-sm">
+            Open terminal
           </Link>
         </div>
       </header>
