@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/carsonturnr/manta-markets/recorder/internal/rawlog"
+	"github.com/carsonturnr/manta-markets/recorder/internal/relay"
 	"github.com/carsonturnr/manta-markets/recorder/internal/tap"
 )
 
@@ -38,6 +40,8 @@ func main() {
 	polymarketDays := flag.Int("polymarket-days", 3, "record Polymarket's daily Bitcoin contracts for this many New York dates")
 	polymarketPoll := flag.Duration("polymarket-poll", 10*time.Second, "Polymarket order book poll interval")
 	minFreeGB := flag.Uint64("min-free-gb", 5, "stop cleanly (exit 0) when the output disk has less free space")
+	relayAddr := flag.String("relay-addr", "", "serve live Kalshi books and trades here (internal/relay; needs RELAY_TOKEN); off when empty")
+	relayEvery := flag.Duration("relay-every", 250*time.Millisecond, "push each changed market at most this often")
 	flag.Parse()
 
 	cfg := tap.Config{
@@ -76,6 +80,9 @@ func main() {
 			log.Printf("close: %v", err)
 		}
 	}()
+	if *relayAddr != "" {
+		startRelay(ctx, w, *relayAddr, *relayEvery)
+	}
 	for _, v := range venues {
 		if err := w.Status(v, "start", "recorder "+strings.Join(os.Args[1:], " ")); err != nil {
 			log.Fatal(err)
@@ -127,6 +134,24 @@ func main() {
 			}
 		}
 	}
+}
+
+// startRelay feeds every record the recorder writes to the relay and serves it. A relay failure
+// is logged and never stops the recording.
+func startRelay(ctx context.Context, w *rawlog.Writer, addr string, every time.Duration) {
+	token := os.Getenv("RELAY_TOKEN")
+	if len(token) < 32 {
+		log.Fatal("RELAY_TOKEN must be set (32+ characters) to use -relay-addr")
+	}
+	hub := relay.New(every)
+	w.OnWrite = hub.Write
+	go hub.Run(ctx.Done())
+	// No WriteTimeout: streams stay open; each push has its own 10 s deadline (relay.Handler).
+	srv := &http.Server{Addr: addr, Handler: hub.Handler(token), ReadHeaderTimeout: 10 * time.Second,
+		MaxHeaderBytes: 8 << 10}
+	go func() { log.Printf("relay: %v", srv.ListenAndServe()) }()
+	go func() { <-ctx.Done(); srv.Close() }()
+	log.Printf("relay: serving on %s", addr)
 }
 
 func freeBytes(path string) (uint64, error) {

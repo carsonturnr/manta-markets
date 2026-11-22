@@ -87,8 +87,8 @@ func (b *Builder) Handle(m md.Msg) {
 			bk.Reset()
 			b.trusted[m.MarketID] = true
 		}
-		apply(bk, book.Bid, m.Bids)
-		apply(bk, book.Ask, m.Asks)
+		Apply(bk, book.Bid, m.Bids)
+		Apply(bk, book.Ask, m.Asks)
 	case *md.Trade:
 		b.advance(m.RecvTs)
 		if !b.wanted(m.MarketID) || m.RecvTs < b.From || m.RecvTs >= b.To {
@@ -128,7 +128,7 @@ func (b *Builder) advance(ts int64) {
 				}
 			}
 			b.market(id).Minutes = append(b.market(id).Minutes, Minute{T: b.next / 1e6,
-				Bids: top(bk, book.Bid, b.Levels), Asks: top(bk, book.Ask, b.Levels)})
+				Bids: Top(bk, book.Bid, b.Levels), Asks: Top(bk, book.Ask, b.Levels)})
 		}
 		b.next += minuteNs
 	}
@@ -143,7 +143,8 @@ func (b *Builder) market(id string) *Market {
 	return m
 }
 
-func apply(bk *book.Book, s book.Side, lv [][2]string) {
+// Apply sets decimal-string levels on a book side, skipping any that fail to parse.
+func Apply(bk *book.Book, s book.Side, lv [][2]string) {
 	for _, l := range lv {
 		px, err1 := fixed.Parse(l[0])
 		sz, err2 := fixed.Parse(l[1])
@@ -153,7 +154,8 @@ func apply(bk *book.Book, s book.Side, lv [][2]string) {
 	}
 }
 
-func top(bk *book.Book, s book.Side, n int) [][2]float64 {
+// Top returns a side's best n levels as [price, size] in dollars and contracts.
+func Top(bk *book.Book, s book.Side, n int) [][2]float64 {
 	lv := bk.Levels(s)
 	if len(lv) > n {
 		lv = lv[:n]
