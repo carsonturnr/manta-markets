@@ -1,7 +1,7 @@
 # Plan: the API (build order step 13)
 
-**Status:** proposed 2026-11-23. Limits and `/cost`'s best price decided with Carson 2026-11-23;
-the database migration below still waits for his go-ahead.
+**Status:** approved and built 2026-11-23 (limits and `/cost`'s best price decided with Carson;
+migration applied the same day).
 
 **What it is:** read-only JSON endpoints for the analytics Manta already computes, behind
 per-user keys with a rate limit. Every number is one the site already shows. Venue data terms
