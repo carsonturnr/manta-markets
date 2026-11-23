@@ -49,7 +49,7 @@ const TITLES: Record<PanelKey, [string, string]> = {
   depth: ["DPTH", "Depth and liquidity"],
   tape: ["TAPE", "Trades"],
   ticket: ["TKT", "Ticket"],
-  fair: ["FV", "Manta's fair value"],
+  fair: ["FV", "Fair value"],
   board: ["EVT", "Every outcome"],
   arb: ["ARB", "Cross-venue arbitrage"],
   dist: ["DIST", "Implied distribution"],
@@ -162,9 +162,10 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         </nav>
         <Palette commands={commands} />
         <nav className="t-links" aria-label="Tools">
+          <Link href="/screener">Markets</Link>
           <Link href="/compare">Compare</Link>
-          <Link href="/distributions">Forecasts</Link>
-          <Link href="/stats">Track record</Link>
+          <Link href="/liquidity">Liquidity</Link>
+          <Link href="/distributions">Distributions</Link>
           <Link href="/replay">Replay</Link>
         </nav>
         <AccountNav />
@@ -181,7 +182,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
           <span className="t-dim">Bid / ask</span> {cents(o.bid)} / {cents(o.ask)}
         </span>
         <span>
-          <span className="t-dim">Manta</span> <b className="t-mint">{pct(fair)}</b>
+          <span className="t-dim">Fair</span> <b className="t-mint">{pct(fair)}</b>
         </span>
         <span>
           <span className="t-dim">Closes</span> {whenET(e.close, now)}
@@ -203,7 +204,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
           {panel("book", <BookPanel fair={fair} />)}
           {panel("depth", <DepthPanel />)}
           {panel("tape", <TapePanel />)}
-          {panel("ticket", <TicketPanel venue={o.venue} rate={o.feeTaker} fair={fair} />)}
+          {panel("ticket", <TicketPanel venue={o.venue} rate={o.feeTaker} />)}
           {panel(
             "fair",
             <Suspense fallback={wait}>
@@ -258,7 +259,7 @@ async function AlertsPanel({ venue, id }: { venue: string; id: string }) {
   return <Watch venue={venue} id={id} />;
 }
 
-/** Manta's fair value against the market, and how accurate Manta has been: Brier scores on the
+/** Our fair value beside the midpoint, and how accurate it has been: Brier scores on the
  * same venue and family at the nearest time before the close, scored over whole closes. */
 async function FairPanel({ o, close, now }: { o: Row; close: number; now: number }) {
   const m = mid(o);
@@ -284,19 +285,19 @@ async function FairPanel({ o, close, now }: { o: Row; close: number; now: number
     s.diff === null
       ? "Too few settled closes to say how accurate this has been."
       : s.diff[1] < 0
-        ? "Manta has been measurably more accurate than the market here."
+        ? "The fair value has been measurably more accurate than the market's price here."
         : s.diff[0] > 0
-          ? "Manta has been measurably less accurate than the market here: treat its view with caution."
-          : "No measurable difference between Manta and the market here: a second opinion, not an edge.";
+          ? "The fair value has been measurably less accurate than the market's price here."
+          : "No measurable difference in accuracy between the fair value and the market's price here.";
   return (
     <div className="t-fair">
       <div className="t-fair-figs num">
         <div>
-          <span>Market</span>
+          <span>Mid</span>
           <b>{pct(m)}</b>
         </div>
         <div>
-          <span>Manta</span>
+          <span>Fair</span>
           <b className="t-mint">{pct(f)}</b>
         </div>
         <div>
@@ -310,10 +311,10 @@ async function FairPanel({ o, close, now }: { o: Row; close: number; now: number
       <p className="t-note">{METHODS[o.fairMethod].name}.</p>
       <div className="t-record num">
         <span className="t-dim">
-          Track record, {label} before the close, this family on {o.venue === "kalshi" ? "Kalshi" : "Polymarket"}
+          Accuracy, {label} before the close, this family on {o.venue === "kalshi" ? "Kalshi" : "Polymarket"}
         </span>
         <div>
-          Brier: market <b>{s.venueF?.toFixed(4) ?? "–"}</b> · Manta <b className="t-mint">{s.fair?.toFixed(4) ?? "–"}</b>{" "}
+          Brier: market <b>{s.venueF?.toFixed(4) ?? "–"}</b> · fair <b className="t-mint">{s.fair?.toFixed(4) ?? "–"}</b>{" "}
           <span className="t-dim">({s.fairEvents} closes; lower is better)</span>
         </div>
         <p>{verdict}</p>
@@ -322,7 +323,7 @@ async function FairPanel({ o, close, now }: { o: Row; close: number; now: number
   );
 }
 
-/** Every outcome of the event in focus, with its price, spread and Manta's gap. */
+/** Every outcome of the event in focus, with its price, spread and fair-value gap. */
 function BoardPanel({ e, focus, layout }: { e: Event; focus: string; layout: string }) {
   return (
     <table className="t-table num">
@@ -332,7 +333,7 @@ function BoardPanel({ e, focus, layout }: { e: Event; focus: string; layout: str
           <th>Bid</th>
           <th>Ask</th>
           <th>Mid</th>
-          <th>Manta</th>
+          <th>Fair</th>
           <th>Gap</th>
           <th>Vol</th>
         </tr>

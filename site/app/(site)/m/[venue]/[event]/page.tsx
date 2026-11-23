@@ -1,7 +1,7 @@
 // An event: one question and every contract that answers it (each strike of "Bitcoin at 5 pm ET",
 // each Fed outcome). One outcome is in focus (?o=<contract id>, by default the most informative):
-// its chance, its chart against our fair value, a verdict in a sentence, and what a dollar amount
-// buys. The contract page (/contract/...) keeps the full detail of a single contract.
+// its chance and chart, its order book, trades and rules, what a dollar amount buys, and our fair
+// value with its method. The contract page (/contract/...) keeps the full detail of a single contract.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -84,7 +84,6 @@ async function EventView({
               <Chart c={o} yesToken={tokens?.[0]} tracked={got?.tracked ?? false} />
             </Suspense>
           </section>
-          <VerdictCard o={o} />
           <Tabs
             tabs={[
               {
@@ -112,7 +111,7 @@ async function EventView({
                 ),
               },
               {
-                name: "How we price it",
+                name: "Fair value method",
                 pane: (
                   <div className="prose-sm">
                     {o.fairMethod ? (
@@ -135,6 +134,7 @@ async function EventView({
               },
             ]}
           />
+          <FairValueCard o={o} />
         </div>
 
         <aside className="event-side">
@@ -179,8 +179,8 @@ async function EventView({
   );
 }
 
-/** The market against our fair value, as three numbers and one sentence. */
-function VerdictCard({ o }: { o: Row }) {
+/** The midpoint beside our fair value, labelled with its method: one tool on the page, not a call. */
+function FairValueCard({ o }: { o: Row }) {
   const m = mid(o);
   const f = usableFair(o);
   if (m === null) return null;
@@ -188,27 +188,27 @@ function VerdictCard({ o }: { o: Row }) {
     return (
       <section className="verdict-card">
         <div>
-          <span>Market says</span>
+          <span>Midpoint</span>
           <b className="num">{pct(m)}</b>
         </div>
         <p>
           {o.fairMethod === "consensus-1"
-            ? "Only one venue quotes this, so our estimate would just repeat its price: no second opinion here."
-            : "We have no fair value for this contract yet."}
+            ? "Only one venue quotes this, so a fair value would just repeat its price."
+            : "No fair value for this contract yet."}
         </p>
       </section>
     );
   }
   const d = Math.round((f - m) * 1000) / 10; // points, one decimal; rounded first so 0 isn't "−0.0"
-  const source = o.fairMethod === "options" ? "Options traders on Deribit" : "Both venues' quotes together";
+  const method = o.fairMethod ? METHODS[o.fairMethod].name : "Fair value";
   return (
     <section className="verdict-card">
       <div>
-        <span>Market says</span>
+        <span>Midpoint</span>
         <b className="num">{(m * 100).toFixed(1)}%</b>
       </div>
       <div>
-        <span>Manta&apos;s estimate</span>
+        <span>Fair value</span>
         <b className="num fair">{(f * 100).toFixed(1)}%</b>
       </div>
       <div>
@@ -219,21 +219,9 @@ function VerdictCard({ o }: { o: Row }) {
         </b>
       </div>
       <p>
-        {Math.abs(d) < 3 ? (
-          <>The market and our estimate roughly agree.</>
-        ) : d > 0 ? (
-          <>
-            <strong>&ldquo;Yes&rdquo; looks cheap.</strong> {source} put it {Math.abs(d).toFixed(0)}{" "}
-            points higher than the market does.
-          </>
-        ) : (
-          <>
-            <strong>&ldquo;Yes&rdquo; looks pricey.</strong> {source} put it {Math.abs(d).toFixed(0)}{" "}
-            points lower than the market does.
-          </>
-        )}{" "}
-        A gap, not a guarantee: our estimate can be wrong, and the market may know something it
-        doesn&apos;t. Not investment advice.
+        <strong>{method}.</strong> Its measured accuracy, against the venues&apos; own prices, is
+        on the <Link href="/stats">accuracy page</Link>. A reference price, not a forecast to trade
+        on. Not investment advice.
       </p>
     </section>
   );
@@ -242,5 +230,5 @@ function VerdictCard({ o }: { o: Row }) {
 async function Buy({ o, yesToken }: { o: Row; yesToken?: string }) {
   const book = o.venue === "kalshi" ? await kalshiBook(o.id) : yesToken ? await polyBook(yesToken) : null;
   if (!book) return unavailable("The order book", o.venue);
-  return <BuyBox venue={o.venue} book={book} rate={o.feeTaker} fair={usableFair(o)} />;
+  return <BuyBox venue={o.venue} book={book} rate={o.feeTaker} />;
 }

@@ -1,15 +1,17 @@
 "use client";
 // The header's tools, with the current one marked (aria-current, which the CSS highlights). A
 // client component only to read the current path. Names are for readers, not for us: the URLs
-// stay as they were (/screener is "Markets", /stats is "Track record").
+// stay as they were (/screener is "Markets"). Tools only: the
+// accuracy research (/stats) and data quality live in the footer (positioning, AGENTS.md).
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS: { href: string; name: string; also?: string[] }[] = [
   { href: "/screener", name: "Markets", also: ["/contract", "/m/", "/c/"] },
   { href: "/compare", name: "Compare" },
-  { href: "/distributions", name: "Forecasts", also: ["/liquidity"] },
-  { href: "/stats", name: "Track record" },
+  { href: "/liquidity", name: "Liquidity" },
+  { href: "/distributions", name: "Distributions" },
+  { href: "/replay", name: "Replay" },
 ];
 
 function Nav({ path }: { path: string | null }) {

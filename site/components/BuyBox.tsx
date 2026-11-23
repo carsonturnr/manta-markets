@@ -10,14 +10,13 @@ type Props = {
   venue: "kalshi" | "polymarket";
   book: Book;
   rate: number | null; // taker fee rate; null when the market's fee type isn't one we model
-  fair: number | null; // our fair value for "yes", when it's worth comparing
 };
 
 const money = (x: number) =>
   `$${x.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const QUICK = [25, 100, 500, 1000];
 
-export default function BuyBox({ venue, book, rate, fair }: Props) {
+export default function BuyBox({ venue, book, rate }: Props) {
   const [side, setSide] = useState<"yes" | "no">("yes");
   const [text, setText] = useState("100");
   const budget = Math.max(0, Number.parseFloat(text) || 0);
@@ -29,7 +28,6 @@ export default function BuyBox({ venue, book, rate, fair }: Props) {
     rate === null ? 0 : venue === "kalshi" ? kalshiFee(rate, n, p) : polymarketFee(rate, n, p);
   const cost = buyWithBudget(budget, asks, fee);
   const best = (b: { price: number }[]) => (b[0] ? `${Math.round(b[0].price * 1000) / 10}¢` : "–");
-  const worth = fair === null ? null : side === "yes" ? fair : 1 - fair;
 
   return (
     <div className="buy">
@@ -81,13 +79,6 @@ export default function BuyBox({ venue, book, rate, fair }: Props) {
           <p className="note-sm">
             {cost.filled >= asks.reduce((n, l) => n + l.size, 0) && (
               <>The book runs out at {cost.filled.toLocaleString("en-US")} contracts. </>
-            )}
-            {worth !== null && (
-              <>
-                At Manta&apos;s estimate ({Math.round(worth * 100)}%), this is worth about{" "}
-                {money(cost.filled * worth)}: {cost.filled * worth >= cost.total ? "more" : "less"} than
-                the {money(cost.total)} it costs.{" "}
-              </>
             )}
             Live order book, taker fees included. Manta doesn&apos;t place orders; not investment
             advice.

@@ -9,7 +9,7 @@ export const metadata = { title: "Manta: Bitcoin tracker" };
 export default function Tracker() {
   return (
     <>
-      <h1>Kalshi vs the options market</h1>
+      <h1>Bitcoin: Kalshi beside Deribit&apos;s options</h1>
       <p className="muted">
         Kalshi sells yes/no contracts on Bitcoin&apos;s price at the top of each hour. Deribit&apos;s
         options imply a probability for the same question. This page puts the two side by side,

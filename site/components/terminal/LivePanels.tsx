@@ -175,13 +175,11 @@ export function TapePanel() {
 export function TicketPanel({
   venue,
   rate,
-  fair,
 }: {
   venue: "kalshi" | "polymarket";
   rate: number | null;
-  fair: number | null;
 }) {
   const { book } = useLive();
   if (!book) return <p className="t-empty">Loading the book…</p>;
-  return <BuyBox venue={venue} book={book} rate={rate} fair={fair} />;
+  return <BuyBox venue={venue} book={book} rate={rate} />;
 }

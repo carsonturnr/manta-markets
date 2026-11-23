@@ -72,7 +72,7 @@ async function Contract({ ticker }: { ticker: string }) {
       )}
       <p className="small">
         The band is Kalshi&apos;s bid to ask: buy at the top edge, sell at the bottom. The line is
-        our fair value. When the line leaves the band, the two markets disagree by more than
+        our fair value. When the line leaves the band, the gap between the two is wider than
         Kalshi&apos;s spread.
       </p>
     </>

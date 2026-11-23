@@ -118,10 +118,10 @@ async function Screener({ searchParams }: { searchParams: Promise<Params> }) {
           book by up to a minute. Volume is in each venue&apos;s own unit: contracts on Kalshi,
           dollars traded on Polymarket. Contracts quoted on one side only (mostly strikes far from
           the price) are hidden unless &ldquo;Include one-sided&rdquo; is ticked. Chance is the
-          midpoint between bid and ask. Manta&apos;s estimate is our fair value: from Deribit&apos;s
+          midpoint between bid and ask. Fair value is our reference price: from Deribit&apos;s
           options for Bitcoin and Ether, from both venues&apos; quotes elsewhere; none where only
           one venue quotes, since it would only repeat that venue&apos;s price. Gap is our estimate
-          minus the chance, in points: positive (green) when &ldquo;yes&rdquo; looks cheap. Size,
+          minus the chance, in points: positive (green) when fair value is above the midpoint. Size,
           last trade and open interest are on each contract&apos;s page. Not investment advice.
         </p>
       </section>
@@ -227,7 +227,7 @@ function volume(r: Row): string {
   return r.volumeUnit === "usd" ? `$${n}` : n;
 }
 
-/** Fair value minus the midpoint, in cents: positive when "yes" looks cheap. None for one-venue
+/** Fair value minus the midpoint, in cents: positive when fair is above it. None for one-venue
  * consensus, which is fitted to the very quotes it would be compared with. */
 function edge(r: Row): number | null {
   if (r.fair === null || r.bid === null || r.ask === null || r.fairMethod === "consensus-1") {
@@ -279,7 +279,7 @@ function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
             <Th f={f} s="ask">
               Ask
             </Th>
-            <th title="Our fair value, and its method">Manta&apos;s estimate</th>
+            <th title="Our fair value: from Deribit's options for Bitcoin and Ether, from both venues' quotes elsewhere">Fair value</th>
             <Th f={f} s="edge">
               Gap
             </Th>

@@ -32,22 +32,22 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
       <footer className="site-foot">
         <div className="in">
           <div className="foot-cols">
-            <nav aria-label="Markets">
-              <h2>01 Markets</h2>
-              <Link href="/">Today</Link>
-              <Link href="/screener">All markets</Link>
+            <nav aria-label="Tools">
+              <h2>01 Tools</h2>
+              <Link href="/terminal">Terminal</Link>
+              <Link href="/screener">Screener</Link>
               <Link href="/compare">Compare venues</Link>
-            </nav>
-            <nav aria-label="Forecasts">
-              <h2>02 Forecasts</h2>
-              <Link href="/distributions">Distributions</Link>
               <Link href="/liquidity">Liquidity</Link>
-              <Link href="/tracker">Bitcoin tracker</Link>
             </nav>
-            <nav aria-label="Data">
-              <h2>03 Data</h2>
-              <Link href="/stats">Track record</Link>
+            <nav aria-label="Analytics">
+              <h2>02 Analytics</h2>
+              <Link href="/distributions">Distributions</Link>
               <Link href="/replay">Replay a close</Link>
+              <Link href="/tracker">Bitcoin fair value</Link>
+            </nav>
+            <nav aria-label="Research">
+              <h2>03 Research</h2>
+              <Link href="/stats">Fair-value accuracy</Link>
               <Link href="/quality">Data quality</Link>
             </nav>
             <nav aria-label="Account">

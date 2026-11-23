@@ -10,7 +10,7 @@ const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], weight: ["400", "500"] });
 
 export const metadata: Metadata = {
-  title: "Manta: prediction-market analytics",
+  title: "Manta: a terminal for prediction markets",
   description:
     "A terminal for Kalshi and Polymarket: screener, order books, cross-venue prices, costs to trade, distributions, replay and alerts for crypto, economics and financial contracts.",
 };

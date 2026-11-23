@@ -5,12 +5,12 @@ import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
 import { getLiquidity, type HourCell } from "@/lib/liquidity";
 
-export const metadata = { title: "Manta: liquidity" };
+export const metadata = { title: "Manta: liquidity and cost to trade" };
 
 export default function LiquidityPage() {
   return (
     <>
-      <h1>Liquidity</h1>
+      <h1>Liquidity and cost to trade</h1>
       <p>
         How cheap each contract family is to trade, and when. Sampled every 15 minutes from the
         venues&apos; market lists. Only active contracts count: quoted on both sides, with a
