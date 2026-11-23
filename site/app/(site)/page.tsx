@@ -23,14 +23,14 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
   return (
     <>
       <section className="hero">
-        <h1>Prediction market prices, checked against a second opinion.</h1>
+        <h1>A terminal for prediction markets.</h1>
         <p>
-          Manta reads every crypto, economics and financial contract on Kalshi and Polymarket as a
-          probability, then prices it again from Deribit&apos;s options and the other venue. Where
-          the two disagree, you see it. No sports.
+          Every crypto, economics and financial contract on Kalshi and Polymarket in one place: a
+          screener, live order books and trades, the same question compared across venues, what a
+          trade really costs after fees, implied distributions, replay and alerts. No sports.
         </p>
-        <Link href="/screener" className="btn">
-          Browse markets
+        <Link href="/terminal" className="btn">
+          Open the terminal
         </Link>
       </section>
 
@@ -56,9 +56,10 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
 
       <section className="cta-box">
         <span className="tag">Coming next</span>
-        <h2>Get an alert when a market moves</h2>
+        <h2>An API for Manta&apos;s analytics</h2>
         <p className="muted">
-          Accounts with watchlists, email alerts and an API are next. One email when they open.
+          Fair values, distributions, costs to trade and cross-venue gaps, with keys. One email when
+          it opens.
         </p>
         <WaitlistForm />
       </section>
@@ -149,7 +150,7 @@ async function Disagreements() {
     .slice(0, 6);
   return (
     <section className="band">
-      <span className="tag">The second opinion</span>
+      <span className="tag">Fair value</span>
       <h2>Where Manta disagrees most</h2>
       <p className="band-sub">Contracts traded today with a spread of 5¢ or less, ranked by the gap between the market and Manta&apos;s fair value.</p>
       <p className="band-legend">

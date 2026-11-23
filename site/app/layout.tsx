@@ -12,7 +12,7 @@ const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], weight:
 export const metadata: Metadata = {
   title: "Manta: prediction-market analytics",
   description:
-    "Fair values, order books, cross-venue prices, costs to trade and accuracy for crypto, economics and financial contracts on Kalshi and Polymarket.",
+    "A terminal for Kalshi and Polymarket: screener, order books, cross-venue prices, costs to trade, distributions, replay and alerts for crypto, economics and financial contracts.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
