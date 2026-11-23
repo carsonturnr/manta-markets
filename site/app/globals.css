@@ -211,7 +211,7 @@ main,
 .brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.22em;
   font-family: var(--serif);
   font-size: 26px;
   font-weight: 400;
@@ -2339,7 +2339,7 @@ a.hero-card:hover .hero-chart-card {
 .t-brand {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.22em;
   font-family: var(--serif);
   font-size: 19px;
   letter-spacing: -0.02em;

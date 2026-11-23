@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<!-- LinkedIn Featured card (1200 × 627) and og:image (1200 × 630): the same page, rendered at both
+     viewport heights. Colours are site/app/globals.css tokens; fonts are the next/font families in
+     site/app/layout.tsx, from the same Google Fonts source; the mark is site/components/Mark.tsx.
+     terminal-tape.png is a 2x crop of the live /terminal Trades panel (mantamarkets.com,
+     2026-11-23 15:25 UTC): real UI, nothing invented. Render (from this folder):
+       npx playwright screenshot --viewport-size=1200,627 --wait-for-timeout=1500 file://$PWD/linkedin-header.html linkedin-header.png -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Manta: a terminal for prediction markets</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist&family=Geist+Mono&family=Newsreader:wght@400&display=block"
+    />
+    <style>
+      :root {
+        --bg: #000000;
+        --line: rgba(255, 255, 255, 0.08);
+        --rail: rgba(255, 255, 255, 0.1);
+        --text: #f2f2f2;
+        --text-2: #9a9a9a;
+        --mint: #00ff77;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 100vh; /* 627 for LinkedIn, 630 for og:image */
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Geist", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      /* The site's dashed rails, placed on the 60 px safe-area margins. */
+      .frame {
+        position: absolute;
+        inset: 0 60px;
+        border-left: 1px dashed var(--rail);
+        border-right: 1px dashed var(--rail);
+      }
+      /* Everything that matters sits in the centred 1080 × 510 safe area. */
+      .safe {
+        position: absolute;
+        left: 60px;
+        right: 60px;
+        top: calc(50vh - 255px);
+        height: 510px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 8px 0 4px 48px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.22em;
+        font-family: "Newsreader", Georgia, serif;
+        font-size: 44px;
+        letter-spacing: -0.03em;
+      }
+      h1 {
+        font-family: "Newsreader", Georgia, serif;
+        font-weight: 400;
+        font-size: 92px;
+        line-height: 0.98;
+        letter-spacing: -0.04em;
+        max-width: 600px;
+      }
+      .domain {
+        font-family: "Geist Mono", ui-monospace, monospace;
+        font-size: 24px;
+        letter-spacing: 0.02em;
+        color: var(--mint);
+      }
+      /* The real Trades panel, bleeding off the bottom and fading into the black. */
+      .ui {
+        position: absolute;
+        right: 108px;
+        top: calc(50vh - 255px + 8px);
+        width: 380px;
+        border: 1px solid var(--line);
+        border-bottom: 0;
+        -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+      }
+      .ui img {
+        display: block;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame"></div>
+    <div class="ui"><img src="terminal-tape.png" alt="" /></div>
+    <div class="safe">
+      <div class="brand">
+        <svg width="1.3em" height="0.89em" viewBox="0 7.5 48 33" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M24 8C23.77 8.47 23.18 10 22.65 10.82C22.12 11.64 21.65 12.18 20.85 12.93C20.05 13.68 19.65 14.03 17.85 15.34C16.05 16.65 12.05 19.18 10.05 20.79C8.05 22.4 6.95 23.68 5.85 25C4.75 26.32 4.05 27.63 3.45 28.7C2.85 29.76 2.6 30.45 2.25 31.37C1.9 32.29 1.63 32.84 1.35 34.21C1.07 35.59 0.73 38.7 0.6 39.6C0.73 39.66 0.88 40.55 1.35 40C1.82 39.45 2.8 37.3 3.45 36.28C4.1 35.27 4.35 34.84 5.25 33.88C6.15 32.92 7.6 31.46 8.85 30.53C10.1 29.6 11.35 28.87 12.75 28.3C14.15 27.74 16.1 27.29 17.25 27.14C18.4 26.99 19.1 27.25 19.65 27.4C20.2 27.54 20.2 27.66 20.55 27.99C20.9 28.32 21.3 28.49 21.75 29.37C22.2 30.25 22.88 31.9 23.25 33.28C23.62 34.66 23.88 36.92 24 37.65C24.12 36.92 24.38 34.66 24.75 33.28C25.12 31.9 25.8 30.25 26.25 29.37C26.7 28.49 27.1 28.32 27.45 27.99C27.8 27.66 27.8 27.54 28.35 27.4C28.9 27.25 29.6 26.99 30.75 27.14C31.9 27.29 33.85 27.74 35.25 28.3C36.65 28.87 37.9 29.6 39.15 30.53C40.4 31.46 41.85 32.92 42.75 33.88C43.65 34.84 43.9 35.27 44.55 36.28C45.2 37.3 46.17 39.45 46.65 40C47.12 40.55 47.28 39.66 47.4 39.6C47.28 38.7 46.92 35.59 46.65 34.21C46.38 32.84 46.1 32.29 45.75 31.37C45.4 30.45 45.15 29.76 44.55 28.7C43.95 27.63 43.25 26.32 42.15 25C41.05 23.68 39.95 22.4 37.95 20.79C35.95 19.18 31.95 16.65 30.15 15.34C28.35 14.03 27.95 13.68 27.15 12.93C26.35 12.18 25.88 11.64 25.35 10.82C24.82 10 24.23 8.47 24 8Z"
+          />
+        </svg>
+        Manta
+      </div>
+      <h1>A terminal for prediction markets.</h1>
+      <div class="domain">mantamarkets.com</div>
+    </div>
+  </body>
+</html>

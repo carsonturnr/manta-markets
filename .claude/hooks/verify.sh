@@ -21,7 +21,7 @@ run() { # run <dir> <command>
 }
 
 if grep -q '^site/' <<<"$changed"; then
-  run site "npx tsc --noEmit"
+  run site "npx next typegen >/dev/null && npx tsc --noEmit"
   run site "npm test"
 fi
 if grep -q '^pricing/' <<<"$changed"; then

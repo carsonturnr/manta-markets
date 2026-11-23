@@ -18,7 +18,7 @@ Build order (steps 0–13), fee formulas and infra (VM, Storage Box, Vercel, Sup
 
 Site (run in `site/`):
 - Install: `npm ci` · Dev: `npm run dev` · Build: `npm run build`
-- Typecheck: `npx tsc --noEmit` (no script in package.json) · Lint: `npm run lint` · Test: `npm test` (`node --test lib/*.test.ts`)
+- Typecheck: `npx next typegen && npx tsc --noEmit` (no script in package.json; typegen writes the `PageProps`/`LayoutProps` types into .next/) · Lint: `npm run lint` · Test: `npm test` (`node --test lib/*.test.ts`)
 
 Python (run in `pricing/` or `backtest/`, same as CI):
 - `uv sync --locked` · `uv run ruff format --check .` · `uv run ruff check .` · `uv run pytest -q` (backtest has no tests yet)
@@ -97,3 +97,4 @@ docs/                  product.md, milestone plans, decisions.md
 - infra/deploy/*.sh share /opt/manta/bin: a deploy script must keep the binaries it did not build (deploy.sh once swapped the folder for its own three, which would have dropped replay, replayserve and contracts).
 - State kept per Kalshi market in a long-running process must be dropped when the market closes (the next `subscribe` record omits it, `normalize.Subscribed`): short-dated markets roll all day (relay held 20,416 markets after 15 h, 5,700 open).
 - Positioning (Carson, 2026-11-15, repeated 2026-11-23): Manta is a tools / trading-terminal product. Copy, headlines and page order lead with the tools (screener, books, compare, cost, distributions, replay, alerts); fair value is one tool among them, never the pitch.
+- Site: `PageProps` and `LayoutProps` are global types that Next generates into `.next/types`; in a fresh worktree (no `.next/`) `tsc --noEmit` fails with "Cannot find name 'PageProps'" until `npx next typegen` runs.
