@@ -1,5 +1,5 @@
-// One event as a card: its question, its top outcomes as probability bars with our fair value
-// marked on each, and a "looks cheap / pricey" tag where the two are 3 points or more apart.
+// One event as a card: its question and its top outcomes as probability bars, with our fair
+// value as a small mint dot on each. The fair-value gap in points is shown on the event page.
 // A server component: plain markup, no JavaScript in the browser.
 import Link from "next/link";
 import type { Event } from "@/lib/events";
@@ -28,7 +28,7 @@ export function volumeText(v: number, unit: "contracts" | "usd"): string {
 }
 
 /** Beside an outcome whose price is 3 points or more from our fair value: the gap in points,
- * green when "yes" looks cheap (fair above the price), red when it looks pricey. */
+ * green when fair value is above the price, red when below. */
 export function Verdict({ o }: { o: Outcome }) {
   const v = verdict(o);
   const f = usableFair(o);
@@ -38,7 +38,7 @@ export function Verdict({ o }: { o: Outcome }) {
   return (
     <span
       className={`gap-pts ${v === "cheap" ? "up" : "down"}`}
-      title={`Manta's fair value is ${Math.abs(d)} points ${d > 0 ? "above" : "below"} the market`}
+      title={`Fair value ${Math.abs(d)} points ${d > 0 ? "above" : "below"} the midpoint`}
     >
       {d > 0 ? "+" : "−"}
       {Math.abs(d).toFixed(1)} pts
@@ -71,7 +71,7 @@ export default function EventCard({ e, now }: { e: Event; now: number }) {
           <div key={o.id} className="outcome">
             <div className="outcome-lab">
               <span>
-                {outcomeLabel(o)} <Verdict o={o} />
+                {outcomeLabel(o)}
               </span>
               <ProbBar o={o} />
             </div>

@@ -1274,7 +1274,7 @@ a.hero-card:hover .hero-chart-card {
   }
 }
 
-/* The deep blue band: where Manta disagrees most. */
+/* The deep blue band: the homepage's list of tools. */
 .band {
   margin: 0 -32px 80px;
   padding: 56px 32px 40px;
@@ -1375,6 +1375,10 @@ a.hero-card:hover .hero-chart-card {
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+/* Tool descriptions are the point of the row: let them wrap instead of truncating. */
+.tools-band .ranked-q span {
+  white-space: normal;
 }
 .ranked .gap-pts {
   text-align: right;

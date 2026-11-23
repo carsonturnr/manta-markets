@@ -1,22 +1,22 @@
-// Home: what Manta does, shown on today's Bitcoin ladder; the contracts where Manta disagrees most
-// with the market; the questions everyone is watching; then the busiest markets. Built from the
-// listing grouped into events (lib/events.ts) and the implied distributions; nothing new is stored.
+// Home, the terminal's front door: what Manta covers, the tools with a live figure each, the
+// busiest markets, the widest cross-venue gaps and what the ladders imply. Built from the queries
+// the tools already use (events, pairs, distributions, liquidity, quality); nothing new is stored.
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import EventCard, { eventHref, pct } from "@/components/EventCard";
-import HeroChart from "@/components/HeroChart";
 import WaitlistForm from "@/components/WaitlistForm";
 import { fmtValue, getDistributions } from "@/lib/distributions";
-import { crossed, getPairs } from "@/lib/compare";
+import { crossed, gap, getPairs } from "@/lib/compare";
 import { type Event, getEvents } from "@/lib/events";
+import { getLiquidity } from "@/lib/liquidity";
 import { getReport } from "@/lib/quality";
-import { mid, outcomeLabel, usableFair, verdict } from "@/lib/outcomes";
+import { mid } from "@/lib/outcomes";
 
 type Params = Record<string, string | string[] | undefined>;
 
 // The filters above the markets; each is a link, so a filtered view can be shared.
-const FILTERS = ["All", "Crypto", "Economics", "Financials", "Closing today", "Manta disagrees"] as const;
+const FILTERS = ["All", "Crypto", "Economics", "Financials", "Closing today"] as const;
 type Filter = (typeof FILTERS)[number];
 
 export default function Home({ searchParams }: { searchParams: Promise<Params> }) {
@@ -34,24 +34,24 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
         </Link>
       </section>
 
-      <Suspense fallback={<div className="panel hero-card" />}>
-        <Hero />
-      </Suspense>
-
       <Suspense fallback={<div className="stats-row" />}>
         <Stats />
       </Suspense>
 
       <Suspense fallback={<section className="band" />}>
-        <Disagreements />
-      </Suspense>
-
-      <Suspense fallback={<section className="split-sec" />}>
-        <Watching />
+        <Tools />
       </Suspense>
 
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Markets searchParams={searchParams} />
+      </Suspense>
+
+      <Suspense fallback={<section className="split-sec" />}>
+        <CrossVenue />
+      </Suspense>
+
+      <Suspense fallback={<section className="split-sec" />}>
+        <Watching />
       </Suspense>
 
       <section className="cta-box">
@@ -86,7 +86,7 @@ async function Stats() {
       <div className="figures-row">
         <div>
           <b className="num">{contracts.toLocaleString("en-US")}</b>
-          <span>contracts priced every minute</span>
+          <span>contracts, quotes refreshed every minute</span>
         </div>
         <div>
           <b className="num">{pairs.length}</b>
@@ -103,110 +103,152 @@ async function Stats() {
   );
 }
 
-/** Today's Bitcoin ladder (the next one more than an hour from its close), drawn. */
-async function Hero() {
+/** What you can open, each with one live figure from the data the tool itself reads. Fair value
+ * is one tool in the list, labelled with its methods; its accuracy is a research page. */
+async function Tools() {
   await connection(); // request time only: the build never queries the database
-  const { events, at } = await getEvents();
-  const now = at ?? 0; // the listing's read time: "now" for this data
-  const e = events
-    .filter((x) => x.family === "KXBTCD" && x.close - now > 3_600_000)
-    .sort((a, b) => a.close - b.close)[0];
-  if (!e) return <div className="panel hero-card" />;
+  const [{ events }, { pairs }, dists, liq] = await Promise.all([
+    getEvents(),
+    getPairs(),
+    getDistributions(),
+    getLiquidity(),
+  ]);
+  const contracts = events.reduce((n, e) => n + e.outcomes.length, 0);
+  const afterFees = pairs.filter((p) => (crossed(p)?.net ?? 0) > 1e-9).length;
+  const spreads = liq.now.map((x) => x.spread).filter((x): x is number => x !== null);
+  const tightest = spreads.length ? Math.min(...spreads) : null;
+  const tools: { href: string; name: string; text: string; figure: string; unit: string }[] = [
+    {
+      href: "/terminal",
+      name: "Terminal",
+      text: "One screen per contract: live order book, depth, trades, the event's ladder and a command palette.",
+      figure: "Live",
+      unit: "books and trades",
+    },
+    {
+      href: "/screener",
+      name: "Screener",
+      text: "Every covered contract, filtered by venue, category and expiry, sorted by volume, spread or price.",
+      figure: contracts.toLocaleString("en-US"),
+      unit: "contracts",
+    },
+    {
+      href: "/compare",
+      name: "Cross-venue compare",
+      text: "The same question on Kalshi and Polymarket side by side, with crossing prices checked after both venues' fees.",
+      figure: String(pairs.length),
+      unit: `pairs, ${afterFees} crossing after fees`,
+    },
+    {
+      href: "/liquidity",
+      name: "Cost to trade and liquidity",
+      text: "What N contracts really cost after walking the book and paying fees; spreads and depth by hour of day.",
+      figure: tightest === null ? "–" : `${(tightest * 100).toFixed(1)}¢`,
+      unit: "tightest median spread now",
+    },
+    {
+      href: "/distributions",
+      name: "Distributions and term structure",
+      text: "A ladder of strikes read as a probability distribution, with its median, range and implied volatility.",
+      figure: String(dists.length),
+      unit: "ladders right now",
+    },
+    {
+      href: "/replay",
+      name: "History and replay",
+      text: "Any recorded close replayed minute by minute: the book, the trades and the price. Kalshi keeps no book history; we do.",
+      figure: "1 min",
+      unit: "resolution",
+    },
+    {
+      href: "/account",
+      name: "Watchlists and alerts",
+      text: "Save contracts and get an email when a price crosses a level you set.",
+      figure: "Email",
+      unit: "alerts",
+    },
+    {
+      href: "/stats",
+      name: "Fair value",
+      text: "A reference price for each contract, labelled by method (Deribit's options for crypto, both venues' quotes elsewhere), with its measured accuracy.",
+      figure: "2",
+      unit: "methods, scored",
+    },
+  ];
   return (
-    <Link href={eventHref(e)} className="hero-card">
-      <div className="callouts">
-        <span className="callout">
-          <span className="tag">
-            <i className="key-line" /> Market
-          </span>
-          <span className="mono">Kalshi&apos;s prices</span>
-        </span>
-        <span className="callout-q">{e.question}</span>
-        <span className="callout right">
-          <span className="tag">
-            <i className="key-buoy" /> Manta
-          </span>
-          <span className="mono">Fair value from Deribit&apos;s options</span>
-        </span>
-      </div>
-      <div className="panel hero-chart-card">
-        <HeroChart outcomes={e.outcomes} family={e.family} />
-        <p className="note">The chance Bitcoin ends above each price. Mint lines: where Manta and the market differ by 3 points or more.</p>
-      </div>
-    </Link>
-  );
-}
-
-/** The liquid contracts where our fair value and the market are furthest apart. */
-async function Disagreements() {
-  await connection();
-  const { events } = await getEvents();
-  const rows = events
-    .flatMap((e) => e.outcomes.map((o) => ({ e, o })))
-    .filter(({ o }) => o.volume > 0 && o.bid !== null && o.ask !== null && o.ask - o.bid <= 0.05)
-    .filter(({ o }) => verdict(o) !== null)
-    .map((r) => ({ ...r, gap: usableFair(r.o)! - mid(r.o)! }))
-    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))
-    .slice(0, 6);
-  return (
-    <section className="band">
-      <span className="tag">Fair value</span>
-      <h2>Where Manta disagrees most</h2>
-      <p className="band-sub">Contracts traded today with a spread of 5¢ or less, ranked by the gap between the market and Manta&apos;s fair value.</p>
-      <p className="band-legend">
-        <span>
-          <i className="db-key market" /> Market
-        </span>
-        <span>
-          <i className="db-key manta" /> Manta
-        </span>
-        <span className="m3">0% to 100% chance of &ldquo;yes&rdquo;</span>
+    <section className="band tools-band">
+      <span className="tag">The tools</span>
+      <h2>Everything a prediction-market trader reads, in one place</h2>
+      <p className="band-sub">
+        Crypto, economics and financial contracts on Kalshi and Polymarket, recorded from both
+        venues&apos; live feeds.
       </p>
-      {rows.length === 0 ? (
-        <p className="muted pad">No gaps of 3 points or more right now.</p>
-      ) : (
-        <ol className="ranked">
-          {rows.map(({ e, o, gap }) => (
-            <li key={o.id}>
-              <Link href={`${eventHref(e)}?o=${encodeURIComponent(o.id)}`} className="row-link">
-                <span className="ranked-q">
-                  <b>{outcomeLabel(o)}</b>
-                  <span className="m3">{e.question}</span>
-                </span>
-                <Dumbbell market={mid(o)!} manta={usableFair(o)!} />
-                <span className={`gap-pts ${gap > 0 ? "up" : "down"}`}>
-                  {gap > 0 ? "+" : "−"}
-                  {(Math.abs(gap) * 100).toFixed(1)} pts
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-      )}
-      <p className="band-note">
-        Green: Manta prices &ldquo;yes&rdquo; above the market, so it looks cheap. Red: below. A
-        gap, not a guarantee.
-      </p>
+      <ol className="ranked">
+        {tools.map((t) => (
+          <li key={t.href}>
+            <Link href={t.href} className="row-link">
+              <span className="ranked-q">
+                <b>{t.name}</b>
+                <span>{t.text}</span>
+              </span>
+              <span className="ranked-fig num">
+                {t.figure}
+                <span className="m3">{t.unit}</span>
+              </span>
+              <span className="gap-pts">Open →</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
 
-/** Two probabilities on one 0–100% track: the market's dot, Manta's mint dot, the line between
- * them is the disagreement. Each dot carries its value. */
-function Dumbbell({ market, manta }: { market: number; manta: number }) {
-  const lo = Math.min(market, manta);
-  const hi = Math.max(market, manta);
+/** The pairs listed on both venues with the widest price gap, and whether they cross after fees. */
+async function CrossVenue() {
+  await connection();
+  const { pairs } = await getPairs();
+  const rows = pairs
+    .map((p) => ({ p, g: gap(p), x: crossed(p) }))
+    .filter((r) => r.g !== null && !r.g.inside)
+    .sort((a, b) => Math.abs(b.g!.cents) - Math.abs(a.g!.cents))
+    .slice(0, 4);
+  const c = (v: number | null) => (v === null ? "–" : `${Math.round(v * 100)}¢`);
   return (
-    <span className="dumbbell" aria-label={`Market ${pct(market)}, Manta ${pct(manta)}`}>
-      <span className="db-track" />
-      <span className="db-gap" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
-      <span className="db-dot market" style={{ left: `${market * 100}%` }}>
-        <span className="db-val">{pct(market)}</span>
-      </span>
-      <span className="db-dot manta" style={{ left: `${manta * 100}%` }}>
-        <span className="db-val">{pct(manta)}</span>
-      </span>
-    </span>
+    <section className="split-sec">
+      <div>
+        <span className="tag">Cross-venue</span>
+        <h2>Same question, two prices</h2>
+        <Link href="/compare" className="text-link">
+          All {pairs.length} pairs →
+        </Link>
+      </div>
+      {rows.length === 0 ? (
+        <p className="muted">No priced pairs right now.</p>
+      ) : (
+        <ul className="watching">
+          {rows.map(({ p, g, x }) => (
+            <li key={`${p.topic}/${p.question}`}>
+              <Link href="/compare" className="row-link">
+                <span className="mono">
+                  {p.topic}: {p.question}
+                </span>
+                <b className="num">{Math.abs(g!.cents).toFixed(1)}¢</b>
+                <span className="m2">
+                  Kalshi {c(p.kalshi.bid)}–{c(p.kalshi.ask)}, Polymarket {c(p.poly.bid)}–{c(p.poly.ask)}
+                  {x && x.net !== null && (
+                    <>
+                      {": "}buy on {x.buy}, sell on {x.sell},{" "}
+                      {x.net > 1e-9 ? `${x.net.toFixed(1)}¢ after fees` : "gone after fees"}
+                    </>
+                  )}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -251,8 +293,11 @@ async function Watching() {
   return (
     <section className="split-sec">
       <div>
-        <span className="tag">Right now</span>
-        <h2>What the markets expect</h2>
+        <span className="tag">Implied distributions</span>
+        <h2>What the ladders imply</h2>
+        <Link href="/distributions" className="text-link">
+          All distributions →
+        </Link>
       </div>
       <ul className="watching">
         {items.map((i) => (
@@ -277,8 +322,6 @@ function pick(events: Event[], f: Filter, now: number): Event[] {
       return events.filter((e) => e.category === f);
     case "Closing today":
       return events.filter((e) => e.close - now < 86_400_000);
-    case "Manta disagrees":
-      return events.filter((e) => e.outcomes.some((o) => verdict(o) !== null));
     default:
       return events;
   }
