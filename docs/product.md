@@ -47,6 +47,10 @@ Every series and every Polymarket event pattern is on an explicit allow-list, ch
 12. **Trader workspace** (/terminal). One full-screen screen of panels a trader keeps open: a market monitor, chart, live order book and depth, trade tape with large trades flagged, event board, liquidity (spread, depth near the mid, book imbalance) and a cost ticket; plus what only Manta has: fair value with its own track record beside it, a cross-venue arbitrage scanner that walks both books after fees, the implied distribution, alerts from any panel, and a catalyst calendar of the releases contracts settle on. Preset layouts and a ⌘K command bar. Books and trades are polled every 2 seconds at first; a WebSocket relay from the recorder makes them live.
 13. **API.** Our analytics (fair values, distributions, cost-to-trade, cross-venue differences) with keys and rate limits. No redistribution of raw venue data.
 
+**Proposed (Carson, 2026-11-23): react to events**
+15. **Event response.** For each scheduled economic release (payrolls, unemployment, CPI, the Fed's decision), how every contract still trading moved, how fast (seconds to 90% of the move), and how its order book thinned before the number. From our recordings only. Plan: docs/plan-event-response.md.
+16. **News events** (research first). Unscheduled events from official sources and, if approved, a paid real-time feed, placed on the same clock as the order book. A comparison of sources (cost, measured delay, display terms) comes to Carson before any code.
+
 **On top**
 14. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader, then paper traded on Kalshi's demo environment. Paper trading only until Carson decides otherwise.
 
@@ -68,6 +72,8 @@ Each step ends in something that runs and can be shown.
 11. Accounts, watchlists and alerts.
 12. Trader workspace.
 13. API.
+13b. Event response (proposed 2026-11-23; first real release in our data: 2026-12-04).
+13c. News events: source comparison first, then a proposal.
 14. Market maker.
 
 ## Must be checked before the waitlist goes public
