@@ -102,7 +102,10 @@ export default function ApiDocsPage() {
         best price), <code>value</code> before fees, <code>fee</code>, <code>total</code> and{" "}
         <code>per_contract</code>. <code>filled</code> is less than <code>n</code> when the book is
         too thin. When we don&apos;t know the venue&apos;s fee for a contract, the fee and totals are
-        null. Costs 5 units.
+        null. Dollar amounts (<code>value</code>, <code>fee</code>, <code>total</code>) are rounded
+        to the venue&apos;s own fee precision: $0.0001 on Kalshi, $0.00001 on Polymarket. Prices,{" "}
+        <code>slippage</code> and <code>per_contract</code> are rounded to 6 decimals. Costs 5
+        units, even when the query is rejected (400); a request without a valid key gets 401 first.
       </p>
 
       <h2>GET /pairs</h2>

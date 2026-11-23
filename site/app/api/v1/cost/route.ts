@@ -10,11 +10,13 @@ import { kalshiBook, polyBook, polyTokens } from "@/lib/venues";
 
 export async function GET(request: Request) {
   const q = parseCost(new URL(request.url).searchParams);
-  if (typeof q === "string") return badRequest(q);
-  const auth = await authorize(request, COST_UNITS, `${q.venue}:${q.id}`);
+  // Key first, so a caller without a valid key always gets 401. A bad query with a valid key
+  // still costs the 5 units (one price per /cost request) but no venue budget: no book is read.
+  const auth = await authorize(request, COST_UNITS, typeof q === "string" ? null : `${q.venue}:${q.id}`);
   if (auth instanceof Response) return auth;
+  if (typeof q === "string") return badRequest(q, auth);
   const m = await getMarket(q.venue, q.id);
-  if (!m) return notFound("No open contract with that venue and id (see /api/v1/fair-values).");
+  if (!m) return notFound("No open contract with that venue and id (see /api/v1/fair-values).", auth);
   const tokens = q.venue === "polymarket" ? await polyTokens(m.row.event, q.id) : null;
   const book = q.venue === "kalshi" ? await kalshiBook(q.id) : tokens ? await polyBook(tokens[0]) : null;
   if (!book) return Response.json({ error: "The venue's order book could not be read." }, { status: 502, headers: auth });
@@ -24,5 +26,5 @@ export async function GET(request: Request) {
   const c = walk(q.side, q.n, q.side === "buy" ? book.asks : book.bids, fee);
   if (!c) return Response.json({ error: `No ${q.side === "buy" ? "asks" : "bids"} on the book.` }, { status: 409, headers: auth });
   const now = Date.now();
-  return answer(costOut(c, now, rate !== null), now, auth);
+  return answer(costOut(c, now, rate !== null, q.venue), now, auth);
 }
