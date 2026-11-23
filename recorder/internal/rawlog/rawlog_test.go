@@ -113,7 +113,19 @@ func TestReadFileToleratesOpenFile(t *testing.T) {
 	if n != 3 || !info.Truncated {
 		t.Fatalf("read %d records, %+v", n, info)
 	}
+	n = 0
+	truncated, err := Stream(files[0], func(Record) error { n++; return nil })
+	must(t, err)
+	if n != 3 || !truncated {
+		t.Fatalf("stream: read %d records, truncated %v", n, truncated)
+	}
 	must(t, w.Close())
+	n = 0
+	truncated, err = Stream(files[0], func(Record) error { n++; return nil })
+	must(t, err)
+	if n != 3 || truncated {
+		t.Fatalf("stream after close: read %d records, truncated %v", n, truncated)
+	}
 	n = 0
 	info, err = ReadFile(files[0], func(Record) error { n++; return nil })
 	must(t, err)

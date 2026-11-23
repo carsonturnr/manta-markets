@@ -113,3 +113,38 @@ func readMember(data []byte, fn func(Record) error) (used int, clean bool, n int
 		}
 	}
 }
+
+// Stream calls fn for every record in a file as it decompresses, so memory stays small however
+// big the file (ReadFile holds the whole compressed hour: up to ~650 MB, and garbage collection
+// then inflates the CPU cost, AGENTS.md). Unlike ReadFile it does not skip a damaged stretch:
+// it stops there and reports truncated, as it does for a file still being written.
+func Stream(path string, fn func(Record) error) (truncated bool, err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(bufio.NewReaderSize(f, 1<<20))
+	if err != nil {
+		return true, nil // empty, or not even one gzip header written yet
+	}
+	br := bufio.NewReaderSize(gz, 1<<20)
+	for {
+		line, rerr := br.ReadBytes('\n')
+		if len(line) > 0 && line[len(line)-1] == '\n' {
+			var rec Record
+			if json.Unmarshal(line, &rec) == nil {
+				if ferr := fn(rec); ferr != nil {
+					return false, ferr
+				}
+			}
+		}
+		switch {
+		case rerr == nil:
+		case errors.Is(rerr, io.EOF):
+			return false, nil
+		default: // unexpected EOF or a corrupt block
+			return true, nil
+		}
+	}
+}
