@@ -9,7 +9,7 @@ export default function Privacy() {
   return (
     <div className="prose">
       <h1>Privacy policy</h1>
-      <p className="muted">Effective 21 November 2026.</p>
+      <p className="muted">Effective 23 November 2026.</p>
 
       <p>
         Manta is run by Carson Turner. This page explains what personal data Manta collects, why,
