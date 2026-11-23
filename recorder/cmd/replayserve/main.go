@@ -7,12 +7,16 @@
 //
 // Every request must carry "Authorization: Bearer <REPLAY_TOKEN>"; only the site's server knows
 // it. Paths are opened through os.Root, which refuses anything outside the replay directory.
+// Served over TLS with the relay's self-signed certificate (the site trusts exactly that one,
+// RELAY_CA), so the token and the files never cross the internet in the clear.
 //
 //	REPLAY_TOKEN=… replayserve -dir /var/lib/manta/replay -addr :8790
+//	REPLAY_TOKEN=… replayserve -dir data/replay -tls-cert "" # plain HTTP, local testing only
 package main
 
 import (
 	"crypto/subtle"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
 	"io"
@@ -35,6 +39,8 @@ var releaseName = regexp.MustCompile(`^/events/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)\.j
 func main() {
 	dir := flag.String("dir", "/var/lib/manta/replay", "replay directory")
 	addr := flag.String("addr", ":8790", "listen address")
+	certFile := flag.String("tls-cert", "/etc/manta/relay.crt", "TLS certificate, the relay's (deploy.sh makes it); empty serves plain HTTP")
+	keyFile := flag.String("tls-key", "/etc/manta/relay.key", "TLS private key")
 	flag.Parse()
 	token := os.Getenv("REPLAY_TOKEN")
 	if len(token) < 32 {
@@ -89,7 +95,15 @@ func main() {
 	})
 	srv := &http.Server{Addr: *addr, Handler: h, ReadTimeout: 10 * time.Second,
 		WriteTimeout: 60 * time.Second, MaxHeaderBytes: 8 << 10}
-	log.Fatal(srv.ListenAndServe())
+	if *certFile == "" {
+		log.Fatal(srv.ListenAndServe())
+	}
+	cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	srv.TLSConfig = &tls.Config{Certificates: []tls.Certificate{cert}, MinVersion: tls.VersionTLS13}
+	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
 
 // serveIndex lists each event's hours, oldest first.
