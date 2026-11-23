@@ -45,6 +45,7 @@ Mac clock vs ntp.hetzner.com: +34 ms ± 140 ms, small next to these delays.
 | Item (23 Nov) | stated / close | written | received | note |
 |---|---|---|---|---|
 | Treasury press release sb0698 | 18:00:00 | 18:00:39 | 18:01:33 (93 s; previous poll 18:00:32) | 60 s polling; at 5 s it would be ~40–45 s |
+| Treasury press release sb0699 | 18:00:00 | 18:10:14 | 18:11:14 (674 s) | stated time is ~10 min before posting: use our receipt time, not Treasury's |
 | 2-year note auction result XML | 18:00:00 | 18:02:47 (167 s) | — | file name guessed; poller bug, not polled in time |
 | same, TreasuryDirect JSON API | 18:00:00 | API record 18:03:53 | 18:03:56–18:04:02 (~240 s) | API lags the XML by ~70 s |
 | 13/26-week bills, CP | 16:30, 18:00 | 16:32:38 (XML), 18:00:04 | — | missed (poller bug, since fixed) |
