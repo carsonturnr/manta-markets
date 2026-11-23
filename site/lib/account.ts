@@ -142,3 +142,32 @@ export async function getListed(keys: string[]): Promise<Map<string, Listed>> {
     rows.map((r) => [`${r.venue}:${r.id}`, { ...r, close: Number(r.close) } as unknown as Listed]),
   );
 }
+
+export type ApiKey = { keyId: number; name: string; prefix: string; created: number; lastUsed: number | null };
+
+/** The user's API keys (step 13): names and prefixes only; the hashes can't be read. */
+export async function getKeys(userId: string): Promise<ApiKey[]> {
+  const rows = await asUser(
+    userId,
+    (tx) => tx`select key_id, name, prefix, created, last_used from manta.api_keys order by created`,
+  );
+  return rows.map((r) => ({
+    keyId: Number(r.key_id),
+    name: r.name,
+    prefix: r.prefix,
+    created: r.created.getTime(),
+    lastUsed: ms(r.last_used),
+  }));
+}
+
+/** One API request (step 13): manta.api_use() checks the key and counts it against its user's
+ * minute and, with `contract`, the shared venue budget. Null for an unknown key. */
+export async function apiUse(hash: Buffer, cost: number, contract: string | null) {
+  if (!db) throw new Error("ACCOUNT_DATABASE_URL is not set (locally: site/.env.local)");
+  const [r] = await db`
+    select allowed, remaining, reset, venue_ok
+    from manta.api_use(${hash}, ${cost}::int, ${contract}::text)`;
+  return r
+    ? { allowed: r.allowed as boolean, remaining: r.remaining as number, reset: (r.reset as Date).getTime(), venueOk: r.venue_ok as boolean }
+    : null;
+}
