@@ -2,6 +2,8 @@
 //
 //	GET /index                        {"<event>": ["2026-11-17T15", …], …}
 //	GET /file/<event>/<hour>.json.gz  one event's hour, as written
+//	GET /events                       ["2026-12-04-payrolls", …]: the event-response releases
+//	GET /events/<release>.json        one release's event response (cmd/eventresponse)
 //
 // Every request must carry "Authorization: Bearer <REPLAY_TOKEN>"; only the site's server knows
 // it. Paths are opened through os.Root, which refuses anything outside the replay directory.
@@ -27,6 +29,9 @@ import (
 // An event ticker and an hour, the only names the directory holds.
 var fileName = regexp.MustCompile(`^/file/([A-Z0-9-]+)/(\d{4}-\d{2}-\d{2}T\d{2})\.json\.gz$`)
 
+// A release id: its date and kind, e.g. 2026-12-04-payrolls.
+var releaseName = regexp.MustCompile(`^/events/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)\.json$`)
+
 func main() {
 	dir := flag.String("dir", "/var/lib/manta/replay", "replay directory")
 	addr := flag.String("addr", ":8790", "listen address")
@@ -51,6 +56,21 @@ func main() {
 		}
 		if r.URL.Path == "/index" {
 			serveIndex(w, root)
+			return
+		}
+		if r.URL.Path == "/events" {
+			serveReleases(w, root)
+			return
+		}
+		if m := releaseName.FindStringSubmatch(r.URL.Path); m != nil {
+			f, err := root.Open("events/" + m[1] + ".json")
+			if err != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer f.Close()
+			w.Header().Set("Content-Type", "application/json")
+			io.Copy(w, f)
 			return
 		}
 		m := fileName.FindStringSubmatch(r.URL.Path)
@@ -94,6 +114,19 @@ func serveIndex(w http.ResponseWriter, root *os.Root) {
 			}
 		}
 		slices.Sort(out[ev.Name()])
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+// serveReleases lists the release ids in events/, oldest first; none yet is an empty list.
+func serveReleases(w http.ResponseWriter, root *os.Root) {
+	out := []string{}
+	files, _ := fs.ReadDir(root.FS(), "events") // missing folder: no release yet
+	for _, f := range files {
+		if name, ok := strings.CutSuffix(f.Name(), ".json"); ok && !strings.HasPrefix(name, ".") {
+			out = append(out, name)
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
