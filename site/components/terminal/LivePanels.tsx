@@ -1,5 +1,5 @@
 "use client";
-// The terminal's live panels, all drawn from one 2-second feed (Live.tsx): the order book with
+// The terminal's live panels, all drawn from one feed (Live.tsx: streamed, or polled every 2 s): the order book with
 // its depth chart and liquidity figures, the trade tape with large trades flagged, and the ticket.
 import BuyBox from "@/components/BuyBox";
 import { bookMid, cumulative, depthNear, imbalance } from "@/lib/book";
@@ -15,9 +15,9 @@ const usd = (x: number) =>
 
 /** "updated 1 s ago", or a warning when the feed has failed. */
 function Fresh() {
-  const { at, error } = useLive();
+  const { at, error, streaming } = useLive();
   if (error) return <span className="t-stale">feed interrupted, showing last data</span>;
-  return <span className="t-live">{at ? "live · every 2 s" : "loading"}</span>;
+  return <span className="t-live">{!at ? "loading" : streaming ? "live · streaming" : "live · every 2 s"}</span>;
 }
 
 /** The order book: asks above, bids below, a bar for each level's size, the spread between. */

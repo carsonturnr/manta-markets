@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	Levels    = 10 // book levels pushed per side
+	Levels    = 50 // book levels pushed per side: as many as the site reads from Kalshi (lib/venues.ts DEPTH)
 	MaxTrades = 20 // latest trades kept and pushed per market
 	inBuffer  = 1 << 16
 	outBuffer = 64 // pushes queued per subscriber before it counts as too slow and is dropped
