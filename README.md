@@ -1,15 +1,11 @@
 <p align="center">
   <a href="https://mantamarkets.com">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
-      <img src="docs/images/logo-light.svg" alt="Manta" width="96">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/images/header-dark.svg">
+      <img src="docs/images/header-light.svg" alt="Manta: a terminal for prediction markets" width="680">
     </picture>
   </a>
 </p>
-
-<h1 align="center">Manta</h1>
-
-<p align="center"><b>A terminal for prediction markets.</b></p>
 
 <p align="center">
   <a href="https://mantamarkets.com">Live site</a> ·
