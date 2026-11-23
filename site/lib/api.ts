@@ -84,21 +84,35 @@ export const fairOut = (r: Row) => ({
   method: r.fairMethod,
 });
 
+/** Rounds to `d` decimals: strips float noise (0.06929999999999992 → 0.0693) from the output only. */
+const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
+
+/** Decimals for dollar amounts: each venue's fee precision (lib/cost.ts). Kalshi rounds fee +
+ * position cost to a whole $0.0001; Polymarket rounds its fee to $0.00001. */
+export const MONEY_DECIMALS = { kalshi: 4, polymarket: 5 } as const;
+/** Prices, slippage and per-contract amounts: well below any venue's tick ($0.001). */
+export const PRICE_DECIMALS = 6;
+
 /** A walk of the book: the totals and the best price it started from, never the levels. Without
- * the venue's fee rate (`feeKnown` false) the fee and everything after it are null, not 0. */
-export const costOut = (c: Cost, bookTime: number, feeKnown: boolean) => ({
-  side: c.side,
-  wanted: c.wanted,
-  filled: c.filled,
-  best_price: c.best,
-  book_time: iso(bookTime),
-  average_price: c.average,
-  slippage: c.slippage,
-  value: c.value,
-  fee: feeKnown ? c.fee : null,
-  total: feeKnown ? c.total : null,
-  per_contract: feeKnown ? c.perContract : null,
-});
+ * the venue's fee rate (`feeKnown` false) the fee and everything after it are null, not 0.
+ * Rounded for output only; the calculation in lib/cost.ts is unchanged. */
+export function costOut(c: Cost, bookTime: number, feeKnown: boolean, venue: CostQuery["venue"]) {
+  const money = (x: number) => round(x, MONEY_DECIMALS[venue]);
+  const price = (x: number) => round(x, PRICE_DECIMALS);
+  return {
+    side: c.side,
+    wanted: c.wanted,
+    filled: c.filled,
+    best_price: price(c.best),
+    book_time: iso(bookTime),
+    average_price: price(c.average),
+    slippage: price(c.slippage),
+    value: money(c.value),
+    fee: feeKnown ? money(c.fee) : null,
+    total: feeKnown ? money(c.total) : null,
+    per_contract: feeKnown ? price(c.perContract) : null,
+  };
+}
 
 /** A cross-venue pair: the gap and any crossing after fees, not the quotes behind them. `g` and
  * `x` are lib/compare's gap(p) and crossed(p), computed by the caller (compare.ts reads the

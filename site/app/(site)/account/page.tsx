@@ -197,7 +197,7 @@ async function Account() {
           ))}
         </ul>
       )}
-      <KeyForm />
+      <KeyForm ids={keys.map((k) => k.keyId)} />
     </>
   );
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { bearer, costOut, fairOut, hashKey, keyPrefix, limitHeaders, newKey, pairOut, parseCost } from "./api.ts";
 import type { Pair } from "./compare.ts";
-import { walk } from "./cost.ts";
+import { kalshiFee, polymarketFee, walk } from "./cost.ts";
 import type { Row } from "./screener.ts";
 
 test("keys: format, bearer header, hash, prefix", () => {
@@ -56,15 +56,15 @@ test("cost answer: totals and best price, never the levels", () => {
   // Buy 150: 100 at 40¢, 50 at 42¢, no fee → average 0.40667, slippage 0.00667.
   const c = walk("buy", 150, [{ price: 0.4, size: 100 }, { price: 0.42, size: 50 }, { price: 0.5, size: 9 }], () => 0);
   assert.ok(c);
-  const out = costOut(c, Date.UTC(2026, 10, 23, 12), true);
+  const out = costOut(c, Date.UTC(2026, 10, 23, 12), true, "kalshi");
   assert.equal(out.best_price, 0.4);
   assert.equal(out.book_time, "2026-11-23T12:00:00.000Z");
   assert.equal(out.filled, 150);
-  assert.ok(Math.abs(out.average_price - 61 / 150) < 1e-12);
-  assert.ok(Math.abs(out.slippage - 1 / 150) < 1e-12);
+  assert.equal(out.average_price, 0.406667); // 61/150, to 6 decimals
+  assert.equal(out.slippage, 0.006667);
   assert.ok(!("fills" in out));
   assert.equal(out.total, 61);
-  const unknown = costOut(c, 0, false);
+  const unknown = costOut(c, 0, false, "kalshi");
   assert.equal(unknown.fee, null);
   assert.equal(unknown.total, null);
   assert.equal(unknown.per_contract, null);
@@ -92,4 +92,27 @@ test("fair value and pair answers drop quotes", () => {
   assert.deepEqual(out.crossing, { cents: 1, net_cents: -2.4, buy: "kalshi", sell: "polymarket" });
   assert.equal(pairOut(p, null, null).crossing, null);
   assert.ok(!/bid|ask|Size/.test(JSON.stringify(out)));
+});
+
+test("cost answer: money to the venue's fee precision, prices to 6 decimals", () => {
+  // Kalshi, rate 0.07: 1 at 0.3 → 0.0147, rounded up to 0.0147; 2 at 0.31 → 0.029946 → 0.03.
+  // Summed in floats the fee is 0.04470000000000002 and the total 0.9646999999999999.
+  const k = walk("buy", 3, [{ price: 0.3, size: 1 }, { price: 0.31, size: 5 }], (n, p) => kalshiFee(0.07, n, p));
+  assert.ok(k);
+  assert.notEqual(k.fee, 0.0447); // the noise this rounding removes
+  const out = costOut(k, 0, true, "kalshi");
+  assert.equal(out.fee, 0.0447);
+  assert.equal(out.value, 0.92);
+  assert.equal(out.total, 0.9647);
+  assert.equal(out.per_contract, 0.321567); // 0.9647 / 3
+  assert.equal(out.average_price, 0.306667);
+  assert.equal(k.fee, k.fills.reduce((s, f) => s + f.fee, 0)); // the calculation is untouched
+
+  // Polymarket rounds its fee to $0.00001, so its amounts keep five decimals.
+  const p = walk("sell", 7, [{ price: 0.123, size: 7 }], (n, x) => polymarketFee(0.07, n, x));
+  assert.ok(p);
+  const po = costOut(p, 0, true, "polymarket");
+  assert.equal(po.fee, 0.05286); // 0.07 × 7 × 0.123 × 0.877 = 0.0528563… → 0.05286
+  assert.equal(po.total, 0.80814); // 0.861 − 0.05286
+  assert.equal(po.per_contract, 0.115449);
 });
