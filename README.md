@@ -1,9 +1,39 @@
-# Manta
+<p align="center">
+  <a href="https://mantamarkets.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-dark.svg">
+      <img src="docs/images/logo-light.svg" alt="Manta" width="96">
+    </picture>
+  </a>
+</p>
 
-A terminal for prediction markets. Manta covers the crypto, economics and financial contracts on
-Kalshi and Polymarket (never sports) and gives you the tools to work with them: a screener, live
-order books and trades, the same question compared across venues, what a trade really costs after
-fees, implied distributions, history and replay, and alerts. Live at https://mantamarkets.com.
+<h1 align="center">Manta</h1>
+
+<p align="center"><b>A terminal for prediction markets.</b></p>
+
+<p align="center">
+  <a href="https://mantamarkets.com">Live site</a> ·
+  <a href="docs/product.md">Docs</a> ·
+  <a href="LICENSE">License</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/carsonturnr/manta-markets/actions/workflows/ci.yml"><img src="https://github.com/carsonturnr/manta-markets/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white" alt="Go 1.27">
+  <img src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white" alt="Python 3.13">
+  <img src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white" alt="Next.js 16">
+  <a href="https://github.com/nautechsystems/nautilus_trader"><img src="https://img.shields.io/badge/built%20on-NautilusTrader-0b7285" alt="Built on NautilusTrader"></a>
+</p>
+
+Manta covers the crypto, economics and financial contracts on Kalshi and Polymarket (never sports)
+and gives you the tools to work with them: a screener, live order books and trades, the same
+question compared across venues, what a trade really costs after fees, implied distributions,
+history and replay, and alerts.
+
+<p align="center">
+  <a href="https://mantamarkets.com/terminal"><img src="docs/images/terminal.png" alt="The Manta terminal: market monitor, price chart, order book, depth, trade ticket and trade tape for one Kalshi Bitcoin contract" width="100%"></a>
+</p>
 
 **Built on [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), used
 as an installed library for the history catalog and backtesting. Manta's own code is the recorder,
@@ -28,6 +58,10 @@ the pricing and analytics, the site and the measurement.
   not publish historical order books).
 - **Data quality** (`/quality`): what the recorder captured, per venue, and every gap.
 - **Accounts**: watchlists and email alerts.
+
+| Screener | Distributions |
+|---|---|
+| <a href="https://mantamarkets.com/screener"><img src="docs/images/screener.png" alt="Screener: every covered contract with chance, bid, ask, fair value, spread, volume and time to close"></a> | <a href="https://mantamarkets.com/distributions"><img src="docs/images/distributions.png" alt="Distributions: a Bitcoin strike ladder read as the market's probability distribution, with median and implied volatility"></a> |
 
 ## How it's built
 
