@@ -1,41 +1,94 @@
 # Manta
 
-An analytics terminal for prediction markets: a screener, live order books, cross-venue comparison, fair values, implied distributions, and a cost-to-trade calculator for Kalshi and Polymarket's crypto, economics and financial contracts (never sports). A market maker on Kalshi is built on top, paper traded. Live: https://mantamarkets.com. Product spec: [docs/product.md](docs/product.md).
+A terminal for prediction markets. Manta covers the crypto, economics and financial contracts on
+Kalshi and Polymarket (never sports) and gives you the tools to work with them: a screener, live
+order books and trades, the same question compared across venues, what a trade really costs after
+fees, implied distributions, history and replay, and alerts. Live at https://mantamarkets.com.
 
-**Uses [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), as an installed library, for the history catalog, backtesting and paper trading. Manta's own code is the recorder, the pricing and analytics, the site, the strategy and the measurement.
+**Built on [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), used
+as an installed library for the history catalog and backtesting. Manta's own code is the recorder,
+the pricing and analytics, the site and the measurement.
 
-## Milestone 1: recorder
+## What it does
 
-Records, continuously:
-- **Kalshi:** order books and trades for the Bitcoin series KXBTCD (above/below), KXBTC (ranges) and KXBTC15M (15 minutes).
-- **Deribit:** the BTC index, the mark price and implied volatility of every BTC option, and full quotes for near-expiry, near-the-money options.
-- **Coinbase and Kraken:** BTC/USD spot, a stand-in for the CF Benchmarks index Kalshi settles on.
-- **Polymarket:** order books of the daily "Bitcoin above ___" and "Bitcoin price on" contracts, every 10 seconds (read-only).
-- **Binance:** BTC/USDT 1-minute candles and ticker, the price Polymarket settles on.
+- **Terminal** (`/terminal`): market monitor, chart, order book and depth, trade tape and a trade
+  ticket in preset layouts, with a ⌘K command bar.
+- **Screener and event pages** (`/screener`, `/m/<venue>/<event>`): every covered contract,
+  filterable; each event with its order books, candles, trades and plain-English settlement rules.
+- **Compare** (`/compare`): the same question on Kalshi and Polymarket side by side, and where the
+  prices cross after both venues' fees.
+- **Cost to trade** (on contract pages): the average price, slippage and fee of buying or selling
+  N contracts, walked through the live book. **Liquidity** (`/liquidity`): depth and spreads over
+  time.
+- **Distributions** (`/distributions`): each ladder of strikes read as the market's probability
+  distribution and term structure.
+- **Fair value**: a price per contract from Deribit's options (Bitcoin, Ether) or the venues' own
+  books, always labelled with its method; its track record is on the accuracy page (`/stats`).
+- **Replay** (`/replay`): past closes minute by minute, from Manta's own recordings (Kalshi does
+  not publish historical order books).
+- **Data quality** (`/quality`): what the recorder captured, per venue, and every gap.
+- **Accounts**: watchlists and email alerts.
 
-```
-cd recorder
-go run ./cmd/recorder -out ../data/raw     # record (KALSHI_API_KEY_ID / KALSHI_PRIVATE_KEY_PATH for the WebSocket)
-go run ./cmd/status -in ../data/raw        # what has been recorded, for how long, and every gap
-```
-
-## Milestone 2: pricing
-
-Fair value for each Kalshi contract from Deribit's option prices. The method, in plain English, is in [docs/milestone-2-pricing.md](docs/milestone-2-pricing.md).
-
-```
-cd pricing
-uv run manta-fair          # live table: Kalshi bid/ask, our fair value, the gap
-uv run pytest              # hand-checked tests of the math
-```
-
-## Milestone 3: live tracker (in progress)
-
-Once a minute, the VM prices every in-play Kalshi contract and writes Kalshi's bid/ask and our fair value to Postgres (Supabase); a Next.js site shows them side by side with the gap over time. Plan and choices: [docs/milestone-3-tracker.md](docs/milestone-3-tracker.md).
+## How it's built
 
 ```
-cd pricing
-uv run --env-file ../.env manta-snap --status   # what the tracker database holds
-cd ../site
-npm run dev                                      # the site (needs site/.env.local)
+venues (Kalshi, Polymarket, Deribit, Coinbase, Kraken, Binance)
+   │  WebSocket / REST, read-only
+   ▼
+recorder (Go, on a VM) ──► raw hourly gzip JSONL ──► nightly archive (Storage Box)
+   │                              │
+   │ relay / replay servers       └─► backtest/ (Python + NautilusTrader Parquet catalog)
+   ▼
+pricing jobs (Python, every minute) ──► Postgres (Supabase, schema `manta`)
+                                              │  read-only login
+                                              ▼
+                                   site (Next.js 16, React 19, TypeScript, Vercel)
 ```
+
+| Folder | What | Stack |
+|---|---|---|
+| `recorder/` | records raw venue messages; status, replay, relay and normalizer tools | Go |
+| `pricing/` | fair values, distributions, liquidity, accuracy, alerts | Python 3.13, uv |
+| `backtest/` | recordings → NautilusTrader catalog | Python 3.13, NautilusTrader |
+| `site/` | the product site | Next.js, Clerk sign-in, Postgres |
+| `db/` | Postgres schema | SQL |
+| `infra/deploy/` | VM deploy scripts and systemd units | bash, systemd |
+| `docs/` | product spec, design notes per milestone, dated decisions | |
+
+## Run it locally
+
+None of the steps below need an account or a secret.
+
+```
+# Tests
+cd pricing  && uv run pytest -q
+cd recorder && go test ./...
+cd site     && npm ci && npm test
+
+# Record live data into ./data/raw (Kalshi through its public REST API when no key is set)
+cd recorder && go run ./cmd/recorder -out ../data/raw
+go run ./cmd/status -in ../data/raw          # what was recorded, and every gap
+
+# Price Kalshi's Bitcoin contracts from Deribit's options, in the terminal
+cd pricing && uv run manta-fair
+```
+
+The site reads Postgres. With a local Postgres (any Postgres 15+):
+
+```
+createdb manta
+cp .env.example .env                 # DATABASE_URL=postgresql://localhost:5432/manta
+cd pricing && uv run --env-file ../.env manta-snap --init                  # tables and logins
+cd ../recorder && go run ./cmd/contracts -out ../data/contracts.json      # today's listing
+cd ../pricing && uv run --env-file ../.env manta-contracts ../data/contracts.json   # fill it
+cd ../site && cp .env.example .env.local && npm run dev                    # http://localhost:3000
+```
+
+Sign-in, the waitlist, replay and alerts need their own services (Clerk, Resend, the replay
+server); `.env.example` and `site/.env.example` list each setting.
+
+## Docs
+
+- [docs/product.md](docs/product.md): the product spec.
+- [docs/decisions.md](docs/decisions.md): every decision, dated, with what was measured.
+- `docs/milestone-*.md`: design notes for the recorder, pricing, tracker and backtest.

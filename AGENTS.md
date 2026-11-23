@@ -4,7 +4,7 @@ Manta (repo/package `manta-markets`) is an analytics terminal for prediction mar
 
 **Every step ends in something that runs and can be shown.** Live site: https://mantamarkets.com.
 
-Build order (steps 0–13), fee formulas and infra (VM, Storage Box, Vercel, Supabase): docs/agent-reference.md.
+Build order (steps 0–13), fee formulas and infra (VM, Storage Box, Vercel, Supabase): docs/agent-reference.md. Real infra values (VM IP, Storage Box user, Vercel team) are in `infra.local.md` at the repo root: gitignored, copied into worktrees by `.worktreeinclude`; ask Carson if it is missing.
 
 ## Stack
 
@@ -99,3 +99,4 @@ docs/                  product.md, milestone plans, decisions.md
 - Positioning (Carson, 2026-11-15, repeated 2026-11-23): Manta is a tools / trading-terminal product. Copy, headlines and page order lead with the tools (screener, books, compare, cost, distributions, replay, alerts); fair value is one tool among them, never the pitch.
 - Site: `PageProps` and `LayoutProps` are global types that Next generates into `.next/types`; in a fresh worktree (no `.next/`) `tsc --noEmit` fails with "Cannot find name 'PageProps'" until `npx next typegen` runs.
 - Site: a lib file with node tests (`npm test`) must not import `next/cache` or `./db`: node cannot resolve `next/cache` as ESM, and db.ts throws without DATABASE_URL. Use a bare `"use cache"` (default profile) or keep the Next-only code in another file (lib/events-response.ts, lib/replayserve.ts).
+- Infra details (IPs, hostnames, account usernames) go in gitignored local files (`infra.local.md`), never in tracked docs; tracked files use placeholders such as `<vm-ip>`. The repo is meant to be public.

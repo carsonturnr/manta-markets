@@ -36,4 +36,4 @@ M is the series fee multiplier, C the number of contracts, P the price in dollar
 
 ## Infra
 
-The VM `series-1` (Hetzner CX23, Helsinki, <vm-ip>) runs the recorder and the snapshotter; recordings archive nightly to the Storage Box `manta-archive` (1 TB, <storagebox-user>); the site is the Vercel project `site` (team <vercel-team>, https://mantamarkets.com; domain registered at Namecheap 2026-11-21, DNS records there; www and mantamarkets.vercel.app redirect to it) on Supabase (us-east-2). Secrets live in `.env` (local), `/etc/manta/env` (VM) and Vercel's environment settings, never in git.
+The VM `series-1` (Hetzner CX23, Helsinki, <vm-ip>; real values for every placeholder here are in `infra.local.md`, gitignored) runs the recorder and the snapshotter; recordings archive nightly to the Storage Box `manta-archive` (1 TB, <storagebox-user>); the site is the Vercel project `site` (team <vercel-team>, https://mantamarkets.com; domain registered at Namecheap 2026-11-21, DNS records there; www and mantamarkets.vercel.app redirect to it) on Supabase (us-east-2). Secrets live in `.env` (local), `/etc/manta/env` (VM) and Vercel's environment settings, never in git.
