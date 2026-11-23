@@ -148,3 +148,61 @@ func TestThinning(t *testing.T) {
 		t.Fatalf("thinning = %v %v %v, want 1000 120", early, late, ok)
 	}
 }
+
+// Usual spread over a 14-minute window (t0 − 15 min to t0 − 1 min), worked by hand:
+//   - from −20 min a 2¢ book (39/41) stands until −12 min: 3 min inside the window;
+//   - −12 min: a burst of quotes 1 s apart at 1¢ (40/41, ten of them): 10 s in all;
+//   - −11:50: 3¢ (39/42) until −10 min: 1 min 50 s;
+//   - −10 min: one-sided (no ask) until −9 min: 1 min, doesn't count;
+//   - −9 min: 2¢ (40/42) to the end of the window, −1 min: 8 min.
+//
+// Counted time 3:00 + 0:10 + 1:50 + 8:00 = 13 min; half is 6.5 min. Sorted: 1¢ for 10 s, then
+// 2¢ for 11 min: the running total passes 6.5 min inside the 2¢ stretch, so the median is 2¢.
+// One vote per change would say 1¢ (ten of the fourteen changes), which is the point of weighting.
+func TestUsualSpread(t *testing.T) {
+	s := []Sample{quote(t0-20*minute, 39, 41)}
+	for i := range int64(10) {
+		s = append(s, quote(t0-12*minute+i*second, 40, 41))
+	}
+	s = append(s, quote(t0-11*minute-50*second, 39, 42),
+		Sample{T: t0 - 10*minute, Bids: []book.Level{lv(40, 100)}},
+		quote(t0-9*minute, 40, 42),
+		quote(t0-30*second, 45, 50)) // after the window: ignored
+	if sp, ok := UsualSpread(s, t0-15*minute, t0-minute); !ok || !near(sp, 2) {
+		t.Fatalf("usual spread = %v %v, want 2", sp, ok)
+	}
+	// 3¢ for 2 min then 1¢ for 1 min: 1¢ stood only a third of the time, so 3¢.
+	s = []Sample{quote(t0-3*minute, 39, 42), quote(t0-minute, 40, 41)}
+	if sp, ok := UsualSpread(s, t0-3*minute, t0); !ok || !near(sp, 3) {
+		t.Fatalf("usual spread = %v %v, want 3", sp, ok)
+	}
+	// Only a one-sided book, or nothing before the window ends: undefined.
+	if _, ok := UsualSpread(s[1:], t0-3*minute, t0-minute); ok {
+		t.Fatal("usual spread defined with no book in the window")
+	}
+}
+
+// Near drops the levels more than 2¢ from the mid but keeps each side's best, and reads the
+// same as the full book. Mid 40¢ (39/41): bids 39, 38 (in), 37.5 (out); asks 41, 42 (in), 43 (out).
+func TestNearKeepsWhatTheFunctionsRead(t *testing.T) {
+	full := Sample{T: 5,
+		Bids: []book.Level{lv(39, 10), lv(38, 20), lv(37.5, 30)},
+		Asks: []book.Level{lv(41, 1), lv(42, 2), lv(43, 3)}}
+	n := Near(full)
+	if len(n.Bids) != 2 || len(n.Asks) != 2 || n.T != 5 {
+		t.Fatalf("near kept %d bids, %d asks", len(n.Bids), len(n.Asks))
+	}
+	d1, _ := full.Depth()
+	d2, _ := n.Depth()
+	if !near(d1, 33) || !near(d2, 33) {
+		t.Fatalf("depth full %v near %v, want 33", d1, d2)
+	}
+	// A 10¢ spread: the best levels are 5¢ from the mid but stay.
+	wide := Near(quote(0, 35, 45))
+	if sp, ok := wide.Spread(); !ok || !near(sp, 10) {
+		t.Fatalf("wide spread = %v %v", sp, ok)
+	}
+	if one := Near(Sample{Bids: []book.Level{lv(40, 1)}}); len(one.Bids) != 0 {
+		t.Fatal("one-sided book kept levels")
+	}
+}

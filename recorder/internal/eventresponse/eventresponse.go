@@ -15,6 +15,8 @@
 package eventresponse
 
 import (
+	"slices"
+
 	"github.com/carsonturnr/manta-markets/recorder/internal/book"
 	"github.com/carsonturnr/manta-markets/recorder/internal/fixed"
 )
@@ -178,4 +180,86 @@ func SpreadAt(series []Sample, t int64) (float64, bool) {
 		return 0, false
 	}
 	return s.Spread()
+}
+
+// UsualSpread is the spread a trader would usually have faced between from and to (unix ms;
+// for the page, t0 − 15 min to t0 − 1 min): the median spread weighted by how long each spread
+// stood. Time-weighted rather than one vote per book change: a burst of a thousand quote updates
+// in one busy second would otherwise outvote the quiet minutes around it, and the question is
+// what the spread was at a typical moment. Moments with a one-sided book (no spread) don't
+// count. False when no two-sided book stood at any moment in the window.
+func UsualSpread(series []Sample, from, to int64) (float64, bool) {
+	type span struct {
+		spread float64
+		ms     int64
+	}
+	var spans []span
+	var total int64
+	add := func(s Sample, start, end int64) {
+		if sp, ok := s.Spread(); ok && end > start {
+			spans = append(spans, span{sp, end - start})
+			total += end - start
+		}
+	}
+	cur, ok := at(series, from)
+	t := from
+	for _, s := range series {
+		if s.T <= from {
+			continue
+		}
+		if s.T >= to {
+			break
+		}
+		if ok {
+			add(cur, t, s.T)
+		}
+		cur, ok, t = s, true, s.T
+	}
+	if ok {
+		add(cur, t, to)
+	}
+	if total == 0 {
+		return 0, false
+	}
+	slices.SortFunc(spans, func(a, b span) int { return cmpFloat(a.spread, b.spread) })
+	// The median is the smallest spread that stood for at least half the time, counting up.
+	var sum int64
+	for _, s := range spans {
+		sum += s.ms
+		if 2*sum >= total {
+			return s.spread, true
+		}
+	}
+	return spans[len(spans)-1].spread, true // unreachable: sum reaches total
+}
+
+func cmpFloat(a, b float64) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	}
+	return 0
+}
+
+// Near keeps only the levels Mid, Spread and Depth read: the best level of each side and any
+// others within NearMid of the mid. A command keeping a sample per book change for hundreds of
+// contracts would otherwise hold every level of every book. A one-sided book keeps no levels:
+// none of the functions above can use it. The levels are copied, so the full book can be freed.
+func Near(s Sample) Sample {
+	mid, ok := s.Mid()
+	if !ok {
+		return Sample{T: s.T}
+	}
+	keep := func(lv []book.Level, in func(float64) bool) []book.Level {
+		n := 1
+		for n < len(lv) && in(cents(lv[n].Px)) {
+			n++
+		}
+		return slices.Clone(lv[:n])
+	}
+	return Sample{T: s.T,
+		Bids: keep(s.Bids, func(px float64) bool { return px >= mid-NearMid }),
+		Asks: keep(s.Asks, func(px float64) bool { return px <= mid+NearMid })}
 }
