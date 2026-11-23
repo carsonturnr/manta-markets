@@ -92,3 +92,7 @@ server); `.env.example` and `site/.env.example` list each setting.
 - [docs/product.md](docs/product.md): the product spec.
 - [docs/decisions.md](docs/decisions.md): every decision, dated, with what was measured.
 - `docs/milestone-*.md`: design notes for the recorder, pricing, tracker and backtest.
+
+## License
+
+MIT (see [LICENSE](LICENSE)). NautilusTrader, a dependency, is LGPL-3.0 and is used as an installed library, not copied.
