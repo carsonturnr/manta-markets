@@ -9,6 +9,7 @@
 Carson approved the event-response work (tools 15–16); the plan asks for a source comparison with measured delays before any news code or paid feed.
 
 ## Decisions
+- Carson approved the recommendation on 2026-11-23 and asked to merge without waiting for Wednesday's measurements.
 - Recommend official sources only: scheduled events are timed by their stated time from the official calendars; unscheduled official news polled from the VM (Fed RSS, Treasury press page, auction result XML). Free, and public domain, so the text can be shown.
 - No paid wire: none of the affordable ones lets a public commercial site show headlines (Alpaca, Finnhub, Tiingo forbid it; Benzinga by contract).
 - Measurements used the pages' Last-Modified headers as well as live polling, because one day of live polling gives few samples.
