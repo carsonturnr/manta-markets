@@ -19,13 +19,17 @@ export default function ReleasePage({ params }: PageProps<"/events/[release]">) 
 }
 
 const VENUE: Record<string, string> = { kalshi: "Kalshi", polymarket: "Polymarket" };
+// A real release moves hundreds of contracts (717 in the 2026-11-23 dry run, 193 by 1¢ or more:
+// 6.9 MB of page). Charts for the biggest movers; the table below lists every contract.
+const MAX_CHARTS = 24;
 const spread = (x: number | null) => na(x, (v) => `${v.toFixed(1)}¢`);
 
 async function ReleaseView({ params }: Pick<PageProps<"/events/[release]">, "params">) {
   await connection(); // request time only: the build never calls the replay server
   const r = await getRelease((await params).release);
   if (!r) notFound();
-  const charted = reacting(r.contracts);
+  const moved = reacting(r.contracts);
+  const charted = moved.slice(0, MAX_CHARTS);
   return (
     <div className="wide">
       <p className="crumbs">
@@ -50,16 +54,23 @@ async function ReleaseView({ params }: Pick<PageProps<"/events/[release]">, "par
       {charted.length === 0 ? (
         <p className="muted">No contract moved by 1¢ or more.</p>
       ) : (
-        <div className="response-charts">
-          {charted.map((c) => (
-            <figure key={`${c.venue}/${c.ticker}`}>
-              <figcaption className="small">
-                {VENUE[c.venue] ?? c.venue} <span className="mono">{c.ticker}</span> · {na(c.move_cents, cents)}
-              </figcaption>
-              <MoveChart mids={c.mids} t0={r.t0} label={c.ticker} />
-            </figure>
-          ))}
-        </div>
+        <>
+          {moved.length > charted.length && (
+            <p className="muted small">
+              The {charted.length} biggest of {moved.length} contracts that moved 1¢ or more; the table lists them all.
+            </p>
+          )}
+          <div className="response-charts">
+            {charted.map((c) => (
+              <figure key={`${c.venue}/${c.ticker}`}>
+                <figcaption className="small">
+                  {VENUE[c.venue] ?? c.venue} <span className="mono">{c.ticker}</span> · {na(c.move_cents, cents)}
+                </figcaption>
+                <MoveChart mids={c.mids} t0={r.t0} label={c.ticker} />
+              </figure>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="table-wrap">
