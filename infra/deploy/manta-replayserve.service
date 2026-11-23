@@ -1,5 +1,6 @@
 # Manta replay file server (recorder/cmd/replayserve): read-only, the replay directory only,
 # for the site's server, which sends REPLAY_TOKEN. Port 8790 is opened in ufw by deploy-replay.sh.
+# TLS with the relay's certificate and key in /etc/manta (replayserve's -tls-cert/-tls-key defaults).
 [Unit]
 Description=Manta replay file server
 After=network-online.target

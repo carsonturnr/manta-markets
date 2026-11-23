@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Deploy the replay (step 8) to the VM: infra/deploy/deploy-replay.sh root@HOST
 #   - manta-replay.timer: hourly replay files (replay.sh, recorder/cmd/replay)
-#   - manta-replayserve: the read-only file server the site's server reads them from, port 8790
+#   - manta-replayserve: the read-only file server the site's server reads them from, port 8790,
+#     over TLS with the relay's certificate (made by deploy.sh; the site trusts it as RELAY_CA)
 # Never touches the recorder. REPLAY_TOKEN (the file server's key) is made once and kept in the
 # local .env; the same value goes into /etc/manta/env here and into Vercel's settings.
 set -euo pipefail
@@ -24,6 +25,7 @@ rsync -a infra/deploy/manta-replay.service infra/deploy/manta-replay.timer \
 # The key goes over ssh's stdin, never on a command line (where `ps` would show it).
 printf '%s\n' "$token" | ssh "$host" 'set -euo pipefail
   read -r token
+  test -f /etc/manta/relay.crt || { echo "no /etc/manta/relay.crt: run deploy.sh first" >&2; exit 1; }
   grep -v "^REPLAY_TOKEN=" /etc/manta/env > /etc/manta/env.new || true
   echo "REPLAY_TOKEN=$token" >> /etc/manta/env.new
   chmod 640 /etc/manta/env.new && chown root:manta /etc/manta/env.new && mv /etc/manta/env.new /etc/manta/env
