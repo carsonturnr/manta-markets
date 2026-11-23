@@ -114,6 +114,18 @@ func TestANewConnectionHidesBooksUntilTheirSnapshots(t *testing.T) {
 	}
 }
 
+func TestClosedMarketsAreForgottenOnResubscribe(t *testing.T) {
+	h := New(time.Second)
+	h.handle(snap(1*ms, 1, "KX-1"))
+	h.handle(snap(2*ms, 2, "KX-2"))
+	frame := `{\"params\":{\"market_tickers\":[\"KX-2\"]}}`
+	h.handle(rawlog.Record{RecvNs: 3 * ms, Venue: "kalshi", Stream: "subscribe",
+		Msg: json.RawMessage(`{"label":"conn 0 (1 markets)","frames":["` + frame + `"]}`)})
+	if h.markets["KX-1"] != nil || h.markets["KX-2"] == nil || h.Markets.Load() != 1 {
+		t.Fatalf("markets %v", h.markets)
+	}
+}
+
 func TestTradesAreNewestFirstAndCapped(t *testing.T) {
 	h := New(time.Second)
 	for i := range MaxTrades + 5 {

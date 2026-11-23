@@ -105,9 +105,25 @@ func (k *kalshi) Handle(r rawlog.Record) []md.Msg {
 // no snapshot will ever come to make them clean again, and their time stops counting toward
 // coverage. (Without this, every closed market counted as stale until the end of the data.)
 func (k *kalshi) retireUnsubscribed(r rawlog.Record) {
+	live := Subscribed(r)
+	if live == nil {
+		return
+	}
+	for t := range k.books {
+		if !live[t] {
+			delete(k.books, t)
+			k.retire(t, r.RecvNs)
+		}
+	}
+}
+
+// Subscribed returns the market tickers a Kalshi "subscribe" record asks for, or nil when it
+// can't tell (then nothing should be retired). The tap uses one connection, so this is every
+// open market being recorded.
+func Subscribed(r rawlog.Record) map[string]bool {
 	var sub struct{ Frames []string }
 	if json.Unmarshal(r.Msg, &sub) != nil {
-		return
+		return nil
 	}
 	live := map[string]bool{}
 	for _, f := range sub.Frames {
@@ -117,21 +133,16 @@ func (k *kalshi) retireUnsubscribed(r rawlog.Record) {
 			} `json:"params"`
 		}
 		if json.Unmarshal([]byte(f), &frame) != nil {
-			return // can't tell what's subscribed: retire nothing
+			return nil
 		}
 		for _, t := range frame.Params.MarketTickers {
 			live[t] = true
 		}
 	}
 	if len(live) == 0 {
-		return
+		return nil
 	}
-	for t := range k.books {
-		if !live[t] {
-			delete(k.books, t)
-			k.retire(t, r.RecvNs)
-		}
-	}
+	return live
 }
 
 func (k *kalshi) markStale(ts int64) {

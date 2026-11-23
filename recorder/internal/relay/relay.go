@@ -131,6 +131,16 @@ func (h *Hub) handle(r rawlog.Record) {
 	h.Records.Add(1)
 	if r.Stream == "subscribe" { // a new connection: every book waits for its new snapshot
 		h.allStale(r.RecvNs)
+		// Markets the new subscription leaves out have closed: forget them, or the map grows by
+		// every short-dated market ever listed (20,416 after 15 h on 2026-11-23, 5,700 open).
+		if open := normalize.Subscribed(r); open != nil {
+			for id := range h.markets {
+				if !open[id] {
+					delete(h.markets, id)
+					delete(h.dirty, id)
+				}
+			}
+		}
 	}
 	for _, m := range h.norm.Handle(r) {
 		h.apply(m)
