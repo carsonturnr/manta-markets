@@ -74,7 +74,7 @@ export function BookPanel({ fair }: { fair: number | null }) {
               {fair !== null && (
                 <>
                   {" · "}
-                  <span className="t-mint">Manta {c(fair)}</span>
+                  <span className="t-mint">fair {c(fair)}</span>
                 </>
               )}
             </td>

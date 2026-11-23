@@ -117,7 +117,7 @@ export default function Monitor({
         })}
       </ul>
       <p className="t-foot">
-        {shown.length} of {rows.length} markets · volume · spread · Manta gap (pts) · time to close
+        {shown.length} of {rows.length} markets · volume · spread · fair-value gap (pts) · time to close
       </p>
     </div>
   );
