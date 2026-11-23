@@ -87,7 +87,7 @@ No wire publishes a latency figure; every vendor stamps whole seconds at best, c
 
 ## Needs Carson
 
-- **BLS and DOL block anonymous clients.** Reading them automatically needs a contact address in
-  the client name (a project address like data@mantamarkets.com, not a personal one). Their
-  calendars and stated times suffice for timing, so this can wait.
+- **BLS and DOL**: Carson approved (2026-11-23) the project address data@mantamarkets.com in the client
+  name: `manta-markets news timing (data@mantamarkets.com)`. Checked: BLS RSS, BLS ICS and DOL's
+  claims PDF all answer 200 with it (403 without). The address needs a Namecheap forward to Carson.
 - Any paid feed or licence (Benzinga quote, X API): cost and terms first.

@@ -16,6 +16,6 @@ Carson approved the event-response work (tools 15–16); the plan asks for a sou
 
 ## Follow-ups
 - Live measurements still due: BEA GDP + PCE and Beige Book (Wed 25 Nov), Fed H.15/H.10 (today 21:15 UTC). The scratchpad poller runs until Wed 19:30 UTC.
-- BLS and DOL block anonymous clients: a project contact address in the client name needs Carson's OK.
+- BLS and DOL: Carson approved data@mantamarkets.com in the client name (works, checked); Carson to add a data@ forward at Namecheap.
 - A poller bug missed today's bill results and the guessed 2-year XML (fixed for later windows).
 - Not checked: X's developer terms, Benzinga's direct price, the Fed's current lock-up.
