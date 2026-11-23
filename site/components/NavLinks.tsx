@@ -12,6 +12,7 @@ const LINKS: { href: string; name: string; also?: string[] }[] = [
   { href: "/liquidity", name: "Liquidity" },
   { href: "/distributions", name: "Distributions" },
   { href: "/replay", name: "Replay" },
+  { href: "/events", name: "Events" },
 ];
 
 function Nav({ path }: { path: string | null }) {
