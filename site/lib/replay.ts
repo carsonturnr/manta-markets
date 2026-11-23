@@ -10,6 +10,7 @@ import { gunzipSync } from "node:zlib";
 import { cacheLife } from "next/cache";
 import { sql } from "./db";
 import { FAMILIES } from "./families";
+import { fetchReplay } from "./replayserve";
 
 // The families the VM replays (REPLAY_SERIES in infra/deploy/manta-replay.service).
 export const REPLAY_FAMILIES = [
@@ -30,19 +31,6 @@ type RawFile = {
   hour: string;
   markets: Record<string, { minutes: RawMinute[]; trades: RawTrade[] }>;
 };
-
-async function fetchReplay(path: string): Promise<Response> {
-  const url = process.env.REPLAY_URL;
-  const token = process.env.REPLAY_TOKEN;
-  if (!url || !token) throw new Error("REPLAY_URL / REPLAY_TOKEN are not set");
-  const res = await fetch(`${url}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store", // cached below with "use cache"; the token stays out of fetch's cache key
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) throw new Error(`replay server: ${path}: ${res.status}`);
-  return res;
-}
 
 export type Past = { event: string; family: string; close: number; hours: number };
 
