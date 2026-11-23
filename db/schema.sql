@@ -286,3 +286,96 @@ create policy own_rows on manta.alerts for all to manta_account
 drop policy if exists own_rows on manta.alert_log;
 create policy own_rows on manta.alert_log for select to manta_account
     using (user_id = current_setting('manta.user_id', true));
+
+-- API keys and rate limits (step 13, docs/plan-api.md). A key is shown to its user once; only its
+-- SHA-256 is kept. manta_account (signed-in pages, row-level security as for the watchlist) lists,
+-- creates and deletes a user's own keys. Requests are checked by manta.api_use() alone: it runs as
+-- the table owner, so no login can read the hashes or the counters.
+create table if not exists manta.api_keys (
+    key_id    bigint generated always as identity primary key,
+    user_id   text not null check (user_id ~ '^user_[A-Za-z0-9]{1,64}$'),
+    name      text not null check (length(name) between 1 and 40),
+    hash      bytea not null unique,
+    prefix    text not null,  -- the key's first 10 characters, to tell keys apart on /account
+    created   timestamptz not null default now(),
+    last_used timestamptz
+);
+-- 60 units a minute per user, not per key (three keys must not triple it).
+create table if not exists manta.api_usage (
+    user_id      text primary key,
+    window_start timestamptz not null,
+    used         int not null
+);
+-- The shared cap: at most 2 venue book fetches a second caused by the API, across all callers
+-- (decisions 2026-11-23). api_fetches remembers when each contract was last fetched: a /cost
+-- inside the site's 2 s book cache costs no venue request.
+create table if not exists manta.api_fetches (
+    contract text primary key,  -- "venue:id"
+    fetched  timestamptz not null
+);
+create table if not exists manta.api_venue_budget (
+    only_row     boolean primary key default true check (only_row),
+    window_start timestamptz not null,
+    used         int not null
+);
+alter table manta.api_keys enable row level security;
+alter table manta.api_usage enable row level security;
+alter table manta.api_fetches enable row level security;
+alter table manta.api_venue_budget enable row level security;
+revoke all on manta.api_keys, manta.api_usage, manta.api_fetches, manta.api_venue_budget
+    from manta_site;
+grant select (key_id, name, prefix, created, last_used), delete on manta.api_keys to manta_account;
+grant insert (user_id, name, hash, prefix) on manta.api_keys to manta_account;
+drop policy if exists own_rows on manta.api_keys;
+create policy own_rows on manta.api_keys for all to manta_account
+    using (user_id = current_setting('manta.user_id', true))
+    with check (user_id = current_setting('manta.user_id', true));
+
+-- One call per API request: finds the key (no row: unknown key), counts `p_cost` units against
+-- its user's minute, and with `p_contract` takes one fetch from the shared second unless that
+-- contract was fetched in the last 2 s. Units are spent even if the venue budget then refuses.
+create or replace function manta.api_use(p_hash bytea, p_cost int, p_contract text default null)
+returns table (allowed boolean, remaining int, reset timestamptz, venue_ok boolean)
+language plpgsql security definer set search_path = '' as $$
+declare
+    uid    text;
+    this_min timestamptz := date_trunc('minute', now());
+    this_sec timestamptz := date_trunc('second', now());
+    n      int;
+begin
+    update manta.api_keys set last_used = now() where hash = p_hash returning user_id into uid;
+    if uid is null then return; end if;
+
+    insert into manta.api_usage as u values (uid, this_min, 0)
+    on conflict (user_id) do update
+        set window_start = this_min, used = 0 where u.window_start < this_min;
+    update manta.api_usage set used = used + p_cost
+        where user_id = uid and used + p_cost <= 60
+        returning used into n;
+    allowed := n is not null;
+    if not allowed then
+        select used into n from manta.api_usage where user_id = uid;
+    end if;
+    remaining := 60 - n;
+    reset := this_min + interval '1 minute';
+    venue_ok := true;
+
+    if allowed and p_contract is not null and not exists (
+        select from manta.api_fetches f
+        where f.contract = p_contract and f.fetched > now() - interval '2 seconds'
+    ) then
+        insert into manta.api_venue_budget as b values (true, this_sec, 0)
+        on conflict (only_row) do update
+            set window_start = this_sec, used = 0 where b.window_start < this_sec;
+        update manta.api_venue_budget set used = used + 1 where used < 2 returning used into n;
+        venue_ok := found;
+        if venue_ok then
+            insert into manta.api_fetches values (p_contract, now())
+            on conflict (contract) do update set fetched = excluded.fetched;
+            delete from manta.api_fetches where fetched < now() - interval '1 minute';
+        end if;
+    end if;
+    return next;
+end $$;
+revoke all on function manta.api_use(bytea, int, text) from public;
+grant execute on function manta.api_use(bytea, int, text) to manta_account;
