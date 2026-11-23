@@ -2887,3 +2887,14 @@ a.hero-card:hover .hero-chart-card {
 .terminal li a {
   text-decoration: none;
 }
+
+/* ---- Event response (/events/[release]): one small chart per reacting contract ----------- */
+.response-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+  margin: 0 0 32px;
+}
+.response-charts figure {
+  margin: 0;
+}
