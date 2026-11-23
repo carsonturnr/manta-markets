@@ -135,3 +135,17 @@ export async function getMarket(
   const { at, tracked, ...row } = r;
   return { row: { ...row, close: Number(row.close) } as unknown as Row, tracked, at: Number(at) };
 }
+
+/** Every open contract with a fair value, for the API's /fair-values (lib/api.ts keeps only the
+ * fair value and the contract's description). */
+export async function getFairValues(): Promise<{ rows: Row[]; at: number | null }> {
+  "use cache";
+  cacheLife({ stale: 30, revalidate: 30, expire: 120 });
+  const rows = await sql`
+    select ${rowCols()} from manta.markets where fair is not null order by close_time, venue, id`;
+  const [meta] = await sql`select extract(epoch from max(updated)) * 1000 as at from manta.markets`;
+  return {
+    rows: rows.map((r) => ({ ...r, close: Number(r.close) }) as unknown as Row),
+    at: meta?.at == null ? null : Number(meta.at),
+  };
+}

@@ -2898,3 +2898,19 @@ a.hero-card:hover .hero-chart-card {
 .response-charts figure {
   margin: 0;
 }
+
+/* ---- API keys (/account) ------------------------------------------------------------------ */
+.alert-form input.key-name {
+  width: 12em;
+}
+.api-key {
+  user-select: all;
+  word-break: break-all;
+}
+
+/* ---- API docs (/docs/api) ------------------------------------------------------------------- */
+main pre {
+  overflow-x: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+}

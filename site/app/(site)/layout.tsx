@@ -53,6 +53,7 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             <nav aria-label="Account">
               <h2>04 Account</h2>
               <Link href="/account">Watchlist and alerts</Link>
+              <Link href="/docs/api">API</Link>
               <Link href="/privacy">Privacy</Link>
             </nav>
           </div>

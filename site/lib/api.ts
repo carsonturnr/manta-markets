@@ -84,8 +84,9 @@ export const fairOut = (r: Row) => ({
   method: r.fairMethod,
 });
 
-/** A walk of the book: the totals and the best price it started from, never the levels. */
-export const costOut = (c: Cost, bookTime: number) => ({
+/** A walk of the book: the totals and the best price it started from, never the levels. Without
+ * the venue's fee rate (`feeKnown` false) the fee and everything after it are null, not 0. */
+export const costOut = (c: Cost, bookTime: number, feeKnown: boolean) => ({
   side: c.side,
   wanted: c.wanted,
   filled: c.filled,
@@ -94,9 +95,9 @@ export const costOut = (c: Cost, bookTime: number) => ({
   average_price: c.average,
   slippage: c.slippage,
   value: c.value,
-  fee: c.fee,
-  total: c.total,
-  per_contract: c.perContract,
+  fee: feeKnown ? c.fee : null,
+  total: feeKnown ? c.total : null,
+  per_contract: feeKnown ? c.perContract : null,
 });
 
 /** A cross-venue pair: the gap and any crossing after fees, not the quotes behind them. `g` and

@@ -5,8 +5,9 @@ import { SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { getAlerts, getFired, getListed, getWatchlist, type Listed } from "@/lib/account";
-import { deleteAlert, toggleWatch } from "@/lib/accountActions";
+import KeyForm from "@/components/KeyForm";
+import { getAlerts, getFired, getKeys, getListed, getWatchlist, type Listed } from "@/lib/account";
+import { deleteAlert, deleteKey, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
 import { utc } from "@/lib/format";
 import { summary } from "@/lib/settlement";
@@ -52,10 +53,11 @@ async function Account() {
       </p>
     );
   }
-  const [watched, alerts, fired] = await Promise.all([
+  const [watched, alerts, fired, keys] = await Promise.all([
     getWatchlist(userId),
     getAlerts(userId),
     getFired(userId),
+    getKeys(userId),
   ]);
   const listed = await getListed([
     ...new Set([...watched, ...alerts].map((w) => `${w.venue}:${w.id}`)),
@@ -173,6 +175,29 @@ async function Account() {
           </ul>
         </>
       )}
+
+      <h2>API keys</h2>
+      <p className="small">
+        Keys for Manta&apos;s analytics API: see <Link href="/docs/api">the API docs</Link>. Up to 3
+        keys, sharing one limit of 60 units a minute. A key is shown once, when it is made; we keep
+        only a fingerprint of it.
+      </p>
+      {keys.length > 0 && (
+        <ul className="alert-list">
+          {keys.map((k) => (
+            <li key={k.keyId}>
+              {k.name} <span className="num muted">{k.prefix}…</span>, made {utc(k.created)}, last
+              used {k.lastUsed ? utc(k.lastUsed) : "never"}
+              <form action={deleteKey.bind(null, k.keyId)}>
+                <button type="submit" className="link-button">
+                  Delete
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      <KeyForm />
     </>
   );
 }

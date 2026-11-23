@@ -4,6 +4,7 @@
 // security is the second line (lib/account.ts).
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { hashKey, keyPrefix, MAX_KEYS, newKey } from "./api";
 import { asUser, isPaired, MAX_ALERTS, MAX_WATCHED } from "./account";
 import { KINDS, type Kind, parseThreshold } from "./alerts";
 import { getMarket } from "./screener";
@@ -80,5 +81,34 @@ export async function deleteAlert(alertId: number): Promise<void> {
   const userId = await signedIn();
   if (!Number.isSafeInteger(alertId)) return;
   await asUser(userId, (tx) => tx`delete from manta.alerts where alert_id = ${alertId}`);
+  revalidatePath("/account");
+}
+
+// The new key comes back once, in this answer, and is never stored or shown again.
+export type KeyState = { ok: boolean; message: string; at: number; key?: string } | null;
+
+export async function createKey(_prev: KeyState, form: FormData): Promise<KeyState> {
+  const userId = await signedIn();
+  const name = String(form.get("name") ?? "").trim();
+  const answer = (ok: boolean, message: string, key?: string) => ({ ok, message, at: Date.now(), key });
+  if (name.length < 1 || name.length > 40) return answer(false, "Name the key (up to 40 characters).");
+  const key = newKey();
+  const made = await asUser(userId, async (tx) => {
+    const [{ n }] = await tx`select count(*)::int as n from manta.api_keys`;
+    if (n >= MAX_KEYS) return false;
+    await tx`
+      insert into manta.api_keys (user_id, name, hash, prefix)
+      values (${userId}, ${name}, ${hashKey(key)}, ${keyPrefix(key)})`;
+    return true;
+  });
+  if (!made) return answer(false, `You have ${MAX_KEYS} keys; delete one to make another.`);
+  revalidatePath("/account");
+  return answer(true, "Copy this key now: it won't be shown again.", key);
+}
+
+export async function deleteKey(keyId: number): Promise<void> {
+  const userId = await signedIn();
+  if (!Number.isSafeInteger(keyId)) return;
+  await asUser(userId, (tx) => tx`delete from manta.api_keys where key_id = ${keyId}`);
   revalidatePath("/account");
 }

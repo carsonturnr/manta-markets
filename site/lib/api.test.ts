@@ -56,13 +56,19 @@ test("cost answer: totals and best price, never the levels", () => {
   // Buy 150: 100 at 40¢, 50 at 42¢, no fee → average 0.40667, slippage 0.00667.
   const c = walk("buy", 150, [{ price: 0.4, size: 100 }, { price: 0.42, size: 50 }, { price: 0.5, size: 9 }], () => 0);
   assert.ok(c);
-  const out = costOut(c, Date.UTC(2026, 10, 23, 12));
+  const out = costOut(c, Date.UTC(2026, 10, 23, 12), true);
   assert.equal(out.best_price, 0.4);
   assert.equal(out.book_time, "2026-11-23T12:00:00.000Z");
   assert.equal(out.filled, 150);
   assert.ok(Math.abs(out.average_price - 61 / 150) < 1e-12);
   assert.ok(Math.abs(out.slippage - 1 / 150) < 1e-12);
   assert.ok(!("fills" in out));
+  assert.equal(out.total, 61);
+  const unknown = costOut(c, 0, false);
+  assert.equal(unknown.fee, null);
+  assert.equal(unknown.total, null);
+  assert.equal(unknown.per_contract, null);
+  assert.equal(unknown.value, 61);
   assert.ok(!JSON.stringify(out).includes("0.42"));
 });
 
