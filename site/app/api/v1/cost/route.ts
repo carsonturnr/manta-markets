@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (auth instanceof Response) return auth;
   if (typeof q === "string") return badRequest(q, auth);
   const m = await getMarket(q.venue, q.id);
-  if (!m) return notFound("No open contract with that venue and id (see /api/v1/fair-values).");
+  if (!m) return notFound("No open contract with that venue and id (see /api/v1/fair-values).", auth);
   const tokens = q.venue === "polymarket" ? await polyTokens(m.row.event, q.id) : null;
   const book = q.venue === "kalshi" ? await kalshiBook(q.id) : tokens ? await polyBook(tokens[0]) : null;
   if (!book) return Response.json({ error: "The venue's order book could not be read." }, { status: 502, headers: auth });

@@ -84,8 +84,13 @@ export const fairOut = (r: Row) => ({
   method: r.fairMethod,
 });
 
-/** Rounds to `d` decimals: strips float noise (0.06929999999999992 → 0.0693) from the output only. */
-const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
+/** Rounds to `d` decimals, halves away from zero: strips float noise (0.06929999999999992 →
+ * 0.0693) from the output only. The (1 + EPSILON) nudge rounds a half stored just below itself
+ * (1.005 is 1.00499999…) up, as written; `+ 0` turns -0 into 0. */
+export const round = (x: number, d: number) => {
+  const r = Math.round(Math.abs(x) * 10 ** d * (1 + Number.EPSILON)) / 10 ** d;
+  return (x < 0 ? -r : r) + 0;
+};
 
 /** Decimals for dollar amounts: each venue's fee precision (lib/cost.ts). Kalshi rounds fee +
  * position cost to a whole $0.0001; Polymarket rounds its fee to $0.00001. */

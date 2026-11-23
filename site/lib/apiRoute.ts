@@ -10,7 +10,7 @@ const fail = (status: number, error: string, headers = new Headers()) => {
 };
 
 export const badRequest = (error: string, headers?: Headers) => fail(400, error, headers);
-export const notFound = (error: string) => fail(404, error);
+export const notFound = (error: string, headers?: Headers) => fail(404, error, headers);
 
 /** The rate-limit headers to answer with, or the refusal to return. `contract` ("venue:id") is
  * given only by /cost, whose venue fetch counts against the shared budget. */

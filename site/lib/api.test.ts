@@ -1,7 +1,7 @@
 // Run with: npm test.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { bearer, costOut, fairOut, hashKey, keyPrefix, limitHeaders, newKey, pairOut, parseCost } from "./api.ts";
+import { bearer, costOut, round, fairOut, hashKey, keyPrefix, limitHeaders, newKey, pairOut, parseCost } from "./api.ts";
 import type { Pair } from "./compare.ts";
 import { kalshiFee, polymarketFee, walk } from "./cost.ts";
 import type { Row } from "./screener.ts";
@@ -115,4 +115,13 @@ test("cost answer: money to the venue's fee precision, prices to 6 decimals", ()
   assert.equal(po.fee, 0.05286); // 0.07 × 7 × 0.123 × 0.877 = 0.0528563… → 0.05286
   assert.equal(po.total, 0.80814); // 0.861 − 0.05286
   assert.equal(po.per_contract, 0.115449);
+});
+
+test("round: halves away from zero, float noise removed, no -0", () => {
+  assert.equal(round(1.005, 2), 1.01); // stored as 1.00499999…
+  assert.equal(round(-1.005, 2), -1.01);
+  assert.equal(round(0.06929999999999992, 4), 0.0693);
+  assert.equal(round(0.00005, 4), 0.0001);
+  assert.ok(Object.is(round(-0.0000001, 6), 0)); // not -0
+  assert.equal(round(-0.0066666, 6), -0.006667);
 });
