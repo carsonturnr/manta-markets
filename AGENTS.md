@@ -26,7 +26,7 @@ Python (run in `pricing/` or `backtest/`, same as CI):
 Go (run in `recorder/`, same as CI):
 - `gofmt -l .` (must print nothing) · `go vet ./...` · `go test ./...`
 
-CI (.github/workflows/ci.yml) runs the recorder and pricing checks; the site checks are not in CI.
+CI (.github/workflows/ci.yml) runs the recorder, pricing and site checks (site: no secrets, Node 24).
 
 ## Layout
 

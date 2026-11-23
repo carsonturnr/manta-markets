@@ -1,0 +1,10 @@
+# Scheduled releases for event response (replay.sh runs recorder/cmd/eventresponse on each).
+# Tab-separated: release id (date-kind), t0 (RFC 3339, UTC), name shown on the site.
+# t0 is the official release minute (BLS for payrolls and CPI, the Fed for its decision),
+# checked 2026-11-23 against Kalshi's close times, one minute before (KXPAYROLLS-26NOV 13:29).
+2026-12-04-payrolls	2026-12-04T13:30:00Z	Payrolls and unemployment
+2026-12-09-fed	2026-12-09T19:00:00Z	Fed rate decision
+2026-12-10-cpi	2026-12-10T13:30:00Z	CPI inflation
+2027-01-08-payrolls	2027-01-08T13:30:00Z	Payrolls and unemployment
+2027-01-13-cpi	2027-01-13T13:30:00Z	CPI inflation
+2027-01-27-fed	2027-01-27T19:00:00Z	Fed rate decision

@@ -471,33 +471,48 @@ function CalendarPanel({ events, now, layout }: { events: Event[]; now: number; 
     const h = (t - now) / 3_600_000;
     return h < 24 ? `${Math.round(h)} h` : `${Math.round(h / 24)} d`;
   };
-  if (!upcoming.length) return <p className="t-empty">No releases in the next 45 days.</p>;
+  // Past releases: how contracts reacted, measured from our recordings (event response).
+  const past = (
+    <p className="t-dim small">
+      <Link href="/events">Past releases: how markets reacted →</Link>
+    </p>
+  );
+  if (!upcoming.length)
+    return (
+      <>
+        <p className="t-empty">No releases in the next 45 days.</p>
+        {past}
+      </>
+    );
   return (
-    <ul className="t-cal">
-      {upcoming.map((e) => {
-        const top = featured(e.outcomes, 1)[0];
-        return (
-          <li key={`${e.venue}/${e.event}`}>
-            <Link href={`/terminal?m=${encodeURIComponent(`${e.venue}:${top?.id ?? e.outcomes[0].id}`)}&layout=${layout}`} scroll={false}>
-              <span className="t-cal-when num">
-                <b>{left(e.close)}</b>
-                <span className="t-dim">{utc(e.close)}</span>
-              </span>
-              <span className="t-cal-q">
-                <span className={`t-venue ${e.venue}`}>{e.venue === "kalshi" ? "K" : "P"}</span>
-                {e.question}
-              </span>
-              <span className="t-cal-top num">
-                {top && (
-                  <>
-                    <span className="t-dim">{outcomeLabel(top)}</span> {pct(mid(top))}
-                  </>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      <ul className="t-cal">
+        {upcoming.map((e) => {
+          const top = featured(e.outcomes, 1)[0];
+          return (
+            <li key={`${e.venue}/${e.event}`}>
+              <Link href={`/terminal?m=${encodeURIComponent(`${e.venue}:${top?.id ?? e.outcomes[0].id}`)}&layout=${layout}`} scroll={false}>
+                <span className="t-cal-when num">
+                  <b>{left(e.close)}</b>
+                  <span className="t-dim">{utc(e.close)}</span>
+                </span>
+                <span className="t-cal-q">
+                  <span className={`t-venue ${e.venue}`}>{e.venue === "kalshi" ? "K" : "P"}</span>
+                  {e.question}
+                </span>
+                <span className="t-cal-top num">
+                  {top && (
+                    <>
+                      <span className="t-dim">{outcomeLabel(top)}</span> {pct(mid(top))}
+                    </>
+                  )}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {past}
+    </>
   );
 }
