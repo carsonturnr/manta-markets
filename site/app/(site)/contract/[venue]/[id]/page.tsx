@@ -177,18 +177,12 @@ async function Contract({
         </div>
       </div>
 
-      <div className="cw-lower">
-        <section className="panel cw-rules">
-          <header className="ph">
-            <h2>Settlement rules</h2>
-          </header>
-          <div className="pad">
-            <Suspense fallback={<p className="muted">Loading…</p>}>
-              <RulesSection c={c} />
-            </Suspense>
-          </div>
-        </section>
-      </div>
+      <section className="fine-print">
+        <h2>Settlement rules</h2>
+        <Suspense fallback={<p className="muted">Loading…</p>}>
+          <RulesSection c={c} />
+        </Suspense>
+      </section>
     </div>
   );
 }

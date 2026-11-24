@@ -102,39 +102,20 @@ async function EventView({
                   </Suspense>
                 ),
               },
-              {
-                name: "Rules",
-                pane: (
-                  <Suspense fallback={<p className="muted">Loading…</p>}>
-                    <RulesSection c={o} />
-                  </Suspense>
-                ),
-              },
-              {
-                name: "Fair value method",
-                pane: (
-                  <div className="prose-sm">
-                    {o.fairMethod ? (
-                      <p>
-                        <b>{METHODS[o.fairMethod].name}.</b> {METHODS[o.fairMethod].explain}
-                      </p>
-                    ) : (
-                      <p>We have no fair value for this contract yet.</p>
-                    )}
-                    <p>
-                      Every number on this page, with the order book&apos;s full depth and the cost
-                      of any size, is on the{" "}
-                      <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`}>
-                        contract&apos;s detail page
-                      </Link>
-                      .
-                    </p>
-                  </div>
-                ),
-              },
             ]}
           />
           <FairValueCard o={o} />
+          {/* The rules close the page: small print, read once, not a tab of their own. */}
+          <section className="fine-print">
+            <h2>Settlement rules</h2>
+            <Suspense fallback={<p className="muted">Loading…</p>}>
+              <RulesSection c={o} />
+            </Suspense>
+            <p>
+              The full order book and the cost of any size are on the{" "}
+              <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`}>contract page</Link>.
+            </p>
+          </section>
         </div>
 
         <aside className="event-side">
@@ -219,7 +200,7 @@ function FairValueCard({ o }: { o: Row }) {
         </b>
       </div>
       <p>
-        <strong>{method}.</strong> Its measured accuracy, against the venues&apos; own prices, is
+        <strong>{method}.</strong> {o.fairMethod && METHODS[o.fairMethod].explain} Its measured accuracy, against the venues&apos; own prices, is
         on the <Link href="/stats">accuracy page</Link>. A reference price, not a forecast to trade
         on. Not investment advice.
       </p>

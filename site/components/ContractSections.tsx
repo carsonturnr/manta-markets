@@ -216,10 +216,13 @@ export async function RulesSection({ c }: { c: Row }) {
   if (!rules) return unavailable("The rules", c.venue);
   return (
     <div className="rules">
+      {/* The venue's own words, unedited: said once, up front. */}
       {rules.paragraphs.map((p, i) => (
-        <p key={i}>{p}</p>
+        <p key={i}>
+          {i === 0 && <b>From {c.venue === "kalshi" ? "Kalshi" : "Polymarket"}: </b>}
+          {p}
+        </p>
       ))}
-      <p className="m3">{rules.source}, verbatim.</p>
     </div>
   );
 }

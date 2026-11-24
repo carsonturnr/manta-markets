@@ -950,14 +950,6 @@ td.prob {
   font-size: 13px;
   border-bottom: 0;
 }
-.cw-lower {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-  gap: 16px;
-}
-.cw-rules {
-  grid-column: 1 / -1;
-}
 /* One column: the stacks open up and the panels interleave, book straight after the chart. */
 @media (max-width: 1000px) {
   .cw-grid {
@@ -3169,4 +3161,28 @@ section[id] {
 }
 .candle-tip b.down {
   color: var(--down);
+}
+
+/* ---- Fine print: a page's closing notes (settlement rules), quiet and small --------------- */
+.fine-print {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text-3);
+}
+.fine-print h2 {
+  margin: 0 0 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+.fine-print p {
+  margin: 0 0 8px;
+}
+.fine-print b {
+  color: var(--text-2);
+  font-weight: 500;
 }
