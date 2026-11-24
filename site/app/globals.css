@@ -2102,6 +2102,21 @@ a.hero-card:hover .hero-chart-card {
   .event-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* One column: the main column's parts join the grid so the buy box and outcomes can come
+     straight after the chart, before the book, instead of after everything. */
+  .event-main {
+    display: contents;
+  }
+  .event-side {
+    position: static;
+  }
+  .event-main > .focus,
+  .event-main > .chart-card {
+    order: -2;
+  }
+  .event-side {
+    order: -1;
+  }
 }
 .focus {
   display: flex;

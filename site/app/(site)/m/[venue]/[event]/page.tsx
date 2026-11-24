@@ -90,7 +90,7 @@ async function EventView({
                 name: "Order book",
                 pane: (
                   <Suspense fallback={<p className="muted">Loading…</p>}>
-                    <BookSection c={o} yesToken={tokens?.[0]} />
+                    <BookSection c={o} yesToken={tokens?.[0]} levels={6} />
                   </Suspense>
                 ),
               },

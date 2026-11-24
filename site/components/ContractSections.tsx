@@ -54,15 +54,23 @@ export async function Chart({ c, yesToken, tracked }: { c: Row; yesToken?: strin
   return <CandleChart poly={{ m1, h1 }} />;
 }
 
-export async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
+export async function BookSection({
+  c,
+  yesToken,
+  levels = 12,
+}: {
+  c: Row;
+  yesToken?: string;
+  levels?: number;
+}) {
   const book: Book | null =
     c.venue === "kalshi" ? await kalshiBook(c.id) : yesToken ? await polyBook(yesToken) : null;
   if (!book) return unavailable("The order book", c.venue);
   if (book.bids.length === 0 && book.asks.length === 0) {
     return <p className="muted">No orders on either side.</p>;
   }
-  // The best 12 levels each side are shown; the calculator walks all of them (up to 50).
-  const shown = { bids: book.bids.slice(0, 12), asks: book.asks.slice(0, 12) };
+  // The best `levels` each side are shown; the calculator walks all of them (up to 50).
+  const shown = { bids: book.bids.slice(0, levels), asks: book.asks.slice(0, levels) };
   const max = Math.max(...shown.bids.map((l) => l.size), ...shown.asks.map((l) => l.size));
   const bar = (size: number) => ({ "--w": `${(size / max) * 100}%` }) as React.CSSProperties;
   // Running totals: how many contracts are on offer at this price or better.
@@ -119,6 +127,12 @@ export async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }
         Asks in red, bids in green, for &ldquo;yes&rdquo;.
         {c.venue === "kalshi" &&
           " Kalshi lists bids for “yes” and for “no”; a “no” bid at 26¢ is shown as a “yes” ask at 74¢."}
+        {levels < 12 && (
+          <>
+            {" "}
+            <Link href={`/contract/${c.venue}/${encodeURIComponent(c.id)}`}>Full book</Link>.
+          </>
+        )}
       </p>
     </>
   );
