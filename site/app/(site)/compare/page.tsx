@@ -14,7 +14,7 @@ export default function ComparePage() {
         The same event on Kalshi and Polymarket, side by side. Pairs come from fixed rules per
         contract family, never from matching text, and each says how equivalent its two sides are.
         Prices are for &ldquo;yes&rdquo;, in cents; refreshed every minute from each venue&apos;s
-        market list. Crossing prices are checked after both legs&apos; taker fees (step 6).
+        market list. Crossing prices are checked after both legs&apos; taker fees.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Pairs />
@@ -99,14 +99,25 @@ async function Pairs() {
         Bitcoin and Ether pairs appear only in the hour before noon New York time, the one hour
         both venues list the same moment.
       </p>
+      {/* A long page (one table per event): jump straight to one. */}
+      <nav className="jump" aria-label="Events on this page">
+        {topics.map((t) => (
+          <a key={t} href={`#${anchor(t)}`}>
+            {t}
+          </a>
+        ))}
+      </nav>
       {topics.map((t) => {
         const ps = pairs.filter((p) => p.topic === t);
+        // A note every pair in the event shares is said once, under the heading, not on each row.
+        const shared = ps.every((p) => p.note === ps[0].note) ? ps[0].note : null;
         return (
-          <section key={t} className="panel stack">
+          <section key={t} id={anchor(t)} className="panel stack">
             <header className="ph">
               <h2>{t}</h2>
               <span className="right m3">Kalshi closes {utc(ps[0].close)}</span>
             </header>
+            {shared && <p className="small pad-x shared-note">{shared}</p>}
             <div className="table-wrap">
               <table className="compare">
                 <thead>
@@ -124,7 +135,7 @@ async function Pairs() {
                 </thead>
                 <tbody>
                   {ps.map((p) => (
-                    <PairRow key={p.question} p={p} />
+                    <PairRow key={p.question} p={p} showNote={!shared} />
                   ))}
                 </tbody>
               </table>
@@ -136,7 +147,9 @@ async function Pairs() {
   );
 }
 
-function PairRow({ p }: { p: Pair }) {
+const anchor = (topic: string) => topic.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+function PairRow({ p, showNote }: { p: Pair; showNote: boolean }) {
   const g = gap(p);
   const x = crossed(p);
   const bundle = p.kind === "bundle" || p.poly.ids.length > 1;
@@ -147,7 +160,7 @@ function PairRow({ p }: { p: Pair }) {
         <span className="small">
           {p.kind === "same" ? "Same bet" : p.kind === "bundle" ? "Bundle" : "Near"}
           {bundle && <> of {p.poly.labels.join(", ")}</>}
-          {p.note && <> · {p.note}</>}
+          {showNote && p.note && <> · {p.note}</>}
         </span>
         {x && (
           <span className={x.net !== null && x.net > 1e-9 ? "small status-bad" : "small"}>
