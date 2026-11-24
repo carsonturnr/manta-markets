@@ -829,6 +829,33 @@ td.prob {
 .ohlc {
   top: 8px;
 }
+/* The hover card: the bar under the pointer, in full. */
+.candle-tip {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 16px;
+  padding: 10px 12px;
+  transform: translateY(-50%);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  font-size: 12px;
+  color: var(--text-3);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.candle-tip b {
+  justify-self: end;
+  font-weight: 500;
+  color: var(--text);
+}
+.candle-tip .tip-time {
+  grid-column: 1 / -1;
+  margin-bottom: 4px;
+  color: var(--text-2);
+}
 .ohlc b {
   color: var(--text);
   font-weight: 500;
@@ -3135,4 +3162,11 @@ section[id] {
 }
 .signed-out .lede {
   margin-bottom: 8px;
+}
+.candle-tip b.up,
+.candle-tip b.fair {
+  color: var(--up);
+}
+.candle-tip b.down {
+  color: var(--down);
 }

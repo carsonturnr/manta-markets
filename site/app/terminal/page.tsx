@@ -238,6 +238,9 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         <span>Listing read {at ? utc(at) : "–"}</span>
         <span>Books and trades every 2 s from Kalshi&apos;s and Polymarket&apos;s public APIs</span>
         <Link href="/quality">Data quality</Link>
+        <span>
+          Charts by <a href="https://www.tradingview.com/">TradingView</a>
+        </span>
         <span>Calculators only: Manta places no orders. Not investment advice.</span>
       </footer>
     </div>

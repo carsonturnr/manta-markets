@@ -1,7 +1,9 @@
 "use client";
 // The contract page's price chart: candles (or a line) with volume, Kalshi's bid and ask, and our
-// fair value where we have one, drawn with TradingView's lightweight-charts (Apache-2.0; it shows
-// TradingView's logo as its licence asks). The library does the drawing, zoom, pan and crosshair;
+// fair value where we have one, drawn with TradingView's lightweight-charts (Apache-2.0). Its logo is off:
+// the licence's link to tradingview.com is in the site footer and the terminal's status bar.
+// Attribution notice: TradingView Lightweight Charts™, Copyright (c) 2025 TradingView, Inc.
+// https://www.tradingview.com/ The library does the drawing, zoom, pan and crosshair;
 // this file picks the data and the toolbar.
 //
 // Prices stay probabilities (0 to 1) and are shown as a percent chance (a 37¢ contract: 37%). Times are UTC: the library shows the
@@ -56,6 +58,8 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
   const [kind, setKind] = useState<"candles" | "line">("line");
   const [show, setShow] = useState({ fair: true, quotes: true, volume: true });
   const [hover, setHover] = useState<Bar | null>(null);
+  // Where the pointer is over the chart, for the hover card; null when it's off the chart.
+  const [at, setAt] = useState<{ x: number; y: number; w: number } | null>(null);
 
   // The bars for the chosen timeframe, plus the bid and ask at each bar's close (Kalshi only).
   const { bars, quotes } = useMemo(() => {
@@ -119,6 +123,7 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
         textColor: css("--text-3"),
         fontFamily: getComputedStyle(document.body).fontFamily,
         fontSize: 11,
+        attributionLogo: false,
       },
       grid: { vertLines: { visible: false }, horzLines: { color: css("--line") } },
       rightPriceScale: { borderColor: css("--line"), scaleMargins: { top: 0.1, bottom: 0.25 } },
@@ -180,7 +185,11 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
     const c = chart.current;
     if (!c) return;
     const byTime = new Map(bars.map((b) => [b.time, b]));
-    const onMove = (p: { time?: unknown }) => setHover(byTime.get(p.time as number) ?? null);
+    const onMove = (p: { time?: unknown; point?: { x: number; y: number } }) => {
+      const bar = byTime.get(p.time as number) ?? null;
+      setHover(bar);
+      setAt(bar && p.point ? { ...p.point, w: c.paneSize().width } : null);
+    };
     c.subscribeCrosshairMove(onMove);
     return () => c.unsubscribeCrosshairMove(onMove);
   }, [bars]);
@@ -215,6 +224,10 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
   }, [bars, quotes, fairLine, kind, show, frame, kalshi]);
 
   const b = hover ?? bars.at(-1);
+  // The hover card's extra rows: the bid and ask at that bar's close, and our fair value then.
+  const quoteAt = hover ? quotes.find((q) => q.time === hover.time) : undefined;
+  const fairAt = hover && show.fair ? fairLine.find((f) => f.time === hover.time)?.value : undefined;
+  const when = (t: number) => new Date(t * 1000).toISOString().slice(5, 16).replace("T", " ");
   const toggle = (k: keyof typeof show) => setShow((s) => ({ ...s, [k]: !s[k] }));
   const chip = (on: boolean) => (on ? "chip on" : "chip");
 
@@ -303,6 +316,49 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
           {!kalshi && <span>Polymarket&apos;s price (midpoint or last trade)</span>}
         </div>
         <div ref={box} className="candle-canvas" />
+        {hover && at && (
+          // Flips to the pointer's left past the middle, so it never runs off the chart's edge.
+          <div
+            className="candle-tip num"
+            style={at.x > at.w / 2 ? { right: `calc(100% - ${at.x - 12}px)`, top: at.y } : { left: at.x + 16, top: at.y }}
+            aria-hidden="true"
+          >
+            <span className="tip-time">{when(hover.time)} UTC</span>
+            <span>Open</span>
+            <b>{cents(hover.open)}</b>
+            <span>High</span>
+            <b>{cents(hover.high)}</b>
+            <span>Low</span>
+            <b>{cents(hover.low)}</b>
+            <span>Close</span>
+            <b className={hover.close >= hover.open ? "up" : "down"}>{cents(hover.close)}</b>
+            <span>Change</span>
+            <b className={hover.close >= hover.open ? "up" : "down"}>
+              {hover.close >= hover.open ? "+" : "−"}
+              {(Math.abs(hover.close - hover.open) * 100).toFixed(1)} pts
+            </b>
+            {kalshi && (
+              <>
+                <span>Volume</span>
+                <b>{Math.round(hover.volume).toLocaleString("en-US")}</b>
+              </>
+            )}
+            {quoteAt && show.quotes && (
+              <>
+                <span>Bid / ask</span>
+                <b>
+                  {cents(quoteAt.bid)} / {cents(quoteAt.ask)}
+                </b>
+              </>
+            )}
+            {fairAt !== undefined && (
+              <>
+                <span>Fair value</span>
+                <b className="fair">{cents(fairAt)}</b>
+              </>
+            )}
+          </div>
+        )}
         {bars.length === 0 && <p className="muted candle-empty">No {source === "trades" ? "trades" : "prices"} in this window.</p>}
       </div>
     </div>
