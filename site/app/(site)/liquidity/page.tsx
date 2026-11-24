@@ -103,13 +103,14 @@ async function Liquidity() {
   );
 }
 
-/** The heatmap's color for a spread: one hue, darker for wider, on a log scale from 0.1¢ to 20¢
- * (log, because spreads span two orders of magnitude). */
+/** The heatmap's color for a spread: the market's grey, brighter for wider (costlier), on a log
+ * scale from 0.1¢ to 20¢ (log, because spreads span two orders of magnitude). Grey, not mint:
+ * mint is Manta's own numbers, and a spread is the market's. */
 function shade(spread: number): string {
   const lo = Math.log(0.001);
   const hi = Math.log(0.2);
   const t = Math.min(1, Math.max(0, (Math.log(Math.max(spread, 0.001)) - lo) / (hi - lo)));
-  return `color-mix(in oklab, var(--seq) ${Math.round(30 + t * 70)}%, var(--surface))`;
+  return `color-mix(in oklab, var(--ink) ${Math.round(15 + t * 85)}%, var(--surface))`;
 }
 
 function Heatmap({ rows, hours }: { rows: string[]; hours: HourCell[] }) {
