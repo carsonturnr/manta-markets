@@ -3066,3 +3066,23 @@ section[id] {
   margin: 12px 0 0;
   color: var(--text-2);
 }
+
+/* ---- Account, signed out: what signing in gives you ------------------------------------- */
+.signed-out ul {
+  margin: 0 0 28px;
+  padding: 0;
+  list-style: none;
+  max-width: 64ch;
+}
+.signed-out li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+}
+.signed-out li b {
+  color: var(--text);
+  font-weight: 500;
+}
+.signed-out .lede {
+  margin-bottom: 8px;
+}

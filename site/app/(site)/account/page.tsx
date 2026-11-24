@@ -43,14 +43,27 @@ async function Account() {
   const { userId } = await auth();
   if (!userId) {
     return (
-      <p>
+      <div className="signed-out">
+        <p className="lede">Sign in to keep these:</p>
+        <ul>
+          <li>
+            <b>Watchlist.</b> Watch contracts from any contract page and follow their prices here.
+          </li>
+          <li>
+            <b>Alerts.</b> An email when a contract&apos;s price, spread, depth or cross-venue gap crosses a level
+            you set.
+          </li>
+          <li>
+            <b>API keys.</b> Up to 3, for Manta&apos;s analytics as JSON (
+            <Link href="/docs/api">API docs</Link>).
+          </li>
+        </ul>
         <SignInButton mode="modal">
-          <button type="button" className="link-button">
+          <button type="button" className="btn btn-sm">
             Sign in
           </button>
-        </SignInButton>{" "}
-        to see your watchlist and alerts.
-      </p>
+        </SignInButton>
+      </div>
     );
   }
   const [watched, alerts, fired, keys] = await Promise.all([
