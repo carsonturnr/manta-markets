@@ -842,27 +842,25 @@ td.prob {
 .cw-head .quote {
   margin: 0;
 }
+/* Two columns, each a stack: chart, calculator, pricing notes; book, trades, alerts. Stacks
+   rather than grid rows, so a short panel on one side leaves no gap on the other. */
 .cw-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
-  grid-template-rows: 540px auto;
   gap: 16px;
+  align-items: start;
 }
-.cw-chart {
-  grid-column: 1;
-  grid-row: 1;
+.cw-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
+.cw-chart,
 .cw-book {
-  grid-column: 2;
-  grid-row: 1;
-}
-.cw-cost {
-  grid-column: 1;
-  grid-row: 2;
+  height: 540px;
 }
 .cw-trades {
-  grid-column: 2;
-  grid-row: 2;
   max-height: 420px;
 }
 .cw-book table,
@@ -883,17 +881,33 @@ td.prob {
 .cw-rules {
   grid-column: 1 / -1;
 }
+/* One column: the stacks open up and the panels interleave, book straight after the chart. */
 @media (max-width: 1000px) {
   .cw-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 460px auto auto auto;
   }
-  .cw-chart,
-  .cw-book,
-  .cw-cost,
+  .cw-col {
+    display: contents;
+  }
+  .cw-chart {
+    height: 460px;
+    order: 1;
+  }
+  .cw-book {
+    height: auto;
+    order: 2;
+  }
+  .cw-cost {
+    order: 3;
+  }
   .cw-trades {
-    grid-column: 1;
-    grid-row: auto;
+    order: 4;
+  }
+  .cw-priced {
+    order: 5;
+  }
+  .cw-watch {
+    order: 6;
   }
 }
 /* A bar behind each order-book size, its width set inline as --w: pink asks, green bids. */
