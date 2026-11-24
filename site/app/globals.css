@@ -224,6 +224,22 @@ main,
 .brand:hover {
   text-decoration: none;
 }
+/* Wide screens: the menu's wrapper vanishes and its items sit in the header's row. */
+.header-menu {
+  display: contents;
+}
+.menu-button {
+  display: none;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
 .site-header nav {
   display: flex;
   gap: 24px;
@@ -349,14 +365,49 @@ main {
 }
 @media (max-width: 960px) {
   .site-header .in {
+    justify-content: space-between;
     gap: 16px;
     padding: 0 16px;
-    overflow-x: auto;
-    white-space: nowrap;
   }
-  .search,
-  .site-header .btn-sm {
+  .menu-button {
+    display: block;
+  }
+  /* The menu drops down under the header, full width, one item per row. */
+  .header-menu {
     display: none;
+  }
+  .header-menu[data-open="true"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    position: absolute;
+    top: 64px;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    padding: 16px 16px 24px;
+    background: var(--bg);
+    border-bottom: 1px dashed var(--rail);
+  }
+  .header-menu nav {
+    flex-direction: column;
+    gap: 0;
+    margin-left: 0;
+  }
+  .header-menu nav a {
+    padding: 12px 0;
+    font-size: 17px;
+    border-bottom: 1px solid var(--line);
+  }
+  .header-menu .search {
+    width: auto;
+    height: 44px;
+  }
+  .header-menu .btn-sm {
+    justify-content: center;
+    height: 44px;
   }
   main {
     padding: 24px 16px 48px;
@@ -1280,6 +1331,13 @@ a.hero-card:hover .hero-chart-card {
   padding: 56px 32px 40px;
   background: var(--ink-deep);
   color: #f2f5fb;
+}
+/* Full-bleed bands reach the rails: on a phone match its 16px padding, not the desktop's 32px. */
+@media (max-width: 960px) {
+  .stats-row,
+  .band {
+    margin-inline: -16px;
+  }
 }
 .band .tag {
   color: rgba(242, 245, 251, 0.75);

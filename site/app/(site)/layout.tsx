@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import AccountNav from "@/components/AccountNav";
+import HeaderMenu from "@/components/HeaderMenu";
 import Mark from "@/components/Mark";
 import NavLinks, { NavFallback } from "@/components/NavLinks";
 
@@ -14,18 +15,20 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             <Mark />
             Manta
           </Link>
-          <Suspense fallback={<NavFallback />}>
-            <NavLinks />
-          </Suspense>
-          {/* Search is the Markets page's text filter: a plain GET form, no JavaScript. */}
-          <form action="/screener" className="search" role="search">
-            <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
-            <kbd>/</kbd>
-          </form>
-          <AccountNav />
-          <Link href="/terminal" className="btn btn-sm">
-            Open terminal
-          </Link>
+          <HeaderMenu>
+            <Suspense fallback={<NavFallback />}>
+              <NavLinks />
+            </Suspense>
+            {/* Search is the Markets page's text filter: a plain GET form, no JavaScript. */}
+            <form action="/screener" className="search" role="search">
+              <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
+              <kbd>/</kbd>
+            </form>
+            <AccountNav />
+            <Link href="/terminal" className="btn btn-sm">
+              Open terminal
+            </Link>
+          </HeaderMenu>
         </div>
       </header>
       <main>{children}</main>
