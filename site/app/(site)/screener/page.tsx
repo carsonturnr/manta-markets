@@ -267,7 +267,7 @@ function Th({ f, s, children }: { f: Filters; s: Sort; children: React.ReactNode
 
 function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
   return (
-    <div className="table-wrap scroll screener-table">
+    <div className="table-wrap screener-table">
       <table className="screener num">
         <thead>
           <tr>

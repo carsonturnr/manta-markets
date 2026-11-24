@@ -1037,8 +1037,16 @@ td.prob {
 .filters input:not([type="checkbox"]) {
   width: 100%;
 }
-.screener-table {
-  max-height: calc(100vh - 210px);
+/* The table scrolls with the page (no box of its own, so no second scrollbar and no row cut in
+   half); on a wide screen its headings stick under the site header. */
+@media (min-width: 1100px) {
+  .screener-table,
+  .panel:has(> .screener-table) {
+    overflow: visible;
+  }
+  .screener-table th {
+    top: 64px;
+  }
 }
 .screener td.contract,
 .compare td.contract {
@@ -2050,9 +2058,6 @@ a.hero-card:hover .hero-chart-card {
 }
 .screener-layout .filters label.check {
   height: 38px;
-}
-.screener-table {
-  max-height: calc(100vh - 300px);
 }
 .filters .reset {
   height: 38px;
