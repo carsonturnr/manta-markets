@@ -1,11 +1,12 @@
 // The signed-in user's watchlist and alerts (step 11). Rows come through row-level security as
 // this user only (lib/account.ts); prices from the screener's listing, refreshed every minute.
 import { auth } from "@clerk/nextjs/server";
-import { SignInButton } from "@clerk/nextjs";
+import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import KeyForm from "@/components/KeyForm";
+import MantaAscii from "@/components/MantaAscii";
 import { getAlerts, getFired, getKeys, getListed, getWatchlist, type Listed } from "@/lib/account";
 import { deleteAlert, deleteKey, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
@@ -44,25 +45,42 @@ async function Account() {
   if (!userId) {
     return (
       <div className="signed-out">
-        <p className="lede">Sign in to keep these:</p>
-        <ul>
-          <li>
-            <b>Watchlist.</b> Watch contracts from any contract page and follow their prices here.
-          </li>
-          <li>
-            <b>Alerts.</b> An email when a contract&apos;s price, spread, depth or cross-venue gap crosses a level
-            you set.
-          </li>
-          <li>
-            <b>API keys.</b> Up to 3, for Manta&apos;s analytics as JSON (
-            <Link href="/docs/api">API docs</Link>).
-          </li>
-        </ul>
-        <SignInButton mode="modal">
-          <button type="button" className="btn btn-sm">
-            Sign in
-          </button>
-        </SignInButton>
+        <div className="panel ascii-panel">
+          <MantaAscii />
+        </div>
+        <div className="signed-out-side">
+          <p className="lede">
+            Sign in to keep a watchlist, get alerts by email and make API keys.
+          </p>
+          <ul className="perks">
+            <li>Watchlist</li>
+            <li>Price alerts</li>
+            <li>Spread and depth alerts</li>
+            <li>Cross-venue gap alerts</li>
+            <li>
+              <Link href="/docs/api">API keys</Link>
+            </li>
+          </ul>
+          {/* Clerk's own form, in place: hash routing keeps it on this URL. */}
+          <SignIn
+            routing="hash"
+            fallbackRedirectUrl="/account"
+            appearance={{
+              variables: {
+                colorPrimary: "#00ff77",
+                colorPrimaryForeground: "#000000",
+                colorBackground: "#0b0b0c",
+                colorForeground: "#f2f2f2",
+                colorMutedForeground: "#9a9a9a",
+                colorInput: "#000000",
+                colorInputForeground: "#f2f2f2",
+                colorNeutral: "#f2f2f2",
+                borderRadius: "3px",
+                fontFamily: "var(--font-sans), system-ui, sans-serif",
+              },
+            }}
+          />
+        </div>
       </div>
     );
   }
