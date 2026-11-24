@@ -16,7 +16,9 @@ export default function PageError({ retry }: { error: unknown; retry: () => void
         <button type="button" className="btn btn-sm" onClick={() => retry()}>
           Try again
         </button>
-        <Link href="/screener">Go to Markets</Link>
+        <Link href="/screener" className="btn btn-sm btn-ghost">
+          Go to Markets
+        </Link>
       </div>
     </div>
   );

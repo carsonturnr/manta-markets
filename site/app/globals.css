@@ -632,6 +632,16 @@ button[type="submit"]:active,
 .btn:active {
   transform: scale(0.98);
 }
+/* The secondary action beside a .btn: outlined, no fill. */
+.btn-ghost {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--text);
+}
+.btn-ghost:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
 .btn-sm {
   height: 40px;
   padding: 0 20px;
@@ -1416,12 +1426,13 @@ a.hero-card:hover .hero-chart-card {
   }
 }
 
-/* The deep blue band: the homepage's list of tools. */
+/* The homepage's list of tools: a band one step off black, edged by the rails. */
 .band {
   margin: 0 -32px 80px;
   padding: 56px 32px 40px;
-  background: var(--ink-deep);
-  color: #f2f5fb;
+  background: var(--panel);
+  border-block: 1px dashed var(--rail);
+  color: var(--text);
 }
 /* Full-bleed bands reach the rails: on a phone match its 16px padding, not the desktop's 32px. */
 @media (max-width: 960px) {
@@ -3106,7 +3117,7 @@ main pre {
 .state-actions {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
   margin-top: 28px;
 }
 

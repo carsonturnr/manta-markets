@@ -13,7 +13,9 @@ export default function NotFound() {
         <Link href="/screener" className="btn btn-sm">
           Search the markets
         </Link>
-        <Link href="/">Home</Link>
+        <Link href="/" className="btn btn-sm btn-ghost">
+          Home
+        </Link>
       </div>
     </div>
   );
