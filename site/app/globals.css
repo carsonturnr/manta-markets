@@ -548,8 +548,58 @@ input:not([type="checkbox"]):not([type="range"]),
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+/* Selects: the browser's own control (keyboard, phone pickers and screen readers all work), with
+   our chevron 12px from the edge instead of the platform's arrow tight against the border. */
 select {
-  padding-right: 8px;
+  appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239a9a9a' stroke-width='1.5'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  cursor: pointer;
+}
+select:hover {
+  border-color: var(--text-3);
+}
+/* Browsers that let a page style the open list (Chrome 135+) draw it in our panel colours too;
+   others keep their native list. */
+@supports (appearance: base-select) {
+  select,
+  ::picker(select) {
+    appearance: base-select;
+  }
+  select {
+    display: inline-flex;
+    align-items: center;
+  }
+  select::picker-icon {
+    display: none; /* the chevron above stands in for it */
+  }
+  ::picker(select) {
+    margin-top: 4px;
+    padding: 4px;
+    border: 1px solid var(--line-2);
+    border-radius: var(--radius-sm);
+    background: var(--panel);
+  }
+  option {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+  }
+  option:hover,
+  option:focus-visible {
+    background: var(--panel-2);
+    color: var(--text);
+    outline: none;
+  }
+  option:checked {
+    color: var(--text);
+  }
+  option::checkmark {
+    color: var(--mint);
+  }
 }
 input[type="range"],
 input[type="checkbox"] {
