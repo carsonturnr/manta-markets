@@ -168,23 +168,16 @@ async function Distributions({ searchParams }: { searchParams: Promise<Params> }
 function Selected({ d }: { d: Dist }) {
   const thin = d.spread !== null && d.spread >= THIN;
   return (
-    <div className="split">
-      <section className="panel">
-        <header className="ph">
-          <h2>
-            {NAME.get(d.family) ?? d.family}: {d.title}
-          </h2>
-        </header>
-        <div className="pad chart-pad">
-          <DistChart d={d} />
-        </div>
-      </section>
-      <aside className="panel figures">
-        <header className="ph">
-          <h2>The market says</h2>
-          <span className="right m3">{venueName(d.venue)}</span>
-        </header>
-        <dl className="pad">
+    // One panel: the figures as a strip over a full-width chart, so nothing ends at a different
+    // height from its neighbour.
+    <section className="panel dist-panel">
+      <header className="ph">
+        <h2>
+          {NAME.get(d.family) ?? d.family}: {d.title}
+        </h2>
+        <span className="right m3">{venueName(d.venue)}</span>
+      </header>
+        <dl className="dist-stats">
           <div>
             <dt>Median</dt>
             <dd className="big num">{fmtValue(d.family, d.median)}</dd>
@@ -219,6 +212,9 @@ function Selected({ d }: { d: Dist }) {
             </dd>
           </div>
         </dl>
+        <div className="pad chart-pad">
+          <DistChart d={d} width={1200} />
+        </div>
         <p className="note">
           The market puts the median of {onWhat(d.family)} at {fmtValue(d.family, d.median)}
           {d.q25 !== null && d.q75 !== null && (
@@ -238,7 +234,6 @@ function Selected({ d }: { d: Dist }) {
           )}
           {thin && " Thinly quoted: read it as rough."}
         </p>
-      </aside>
-    </div>
+    </section>
   );
 }

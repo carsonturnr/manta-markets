@@ -3264,3 +3264,41 @@ details.how[open] > summary {
   color: var(--text-2);
   font-weight: 500;
 }
+
+/* ---- Distributions: one panel, a strip of figures over the chart ------------------------ */
+.dist-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+.dist-stats > div {
+  padding: 16px 24px;
+}
+.dist-stats > div + div {
+  border-left: 1px solid var(--line);
+}
+.dist-stats dt {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.dist-stats dd {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+.dist-stats dd.big {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.dist-panel .chart-pad {
+  padding-top: 16px;
+}
+@media (max-width: 900px) {
+  .dist-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dist-stats > div + div {
+    border-left: 0;
+  }
+}

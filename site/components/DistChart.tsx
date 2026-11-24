@@ -3,11 +3,12 @@
 // dashed. Plain SVG drawn on the server; hovering a point shows its value through <title>.
 import { fmtValue, type Dist } from "@/lib/distributions";
 
-const W = 840;
 const H = 300;
 const PAD = { left: 44, right: 16, top: 12, bottom: 28 };
 
-export default function DistChart({ d }: { d: Dist }) {
+/** `width` is the drawing's width in SVG units: match it to the space the chart gets, so its text
+ * stays near its set size instead of scaling up with a wide panel. */
+export default function DistChart({ d, width: W = 840 }: { d: Dist; width?: number }) {
   // Show where the outcome is in doubt: from the last strike still at ≥ 99% to the first at
   // ≤ 1%. Ladders list strikes far out where nothing happens, which would squeeze the curve.
   const lo = d.curve.findLast(([, p]) => p >= 0.99)?.[0] ?? d.curve[0][0];
