@@ -21,7 +21,7 @@ Site (run in `site/`):
 - Typecheck: `npx next typegen && npx tsc --noEmit` (no script in package.json; typegen writes the `PageProps`/`LayoutProps` types into .next/) · Lint: `npm run lint` · Test: `npm test` (`node --test lib/*.test.ts`)
 
 Python (run in `pricing/` or `backtest/`, same as CI):
-- `uv sync --locked` · `uv run ruff format --check .` · `uv run ruff check .` · `uv run pytest -q` (backtest has no tests yet)
+- `uv sync --locked` · `uv run ruff format --check .` · `uv run ruff check .` · `uv run pytest -q`
 
 Go (run in `recorder/`, same as CI):
 - `gofmt -l .` (must print nothing) · `go vet ./...` · `go test ./...`
@@ -102,3 +102,4 @@ docs/                  product.md, milestone plans, decisions.md
 - Infra details (IPs, hostnames, account usernames) go in gitignored local files (`infra.local.md`), never in tracked docs; tracked files use placeholders such as `<vm-ip>`. The repo is meant to be public.
 - Database DDL: the Supabase MCP connection is read-only (`supabase_read_only_user`). Approved migrations run with the admin `DATABASE_URL` from the repo-root `.env` (psycopg via `uv run` in pricing/), never printing the URL; the VM's `manta-snap --init` applies the whole of db/schema.sql on the next deploy.
 - API routes (site/app/api/v1): call `authorize()` before validating the query, so a caller without a valid key always gets 401, never a 400 that reveals the query rules (/cost did it the other way round until 2026-11-23).
+- Kalshi trades and the book changes they cause arrive in either order (book first for 58% of KXBTCD trades): anything that combines them (queue position, fills) matches each trade to its size drop within a window, never by arrival order (backtest/src/manta_backtest/queue.py).

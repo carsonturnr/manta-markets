@@ -17,6 +17,7 @@ manta-pricing = { path = "../pricing", editable = true }
 manta-catalog = "manta_backtest.catalog:main"
 manta-catalog-check = "manta_backtest.check:main"
 manta-fair-series = "manta_backtest.fairseries:main"
+manta-queue = "manta_backtest.queue:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]
