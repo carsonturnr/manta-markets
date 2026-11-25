@@ -24,9 +24,6 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
               <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
             </form>
             <AccountNav />
-            <Link href="/terminal" className="btn btn-sm">
-              Open terminal
-            </Link>
           </HeaderMenu>
         </div>
       </header>
@@ -34,29 +31,20 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
       <footer className="site-foot">
         <div className="in">
           <div className="foot-cols">
-            <nav aria-label="Tools">
-              <h2>01 Tools</h2>
+            <nav aria-label="Pages">
+              <h2>Manta</h2>
+              <Link href="/">Home</Link>
+              <Link href="/markets">Markets</Link>
+              <Link href="/insights">Insights</Link>
+              <Link href="/how-its-built">How it&apos;s built</Link>
               <Link href="/terminal">Terminal</Link>
-              <Link href="/screener">Screener</Link>
-              <Link href="/compare">Compare venues</Link>
-              <Link href="/liquidity">Liquidity</Link>
             </nav>
-            <nav aria-label="Analytics">
-              <h2>02 Analytics</h2>
-              <Link href="/distributions">Distributions</Link>
-              <Link href="/replay">Replay a close</Link>
-              <Link href="/tracker">Bitcoin fair value</Link>
-            </nav>
-            <nav aria-label="Research">
-              <h2>03 Research</h2>
-              <Link href="/stats">Fair-value accuracy</Link>
-              <Link href="/quality">Data quality</Link>
-            </nav>
-            <nav aria-label="Account">
-              <h2>04 Account</h2>
-              <Link href="/account">Watchlist and alerts</Link>
+            <nav aria-label="More">
+              <h2>More</h2>
+              <Link href="/account">Account and alerts</Link>
               <Link href="/docs/api">API</Link>
               <Link href="/privacy">Privacy</Link>
+              <a href="https://github.com/carsonturnr/manta-markets">Source code</a>
             </nav>
           </div>
           <p>
@@ -66,9 +54,6 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             by <a href="https://www.tradingview.com/">TradingView</a>&apos;s lightweight-charts. Not
             investment advice.
           </p>
-          <div className="foot-mark" aria-hidden="true">
-            Manta
-          </div>
         </div>
       </footer>
     </>
