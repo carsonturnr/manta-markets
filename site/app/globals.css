@@ -3361,7 +3361,28 @@ details.how[open] > summary {
   .pv-terminal {
     grid-template-rows: auto auto minmax(0, 1fr);
   }
-  .pv-grid-term > section:first-child {
+  .pv-terminal [data-panel="mon"] {
     display: none;
   }
+}
+/* The demo's layout tabs are buttons (they switch the grid in place), styled as the terminal's links. */
+.pv-terminal .t-layouts button {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.pv-terminal .t-layouts button.on {
+  background: var(--mint);
+  color: #000;
+}
+/* Only the panels of the chosen layout show. */
+.pv-terminal [data-layout="market"] > :not([data-layouts~="market"]),
+.pv-terminal [data-layout="monitor"] > :not([data-layouts~="monitor"]),
+.pv-terminal [data-layout="arb"] > :not([data-layouts~="arb"]),
+.pv-terminal [data-layout="catalysts"] > :not([data-layouts~="catalysts"]) {
+  display: none;
 }

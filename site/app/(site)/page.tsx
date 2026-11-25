@@ -10,6 +10,8 @@ import Mark from "@/components/Mark";
 import { SnapshotLive } from "@/components/terminal/Live";
 import { BookPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePanels";
 import Monitor from "@/components/terminal/Monitor";
+import { ArbPanel, BoardPanel, CalendarPanel, DistPanel, FairPanel } from "@/components/terminal/Panels";
+import TerminalDemo from "@/components/terminal/TerminalDemo";
 import WaitlistForm from "@/components/WaitlistForm";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { crossed, gap, getPairs } from "@/lib/compare";
@@ -97,83 +99,81 @@ async function Preview() {
   const [book, trades, market] = await Promise.all([kalshiBook(o.id), kalshiTrades(o.id), getMarket(o.venue, o.id)]);
   const focus = `${o.venue}:${o.id}`;
   const fair = usableFair(o);
-  const head = (code: string, title: string) => (
-    <header>
-      <span className="t-code">{code}</span>
-      <h2>{title}</h2>
-    </header>
-  );
-  return (
-    <div className="terminal pv-terminal">
-      <header className="t-top">
-        <Link href={`/terminal?m=${encodeURIComponent(focus)}`} className="t-brand">
-          <Mark /> Manta <span className="t-dim">Terminal</span>
-        </Link>
-        <nav className="t-layouts" aria-label="Terminal layouts">
-          {[
-            ["market", "Market"],
-            ["monitor", "Monitor"],
-            ["arb", "Cross-venue"],
-            ["catalysts", "Catalysts"],
-          ].map(([k, name]) => (
-            <Link key={k} href={`/terminal?m=${encodeURIComponent(focus)}&layout=${k}`} className={k === "market" ? "on" : undefined}>
-              {name}
-            </Link>
-          ))}
-        </nav>
+  // Each panel once, tagged with the terminal layouts it appears in (app/terminal/page.tsx LAYOUTS).
+  const panel = (key: string, code: string, title: string, layouts: string, body: React.ReactNode) => (
+    <section className="t-panel" style={{ gridArea: key }} data-panel={key} data-layouts={layouts}>
+      <header>
+        <span className="t-code">{code}</span>
+        <h2>{title}</h2>
       </header>
-      <div className="t-focus num">
-        <span className="t-venue kalshi">Kalshi</span>
-        <b className="t-focus-q">{e.question}</b>
-        <span className="t-focus-o">{outcomeLabel(o)}</span>
-        <span>
-          <span className="t-dim">Mid</span> <b>{pct1(mid(o))}</b>
-        </span>
-        <span>
-          <span className="t-dim">Fair</span> <b className="t-mint">{pct1(fair)}</b>
-        </span>
-        <span>
-          <span className="t-dim">Traded 24 h</span> ${Math.round(dollars(o)).toLocaleString("en-US")}
-        </span>
-        <span>
-          <span className="t-dim">Closes</span> {whenET(e.close, now)}
-        </span>
-      </div>
-      <SnapshotLive book={book} trades={trades} at={now}>
-        <div className="t-grid pv-grid-term">
-          <section className="t-panel" style={{ gridArea: "mon" }}>
-            {head("MON", "Markets")}
-            <div className="t-body">
-              <Monitor rows={monitorRows(events)} focus={focus} layout="market" now={now} />
-            </div>
-          </section>
-          <section className="t-panel" style={{ gridArea: "chart" }}>
-            {head("GP", "Price")}
-            <div className="t-body">
-              <Chart c={o} tracked={market?.tracked ?? false} />
-            </div>
-          </section>
-          <section className="t-panel" style={{ gridArea: "book" }}>
-            {head("BOOK", "Order book")}
-            <div className="t-body">
-              <BookPanel fair={fair} />
-            </div>
-          </section>
-          <section className="t-panel" style={{ gridArea: "depth" }}>
-            {head("DPTH", "Depth and liquidity")}
-            <div className="t-body">
-              <DepthPanel />
-            </div>
-          </section>
-          <section className="t-panel" style={{ gridArea: "tape" }}>
-            {head("TAPE", "Trades")}
-            <div className="t-body">
-              <TapePanel />
-            </div>
-          </section>
-        </div>
-      </SnapshotLive>
-    </div>
+      <div className="t-body">{body}</div>
+    </section>
+  );
+  const wait = <p className="t-empty">Loading…</p>;
+  return (
+    <SnapshotLive book={book} trades={trades} at={now}>
+      <TerminalDemo
+        brand={
+          <Link href={`/terminal?m=${encodeURIComponent(focus)}`} className="t-brand">
+            <Mark /> Manta <span className="t-dim">Terminal</span>
+          </Link>
+        }
+        focus={
+          <div className="t-focus num">
+            <span className="t-venue kalshi">Kalshi</span>
+            <b className="t-focus-q">{e.question}</b>
+            <span className="t-focus-o">{outcomeLabel(o)}</span>
+            <span>
+              <span className="t-dim">Mid</span> <b>{pct1(mid(o))}</b>
+            </span>
+            <span>
+              <span className="t-dim">Fair</span> <b className="t-mint">{pct1(fair)}</b>
+            </span>
+            <span>
+              <span className="t-dim">Traded 24 h</span> ${Math.round(dollars(o)).toLocaleString("en-US")}
+            </span>
+            <span>
+              <span className="t-dim">Closes</span> {whenET(e.close, now)}
+            </span>
+          </div>
+        }
+      >
+        {panel("mon", "MON", "Markets", "market monitor", <Monitor rows={monitorRows(events)} focus={focus} layout="market" now={now} />)}
+        {panel("chart", "GP", "Price", "market monitor arb catalysts", <Chart c={o} tracked={market?.tracked ?? false} />)}
+        {panel("book", "BOOK", "Order book", "market arb", <BookPanel fair={fair} />)}
+        {panel("depth", "DPTH", "Depth and liquidity", "market arb", <DepthPanel />)}
+        {panel("tape", "TAPE", "Trades", "market arb", <TapePanel />)}
+        {panel(
+          "arb",
+          "ARB",
+          "Cross-venue arbitrage",
+          "monitor arb",
+          <Suspense fallback={wait}>
+            <ArbPanel events={events} layout="arb" />
+          </Suspense>,
+        )}
+        {panel("cal", "CAL", "Catalysts", "monitor catalysts", <CalendarPanel events={events} now={now} layout="catalysts" />)}
+        {panel(
+          "dist",
+          "DIST",
+          "Implied distribution",
+          "catalysts",
+          <Suspense fallback={wait}>
+            <DistPanel event={e.event} />
+          </Suspense>,
+        )}
+        {panel("board", "EVT", "Every outcome", "catalysts", <BoardPanel e={e} focus={o.id} layout="catalysts" />)}
+        {panel(
+          "fair",
+          "FV",
+          "Fair value",
+          "catalysts",
+          <Suspense fallback={wait}>
+            <FairPanel o={o} close={e.close} now={now} />
+          </Suspense>,
+        )}
+      </TerminalDemo>
+    </SnapshotLive>
   );
 }
 
