@@ -10,7 +10,7 @@ export default function NotFound() {
         This market may have closed and dropped out of the listing, or the address is mistyped.
       </p>
       <div className="state-actions">
-        <Link href="/screener" className="btn btn-sm">
+        <Link href="/markets" className="btn btn-sm">
           Search the markets
         </Link>
         <Link href="/" className="btn btn-sm btn-ghost">

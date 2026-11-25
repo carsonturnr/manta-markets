@@ -136,7 +136,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         </nav>
         <Palette commands={commands} />
         <nav className="t-links" aria-label="Tools">
-          <Link href="/screener">Markets</Link>
+          <Link href="/markets">Markets</Link>
           <Link href="/compare">Compare</Link>
           <Link href="/liquidity">Liquidity</Link>
           <Link href="/distributions">Distributions</Link>

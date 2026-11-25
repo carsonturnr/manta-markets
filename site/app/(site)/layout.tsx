@@ -20,7 +20,7 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
               <NavLinks />
             </Suspense>
             {/* Search is the Markets page's text filter: a plain GET form, no JavaScript. */}
-            <form action="/screener" className="search" role="search">
+            <form action="/markets" className="search" role="search">
               <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
               <kbd>/</kbd>
             </form>

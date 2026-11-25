@@ -15,7 +15,8 @@ import TerminalDemo from "@/components/terminal/TerminalDemo";
 import WaitlistForm from "@/components/WaitlistForm";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { crossed, gap, getPairs } from "@/lib/compare";
-import { type Event, getEvents } from "@/lib/events";
+import { getEvents } from "@/lib/events";
+import { FILTERS, pick } from "@/lib/markets";
 import { getLiquidity } from "@/lib/liquidity";
 import { getReport } from "@/lib/quality";
 import { monitorRows } from "@/lib/monitor";
@@ -24,10 +25,6 @@ import { getMarket } from "@/lib/screener";
 import { kalshiBook, kalshiTrades } from "@/lib/venues";
 
 type Params = Record<string, string | string[] | undefined>;
-
-// The filters above the markets; each is a link, so a filtered view can be shared.
-const FILTERS = ["All", "Crypto", "Economics", "Financials", "Closing today"] as const;
-type Filter = (typeof FILTERS)[number];
 
 export default function Home({ searchParams }: { searchParams: Promise<Params> }) {
   return (
@@ -421,19 +418,6 @@ async function Watching() {
   );
 }
 
-function pick(events: Event[], f: Filter, now: number): Event[] {
-  switch (f) {
-    case "Crypto":
-    case "Economics":
-    case "Financials":
-      return events.filter((e) => e.category === f);
-    case "Closing today":
-      return events.filter((e) => e.close - now < 86_400_000);
-    default:
-      return events;
-  }
-}
-
 async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
   await connection();
   const p = await searchParams;
@@ -462,7 +446,7 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
             </Link>
           ))}
         </nav>
-        <Link href="/screener" className="right text-link">
+        <Link href={f === "All" ? "/markets" : `/markets?cat=${encodeURIComponent(f)}`} className="right text-link">
           All markets →
         </Link>
       </div>

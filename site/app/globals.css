@@ -3395,3 +3395,122 @@ details.how[open] > summary {
 .pv-terminal a.pv-full {
   color: #000;
 }
+
+/* ---- Task B (nav-markets): header "Pro tools" menu and the Markets page (/markets) ---------- */
+.pro-tools {
+  position: relative;
+}
+.pro-tools > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.pro-tools > button:hover,
+.pro-tools > button[data-current],
+.pro-tools[data-open="true"] > button {
+  color: var(--text);
+}
+.pro-tools[data-open="true"] > button svg {
+  transform: rotate(180deg);
+}
+/* Wide screens: a square drop-down under the button, closed until opened. */
+.pro-tools-list {
+  display: none;
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  flex-direction: column;
+  padding: 6px 0;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+}
+.pro-tools[data-open="true"] .pro-tools-list {
+  display: flex;
+}
+.site-header .pro-tools-list a {
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+.site-header .pro-tools-list a:hover {
+  background: var(--panel-2);
+}
+.pro-tools-h {
+  display: none;
+}
+/* Phones: inside the Menu panel the Pro tools are always listed, under a small heading. */
+@media (max-width: 960px) {
+  .pro-tools > button {
+    display: none;
+  }
+  .pro-tools-list,
+  .pro-tools[data-open="true"] .pro-tools-list {
+    display: flex;
+    position: static;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+  }
+  .site-header .pro-tools-list a {
+    padding: 12px 0;
+  }
+  .site-header .pro-tools-list a:hover {
+    background: none;
+  }
+  .pro-tools-h {
+    display: block;
+    padding: 24px 0 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+}
+
+.markets-lede {
+  margin-bottom: 32px;
+}
+.markets-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.markets-form {
+  display: flex;
+  gap: 8px;
+}
+.markets-form input {
+  width: 260px;
+}
+.markets-count {
+  margin: 16px 0;
+  font-size: 14px;
+}
+.markets-more {
+  margin: 24px 0 0;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .markets-bar,
+  .markets-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .markets-form input {
+    width: auto;
+    font-size: 16px; /* 16px or more: phones don't zoom into the box */
+  }
+  .markets-bar .chip-link {
+    padding: 8px 12px;
+  }
+}
