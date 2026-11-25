@@ -398,7 +398,7 @@ export function CalendarPanel({ events, now, layout }: { events: Event[]; now: n
   // Past releases: how contracts reacted, measured from our recordings (event response).
   const past = (
     <p className="t-dim small">
-      <Link href="/events">Past releases: how markets reacted →</Link>
+      <Link href="/insights#release">Past releases: how markets reacted →</Link>
     </p>
   );
   if (!upcoming.length)
@@ -476,7 +476,7 @@ export async function PairPanel({ o }: { o: Row }) {
         {p.question}
         {p.kind === "bundle" && `: on ${name}, the sum of ${there.ids.length} range contracts`}
         {p.kind === "near" && ". Close, not identical: the two venues settle on slightly different numbers"}
-        . <Link href="/compare">Every pair</Link>
+        . <Link href="/insights#crossing">Every pair</Link>
       </p>
     </div>
   );

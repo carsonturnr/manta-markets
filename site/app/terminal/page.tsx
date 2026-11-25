@@ -132,8 +132,8 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         <Palette commands={commands} />
         <nav className="t-links" aria-label="Tools">
           <Link href="/markets">Markets</Link>
-          <Link href="/compare">Compare</Link>
-          <Link href="/liquidity">Liquidity</Link>
+          <Link href="/insights">Insights</Link>
+          <Link href="/how-its-built">How it&apos;s built</Link>
         </nav>
         <AccountNav />
       </header>
@@ -215,7 +215,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
       <footer className="t-status">
         <span>Listing read {at ? utc(at) : "–"}</span>
         <span>Books and trades every 2 s from Kalshi&apos;s and Polymarket&apos;s public APIs</span>
-        <Link href="/quality">Data quality</Link>
+        <Link href="/how-its-built#quality">Data quality</Link>
         <span>
           Charts by <a href="https://www.tradingview.com/">TradingView</a>
         </span>
