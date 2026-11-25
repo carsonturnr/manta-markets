@@ -42,12 +42,13 @@ from nautilus_trader.model import (
     Venue,
 )
 from nautilus_trader.persistence import ParquetDataCatalog
+from nautilus_trader.risk import RiskEngineConfig
 from nautilus_trader.trading import Strategy
 
 from manta_backtest.catalog import build_tools
 from manta_backtest.fairseries import markets
 from manta_backtest.mm import Fill, kalshi_fee, split, trades_first
-from manta_backtest.queue import HORIZONS_S
+from manta_backtest.queue import HORIZONS_S, bucket
 
 HOUR = 3600 * 1_000_000_000
 S = 1_000_000_000
@@ -60,6 +61,7 @@ def replay(
     reorder: bool = True,
     trade_execution: bool = True,
     series: set[str] | None = None,
+    risk: RiskEngineConfig | None = None,
 ) -> None:
     """Run `strategy` over the contracts of `series` (all if None) in `catalog`, an hour at a
     time."""
@@ -69,7 +71,10 @@ def replay(
     ]
     ids = [str(i.id) for i in insts]
     eng = BacktestEngine(
-        BacktestEngineConfig(logging=LoggerConfig(stdout_level=LogLevel.ERROR, bypass_logging=True))
+        BacktestEngineConfig(
+            logging=LoggerConfig(stdout_level=LogLevel.ERROR, bypass_logging=True),
+            risk_engine=risk,
+        )
     )
     eng.add_venue(
         Venue("KALSHI"),
@@ -135,9 +140,10 @@ class Probe(Strategy):
     def __new__(cls, *args, **kwargs):  # Nautilus's Rust-backed Strategy takes no arguments here
         return super().__new__(cls)
 
-    def __init__(self, closes_ns: dict[str, int]) -> None:
+    def __init__(self, closes_ns: dict[str, int], every_s: int = 60) -> None:
         super().__init__()
         self.closes = closes_ns
+        self.every_ns = every_s * S
         self.orders: dict = {}  # client order id → record
         self.rejected = 0
         self.last = 0  # the last timer tick: where the data ends
@@ -145,7 +151,7 @@ class Probe(Strategy):
     def on_start(self) -> None:
         for inst in self.cache.instruments():
             self.subscribe_book_deltas(inst.id, BookType.L2_MBP, managed=True)
-        self.clock.set_timer_ns("place", 60 * S)
+        self.clock.set_timer_ns("place", self.every_ns)
 
     def on_time_event(self, event) -> None:
         now = self.last = self.clock.timestamp_ns()
@@ -164,6 +170,8 @@ class Probe(Strategy):
                 )
                 self.submit_order(order)
                 self.orders[order.client_order_id] = {
+                    "side": "bids" if side == OrderSide.BUY else "asks",
+                    "px": px,
                     "ticker": inst.id.symbol.value,
                     "placed": now,
                     "ahead": ahead,
@@ -182,22 +190,26 @@ class Probe(Strategy):
             o["open"] = False
             o["rejected"] = True
 
+    def on_order_denied(self, event) -> None:  # refused before reaching the venue
+        self.on_order_rejected(event)
+
     def shares(self, data_end: int) -> dict:
-        """Share filled within each horizon, among orders whose contract stayed open and whose
-        data lasted that long (the same censoring as manta-queue)."""
-        out = {}
+        """Share filled within each horizon, overall and by queue ahead when placed, among orders
+        whose contract stayed open and whose data lasted that long (manta-queue's censoring)."""
+        out: dict = {}
         for h in HORIZONS_S:
-            n = f = 0
             for o in self.orders.values():
                 if o.get("rejected"):
                     continue
                 end = min(self.closes.get(o["ticker"], 2**62), data_end)
                 if end - o["placed"] < h * S:
                     continue
-                n += 1
-                f += o["filled"] is not None and o["filled"] - o["placed"] <= h * S
-            out[f"{h}s"] = {"orders": n, "filled": f / n if n else None}
-        return out
+                hit = o["filled"] is not None and o["filled"] - o["placed"] <= h * S
+                for g in ("all", bucket(o["ahead"])):
+                    acc = out.setdefault(f"{g} {h}s", [0, 0])
+                    acc[0] += hit
+                    acc[1] += 1
+        return {k: f"{f / n:.1%} of {n:,}" for k, (f, n) in sorted(out.items())}
 
 
 def probe_main() -> None:
@@ -207,16 +219,28 @@ def probe_main() -> None:
     ap.add_argument("--series", default="KXBTCD")
     ap.add_argument("--no-reorder", action="store_true", help="replay trades in arrival order")
     ap.add_argument("--book-only", action="store_true", help="fill only when the book crosses")
+    ap.add_argument("--dump", type=Path, help="write every probe order as JSON")
+    ap.add_argument(
+        "--every",
+        type=int,
+        default=60,
+        help="seconds between placements; 300 keeps one order per contract side at a time",
+    )
     a = ap.parse_args()
-    probe = Probe(closes(a.markets, set(a.series.split(","))))
+    probe = Probe(closes(a.markets, set(a.series.split(","))), a.every)
     replay(
         a.catalog,
         probe,
         reorder=not a.no_reorder,
         trade_execution=not a.book_only,
         series=set(a.series.split(",")),
+        # A measuring device: hundreds of orders at one instant would trip the order-rate
+        # check (denied as RATE_LIMIT_EXCEEDED, found 2026-11-25), so it is bypassed here.
+        risk=RiskEngineConfig(bypass=True),
     )
     print(json.dumps({"rejected": probe.rejected, "shares": probe.shares(probe.last)}, indent=1))
+    if a.dump:
+        a.dump.write_text(json.dumps(list(probe.orders.values())))
 
 
 SIZE = 5  # contracts per quote (rule 2: 1-10; tiny against the median queue of 1,132)
@@ -225,6 +249,9 @@ SKEW_AT = 10  # rule 6: step back one cent on the side that adds to a position t
 GUARD = 0.02  # rule 4: no bid above fair + 2c, no ask below fair - 2c
 STOP_NS = 15 * 60 * S  # rule 5: no quotes in a contract's last 15 minutes
 AFTER_NS = 60 * S  # the split's horizon for adverse selection
+# Kalshi's Basic tier: 100 write tokens a second, 10 per order (docs.kalshi.com, rate limits,
+# read 2026-11-25). Nautilus throttles submits only; cancels (also 10 tokens) are not limited.
+KALSHI_RATE = "10/00:00:01"
 
 
 def event_of(ticker: str) -> str:
@@ -261,7 +288,7 @@ class MarketMaker(Strategy):
         self.hist: dict[str, list] = {}  # ticker → recent [time, mid]
         self.fills: list[dict] = []
         self.waiting: list[tuple[int, int]] = []  # (due time, fill index) for the mid 60 s on
-        self.submitted = self.rejected = 0
+        self.submitted = self.rejected = self.denied = 0
         self.peak = 0.0  # largest total position held
         self.settled: dict[str, float] = {}  # ticker → position held to its close
         self.next_purge = 0
@@ -409,8 +436,8 @@ class MarketMaker(Strategy):
         self.rejected += 1
         self._gone(event)
 
-    def on_order_denied(self, event) -> None:
-        self.rejected += 1
+    def on_order_denied(self, event) -> None:  # e.g. over Kalshi's order rate (KALSHI_RATE)
+        self.denied += 1
         self._gone(event)
 
     def on_order_filled(self, event) -> None:
@@ -490,9 +517,16 @@ def backtest_main() -> None:
         closes(a.markets, set(a.series.split(","))),
         load_fair(a.fair) if a.fair else {},
     )
-    replay(a.catalog, mm, latency_ns=int(a.latency_ms * 1_000_000), series=set(a.series.split(",")))
+    replay(
+        a.catalog,
+        mm,
+        latency_ns=int(a.latency_ms * 1_000_000),
+        series=set(a.series.split(",")),
+        risk=RiskEngineConfig(max_order_submit_rate=KALSHI_RATE),
+    )
     run = {k: getattr(a, k) for k in ("cancel_frac", "rejoin", "latency_ms", "series")}
-    run |= {"submitted": mm.submitted, "rejected": mm.rejected, "peak": mm.peak}
+    run |= {"submitted": mm.submitted, "rejected": mm.rejected, "denied": mm.denied}
+    run |= {"peak": mm.peak}
     a.out.write_text(json.dumps({"run": run, "fills": mm.fills}))
     print(json.dumps(run | {"fills": len(mm.fills)}))
 

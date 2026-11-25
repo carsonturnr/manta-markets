@@ -104,7 +104,7 @@ Each runs from the raw files through the existing normalizer (`recorder/cmd/norm
 2. **Measurement 2, adverse selection.** *Demo:* a table of mid moves after fills, by horizon and day type. Done 2026-11-25.
 3. **Measurement 3, fair value as a predictor.** *Demo:* the regression and hit-rate table by time to close. Done 2026-11-25.
 4. **Quoting rules** chosen from 1–3, written up for Carson's approval. Drafted below; waiting for approval.
-5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table. In progress 2026-11-25.
+5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table. Done 2026-11-25 (below).
 6. **Strategy and backtest report.** *Demo:* one command over a recorded week prints the profit-and-loss split, per day and per contract.
 7. **Paper trading** on Kalshi demo (needs keys). *Demo:* the bot running, orders visible in the demo account.
 8. **Results page.** *Demo:* the public page with paper results and the backtest beside them.
@@ -208,6 +208,25 @@ Approved 2026-11-25 by the coordinating session (Carson delegated the market-mak
 The choice is the setting with the best total profit and loss over the tuning days, across a small grid written down before the first run; ties go to the simpler setting. 2026-11-19 lost 2 hours (08:00–10:00 UTC) in the measurement run and is re-streamed for the backtest.
 
 Expected result, stated before the backtest: a small loss per fill to adverse selection, partly offset by cancelling; the backtest's job is to measure how much.
+
+### Sub-step 5: Nautilus fills against manta-queue (2026-11-25)
+
+Same data for both: KXBTCD, 2026-11-23 13:00–15:00 UTC (part of a reported day, used only for this check, no profit and loss). Orders of 1 contract joining the back of the queue at the best bid and ask of every active contract, held 5 minutes, no latency.
+
+| Filled within | manta-queue, first version (trades only) | manta-queue, corrected (pessimistic–optimistic) | Nautilus `queue_position` |
+|---|---|---|---|
+| 10 s | 5.2–7.9% | 17.2–20.3% | 19.6% |
+| 60 s | 18.7–22.7% | 37.2–40.1% | 38.7% |
+| 5 min | 37.2–41.1% | 59.5–61.9% | 59.1% |
+
+By queue ahead within 60 s, Nautilus vs corrected bounds: under 100: 59.0% vs 57.9–59.4%; 100–1,000: 59.0% vs 56.0–59.3%; 1,000–10,000: 33.0% vs 32.1–35.3%; 10,000 and more: 18.9% vs 16.3–18.2%. **Nautilus sits inside the corrected bounds**, so the backtest uses its simulated exchange as is. How we got there:
+
+1. **On hand-made books Nautilus behaves like manta-queue's pessimistic model**: it takes trades off the queue ahead, caps the queue when the level shrinks below it, and clears it when the level is deleted.
+2. **manta-queue missed the worst fills.** When the queue ahead of a resting order empties (the fast makers cancel) and a seller then arrives at the order's price, a real exchange matches that seller with our stale order; no trade prints at our price in the recording, so the first version never counted it. manta-queue now fills on such a cross only when nothing is left ahead of us (corrected 2026-11-25 per the coordinating session): while the book still shows size ahead of us at the same price as the opposite side, the recorded book is locked by message order, which is counted, not filled. Locked share of crossing episodes on these hours: 13.0% (pessimistic model), 4.8% (optimistic). Nautilus with `queue_position` on does not fill a locked book with size ahead (checked on a hand-made book) and does fill the pick-off.
+3. **A probe bug, not a simulator one:** placing hundreds of orders at one instant tripped Nautilus's order-rate check, which refused them (RATE_LIMIT_EXCEEDED) before they reached the exchange; they were first counted as unfilled. The probe now bypasses that check. The strategy keeps one at Kalshi's rate (below).
+4. **Trade order:** replaying each trade before the size drop it caused (mm.trades_first) changes Nautilus's fills by about 1 point; kept, since Nautilus otherwise counts such a trade twice.
+
+**Order rate:** Kalshi meters writes in tokens; the Basic tier has 100 write tokens a second and an order costs 10, so about 10 orders a second (cancels also cost 10; Advanced, 30 a second, needs one prior API order) (docs.kalshi.com, rate limits, read 2026-11-25). The strategy runs under a 10 orders a second limit; refused orders are counted. Nautilus's check limits submissions only, so cancels are not limited in the backtest.
 
 ### Backtest setup, fixed before any tuning run (2026-11-25)
 
