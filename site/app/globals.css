@@ -3899,3 +3899,146 @@ details.more[open] > summary {
 .home-pages .ranked-q span {
   white-space: normal;
 }
+
+/* ---- Task I: Insights (/insights) and How it's built (/how-its-built) ---------------------- */
+/* Each insight: the question as a heading, one sentence answer, one chart, then "More". */
+.insight-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1px;
+  margin: 24px 0 8px;
+  background: var(--line);
+  box-shadow: var(--shadow);
+}
+.insight-nav a {
+  padding: 12px 14px;
+  background: var(--bg);
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 13.5px;
+}
+.insight-nav a:hover {
+  color: var(--text);
+  background: var(--panel);
+}
+.insight,
+.built-section {
+  scroll-margin-top: 80px;
+}
+.insight-says {
+  font-family: var(--serif);
+  font-size: 21px;
+  line-height: 1.4;
+  max-width: 40em;
+  margin: 0 0 20px;
+}
+.insight-says b {
+  font-weight: 400;
+}
+.insight .panel + .insight-says,
+.insight .panel + .panel {
+  margin-top: 20px;
+}
+.insight .warn {
+  margin-bottom: 16px;
+}
+.insight-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.insight-pair > .note {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* Crossing between venues: one bar per crossing, grey for fees, mint for what is left. */
+.cross-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 5px 0;
+}
+.cross-track {
+  display: flex;
+  height: 12px;
+  background: var(--ink-soft);
+}
+.cross-fee {
+  background: var(--bar);
+}
+.cross-kept {
+  background: var(--mint);
+}
+.cross-unknown {
+  border: 1px dashed var(--bar);
+}
+.cross-row > :last-child {
+  text-align: right;
+}
+
+/* How it's built: the diagram is boxes and arrows in plain HTML, three lanes under the recorder. */
+.arch {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+}
+.arch-node {
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  background: var(--bg);
+}
+.arch-node b {
+  display: block;
+  font-weight: 500;
+}
+.arch-node p {
+  margin: 6px 0 0;
+  color: var(--text-2);
+}
+.arch-arrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  font-family: var(--mono);
+}
+.arch-arrow span {
+  color: var(--mint);
+  font-size: 16px;
+}
+.arch-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.arch-lane {
+  display: flex;
+  flex-direction: column;
+}
+.built-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.built-links li {
+  margin-bottom: 8px;
+}
+@media (max-width: 900px) {
+  .arch-lanes,
+  .built-numbers,
+  .insight-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cross-row {
+    grid-template-columns: minmax(0, 1fr) 110px;
+  }
+  .cross-row > :first-child {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Score } from "./scoring.ts";
-import { headline, verdict } from "./stats-view.ts";
+import { calibrationMiss, headline, verdict } from "./stats-view.ts";
 
 const s = (o: Partial<Score>): Score => ({
   events: 10,
@@ -33,4 +33,16 @@ test("headline: crypto with a range, most closes first", () => {
   ];
   assert.equal(headline(lines), lines[1]);
   assert.equal(headline([lines[3]]), null);
+});
+
+test("calibrationMiss: contract-weighted average distance from the diagonal, chosen series only", () => {
+  const pts = [
+    { who: "kalshi", n: 30, pred: 0.25, hit: 0.2 }, // 5 points off
+    { who: "polymarket", n: 10, pred: 0.75, hit: 0.85 }, // 10 points off
+    { who: "fair", n: 1000, pred: 0.5, hit: 0.9 }, // left out
+  ];
+  const m = calibrationMiss(pts, ["kalshi", "polymarket"])!;
+  assert.equal(m.n, 40);
+  assert.ok(Math.abs(m.miss - (30 * 0.05 + 10 * 0.1) / 40) < 1e-12); // 0.0625
+  assert.equal(calibrationMiss(pts, ["nobody"]), null);
 });
