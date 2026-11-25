@@ -40,7 +40,18 @@ export const rowCols = () => sql`
   fair_method as "fairMethod",
   fee_taker as "feeTaker", fee_maker as "feeMaker"`;
 
-export const SORTS = ["close", "volume", "spread", "bid", "ask", "oi", "edge"] as const;
+export const SORTS = [
+  "close",
+  "volume",
+  "spread",
+  "bid",
+  "ask",
+  "oi",
+  "edge",
+  "mid",
+  "depth",
+  "dollars",
+] as const;
 export type Sort = (typeof SORTS)[number];
 
 export type Filters = {
@@ -95,6 +106,12 @@ export async function screen(
     // How far the fair value is from the midpoint, either way. Not for one-venue consensus,
     // which is fitted to the very quotes it would be compared with.
     edge: sql`case when fair_method <> 'consensus-1' then abs(fair - (bid + ask) / 2) end`,
+    // Added for /markets: the midpoint, contracts at the best bid and ask together, and 24 h
+    // volume in dollars (Kalshi counts contracts, so contracts × midpoint, an estimate) so the
+    // two venues sort together.
+    mid: sql`(bid + ask) / 2`,
+    depth: sql`coalesce(bid_size, 0) + coalesce(ask_size, 0)`,
+    dollars: sql`case when volume_unit = 'usd' then volume_24h else volume_24h * (bid + ask) / 2 end`,
   }[f.sort];
   const dir = f.desc ? sql`desc` : sql`asc`;
 
