@@ -1,10 +1,11 @@
 "use client";
 // The command bar: ⌘K (Ctrl+K on Windows) or "/" opens it; type to find any market or layout,
-// Enter goes there. The market list is already on the page, so matching runs in the browser.
+// Enter goes there (or, for an action such as "Reset layout", fires its window event). The market
+// list is already on the page, so matching runs in the browser.
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export type Command = { label: string; hint: string; href: string };
+export type Command = { label: string; hint: string; href?: string; event?: string };
 
 export default function Palette({ commands }: { commands: Command[] }) {
   const router = useRouter();
@@ -39,7 +40,8 @@ export default function Palette({ commands }: { commands: Command[] }) {
     if (!c) return;
     setOpen(false);
     setQ("");
-    router.push(c.href, { scroll: false });
+    if (c.event) window.dispatchEvent(new Event(c.event));
+    if (c.href) router.push(c.href, { scroll: false });
   };
 
   return (
@@ -67,7 +69,7 @@ export default function Palette({ commands }: { commands: Command[] }) {
             />
             <ul>
               {hits.map((c, k) => (
-                <li key={c.href}>
+                <li key={`${c.label} ${c.href ?? ""}`}>
                   <button type="button" className={k === i ? "on" : ""} onMouseEnter={() => setI(k)} onClick={() => go(c)}>
                     <span>{c.label}</span>
                     <span className="t-dim">{c.hint}</span>
