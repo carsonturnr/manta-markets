@@ -3331,8 +3331,8 @@ details.how[open] > summary {
    into the page below. A fixed height (the real one fills the window) keeps the fold where it is. */
 .hero-split .preview,
 .hero-split .pv-terminal {
-  max-width: 1240px;
-  height: 720px;
+  max-width: 1120px;
+  height: 640px;
   margin: 64px auto 0;
   text-align: left;
   mask-image: linear-gradient(to bottom, #000 60%, transparent);
