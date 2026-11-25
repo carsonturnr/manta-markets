@@ -113,6 +113,7 @@ async function Preview() {
   return (
     <SnapshotLive book={book} trades={trades} at={now}>
       <TerminalDemo
+        contract={focus}
         brand={
           <Link href={`/terminal?m=${encodeURIComponent(focus)}`} className="t-brand">
             <Mark /> Manta <span className="t-dim">Terminal</span>
