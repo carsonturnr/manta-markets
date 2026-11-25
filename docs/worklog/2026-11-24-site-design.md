@@ -25,7 +25,7 @@ An audit at 1440 and 390 px wide found these the most visible problems for a pro
 - The event page book is cut, not hidden behind a toggle: the contract page already has the full book.
 
 ## Follow-ups
-- Home hero now shows four live terminal panels (ladder, book, distribution, arbitrage) from existing components; the volume strip is gone.
+- Home hero: the pitch centred, the terminal itself below it (markets, chart, book, depth, tape) on Kalshi's most-traded contract in dollars, from one server-side snapshot (no streaming); it fades into the page. The volume strip is gone.
 - Awaiting Carson's direction: footer rework, liquidity/tracker/accuracy visuals, AI insights, terminal resizing and chart drawing, links out to the venues.
 - Signed-in pages (account with data, alerts) not checked; Clerk refuses localhost with production keys.
 - /replay fails locally (replay server answers 400 to this machine); the new error page shows instead.
