@@ -3308,6 +3308,9 @@ details.how[open] > summary {
   .markets-bar .chip-link {
     flex: none;
     padding: 8px 12px;
+  }
+}
+
 /* ==== Task C (account-analytics): signed-out account, Distributions, Liquidity ============= */
 
 /* Account, signed out: animated mark filling the left half of the page, sign-in on the right. */
