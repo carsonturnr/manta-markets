@@ -5,7 +5,17 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import MoveChart from "@/components/MoveChart";
-import { byMove, cents, et, getRelease, na, reacting, seconds, thinning } from "@/lib/events-response";
+import {
+  byMove,
+  cents,
+  et,
+  getRelease,
+  na,
+  reacting,
+  type Release,
+  seconds,
+  thinning,
+} from "@/lib/events-response";
 import { utc } from "@/lib/format";
 
 export const metadata = { title: "Manta: event response" };
@@ -48,6 +58,10 @@ async function ReleaseView({ params }: Pick<PageProps<"/events/[release]">, "par
         {r.standin ? "Measured at" : "Released"} {utc(r.t0)} ({et(r.t0)}).{" "}
         {r.standin &&
           "This is not a release: a moment with a known move, used to test the method before the first real one."}
+      </p>
+
+      <p className="lead-says">
+        <Says r={r} />
       </p>
 
       <h2>How the contracts moved</h2>
@@ -104,7 +118,8 @@ async function ReleaseView({ params }: Pick<PageProps<"/events/[release]">, "par
         </table>
       </div>
 
-      <h2>Method</h2>
+      <details className="more">
+      <summary>How each figure is measured</summary>
       <ul className="muted">
         <li>
           <b>Release time (t0)</b>: the official minute the number is published, from the BLS and
@@ -144,6 +159,23 @@ async function ReleaseView({ params }: Pick<PageProps<"/events/[release]">, "par
         polled every 10 seconds, so its timings are only good to the nearest 10 s. December gives
         three releases: small samples, read them as examples rather than averages.
       </p>
+      </details>
     </div>
+  );
+}
+
+/** The release in one sentence: how many contracts moved, the biggest move and how fast. */
+function Says({ r }: { r: Release }) {
+  const moved = reacting(r.contracts);
+  const top = moved[0];
+  if (!top) return <>No contract of the {r.contracts.length} measured moved 1¢ or more.</>;
+  return (
+    <>
+      {moved.length} of {r.contracts.length} contracts still trading moved 1¢ or more. The biggest,{" "}
+      {VENUE[top.venue] ?? top.venue} <span className="mono">{top.ticker}</span>, moved{" "}
+      <b className="num">{na(top.move_cents, cents)}</b> and got 90% of the way in{" "}
+      <b className="num">{na(top.time_to_90_ms, seconds)}</b>. Contracts on its book within 2¢ of the price, 10 minutes before against 30 seconds before:{" "}
+      <span className="num">{thinning(top.depth_10m_before, top.depth_30s_before)}</span>.
+    </>
   );
 }

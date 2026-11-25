@@ -1,19 +1,21 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import FairLadder from "@/components/FairLadder";
 import { cents, cents1, describe, gap, price, utc } from "@/lib/format";
 import { getBoard, type Quote } from "@/lib/queries";
+import { ladderSummary, outside } from "@/lib/tracker-view";
 
 export const metadata = { title: "Manta: Bitcoin tracker" };
 
 export default function Tracker() {
   return (
     <>
-      <h1>Bitcoin: Kalshi beside Deribit&apos;s options</h1>
+      <h1>Bitcoin fair value against Kalshi</h1>
       <p className="muted">
-        Kalshi sells yes/no contracts on Bitcoin&apos;s price at the top of each hour. Deribit&apos;s
-        options imply a probability for the same question. This page puts the two side by side,
-        once a minute. Prices are in cents, which is the same as a probability in percent.
+        Kalshi&apos;s hourly Bitcoin contracts beside Manta&apos;s fair value: the chance that
+        Deribit&apos;s Bitcoin options imply for the same question. Updated once a minute; prices
+        in cents, the same as a chance in percent.
       </p>
       <Suspense fallback={<p className="muted">Loading the latest snapshot…</p>}>
         <Live />
@@ -57,20 +59,58 @@ async function Live() {
           running right now, so these prices are not current.
         </p>
       )}
-      {[...byClose].map(([close, quotes]) => (
-        <section key={close}>
-          <h2>Closes {utc(close)}</h2>
-          <QuoteTable title="Above a price" quotes={quotes.filter((q) => q.series === "KXBTCD")} />
-          <QuoteTable title="In a range" quotes={quotes.filter((q) => q.series === "KXBTC")} />
-        </section>
-      ))}
+      <p className="fl-key small">
+        <span>
+          <span className="key fl-key-band" /> Kalshi bid to ask
+        </span>
+        <span>
+          <span className="key fl-key-fair" /> Manta fair value
+        </span>
+        <span>
+          <span className="key fl-key-up" /> fair above the ask: &ldquo;yes&rdquo; looks cheap
+          on Kalshi
+        </span>
+        <span>
+          <span className="key fl-key-down" /> fair below the bid: &ldquo;yes&rdquo; looks dear
+        </span>
+      </p>
+      {[...byClose].map(([close, quotes]) => {
+        const above = quotes.filter((q) => q.series === "KXBTCD");
+        const range = quotes.filter((q) => q.series === "KXBTC");
+        return (
+          <section key={close} className="panel stack">
+            <header className="ph">
+              <h2>Closes {utc(close)}</h2>
+            </header>
+            <div className="pad">
+              <p className="fl-says">
+                <Says quotes={quotes} />
+              </p>
+              <div className="fls">
+                <FairLadder title="Pays $1 if BTC is above" quotes={above} />
+                <FairLadder title="Pays $1 if BTC is between" quotes={range} />
+              </div>
+            </div>
+          </section>
+        );
+      })}
+      <details className="more">
+        <summary>Show the table</summary>
+        {[...byClose].map(([close, quotes]) => (
+          <section key={close}>
+            <h3>Closes {utc(close)}</h3>
+            <QuoteTable title="Above a price" quotes={quotes.filter((q) => q.series === "KXBTCD")} />
+            <QuoteTable title="In a range" quotes={quotes.filter((q) => q.series === "KXBTC")} />
+          </section>
+        ))}
+      </details>
       <p className="small">
-        <b>fair</b>: our probability from Deribit&apos;s options. <b>gap</b>: fair minus
-        Kalshi&apos;s mid (halfway between bid and ask), in cents; bold when fair is outside
-        Kalshi&apos;s bid–ask, the case a trader could act on. Contracts are listed while either
-        price is between 3¢ and 97¢; those more than 6 hours from their close update every 5
-        minutes. No fair value in the final 60 seconds, when part of the
-        settlement average is already known.
+        <b>Fair value</b>: the chance from Deribit&apos;s options, one labelled tool among
+        Manta&apos;s (<Link href="/stats">how accurate it has been</Link>). <b>gap</b> in the
+        table: fair minus Kalshi&apos;s mid (halfway between bid and ask), in cents; bold when fair
+        is outside Kalshi&apos;s bid–ask. Contracts are listed while either price is between 3¢ and
+        97¢; those more than 6 hours from their close update every 5 minutes. No fair value in the
+        final 60 seconds, when part of the settlement average is already known.
       </p>
     </>
   );
@@ -111,6 +151,24 @@ function QuoteTable({ title, quotes }: { title: string; quotes: Quote[] }) {
           </tbody>
         </table>
       </div>
+    </>
+  );
+}
+
+/** One plain sentence on a close: where fair value disagrees with Kalshi by more than its spread. */
+function Says({ quotes }: { quotes: Quote[] }) {
+  const { above, below, biggest } = ladderSummary(quotes);
+  if (!biggest)
+    return <>Fair value sits inside Kalshi&apos;s bid–ask on every contract: no gap wider than the spread.</>;
+  const by = outside(biggest);
+  const n = (k: number) => `${k} contract${k === 1 ? "" : "s"}`;
+  return (
+    <>
+      Fair value is above Kalshi&apos;s ask on {n(above)} and below its bid on {n(below)}. Widest
+      gap: <b>{describe(biggest)}</b>, fair <b className="num">{cents1(biggest.fair!)}¢</b> against
+      Kalshi <span className="num">{cents(biggest.bid)}–{cents(biggest.ask)}¢</span>,{" "}
+      <span className={`num ${by > 0 ? "up" : "down"}`}>{Math.abs(by).toFixed(1)}¢</span>{" "}
+      {by > 0 ? "above the ask" : "below the bid"}.
     </>
   );
 }

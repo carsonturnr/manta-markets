@@ -7,7 +7,9 @@ import {
   BookSection,
   Chart,
   CostSection,
+  MarketBrief,
   RulesSection,
+  TradeLink,
   TradesSection,
   Watch,
 } from "@/components/ContractSections";
@@ -63,7 +65,7 @@ async function Contract({
         <p className="muted">
           This contract isn&apos;t open on {venue === "kalshi" ? "Kalshi" : "Polymarket"} among the
           families Manta covers: it has closed, or it was never covered.{" "}
-          <Link href="/screener">Back to the screener</Link>.
+          <Link href="/markets">Back to Markets</Link>.
         </p>
       </>
     );
@@ -91,100 +93,108 @@ async function Contract({
             Closes {utc(c.close)} ({until(c.close, at)}).
             {s && <> Settles on {s.settles}.</>}
           </p>
+          <p className="view-note">
+            The detailed view of one contract. The{" "}
+            <Link href={`/m/${venue}/${encodeURIComponent(c.event)}`}>market page</Link> is the
+            simple one; the <Link href="/terminal">terminal</Link> is the live workspace.
+          </p>
+          <TradeLink c={c} />
         </div>
         <Quote c={c} />
       </section>
 
       <div className="cw-grid">
-        <section className="panel cw-chart">
-          <Suspense fallback={<p className="muted pad">Loading the chart…</p>}>
-            <Chart c={c} yesToken={tokens?.[0]} tracked={tracked} />
-          </Suspense>
-        </section>
+        <div className="cw-col">
+          <section className="panel cw-chart">
+            <Suspense fallback={<p className="muted pad">Loading the chart…</p>}>
+              <Chart c={c} yesToken={tokens?.[0]} tracked={tracked} />
+            </Suspense>
+          </section>
 
-        <section className="panel cw-book">
-          <header className="ph">
-            <h2>Order book</h2>
-            <span className="m3">&ldquo;yes&rdquo;, live</span>
-          </header>
-          <Suspense fallback={<p className="muted pad">Loading…</p>}>
-            <BookSection c={c} yesToken={tokens?.[0]} />
+          <Suspense fallback={null}>
+            <MarketBrief c={c} />
           </Suspense>
-        </section>
 
-        <section className="panel cw-cost">
-          <header className="ph">
-            <h2>Cost to trade</h2>
-            <span className="m3">walks the live book, then adds {venueName}&apos;s taker fee</span>
-          </header>
-          <Suspense fallback={<p className="muted pad">Loading the order book…</p>}>
-            <CostSection c={c} yesToken={tokens?.[0]} side={side} n={n} fairUsable={fairUsable} />
-          </Suspense>
-        </section>
+          <section className="panel cw-cost">
+            <header className="ph">
+              <h2>Cost to trade</h2>
+              <span className="m3">walks the live book, then adds {venueName}&apos;s taker fee</span>
+            </header>
+            <Suspense fallback={<p className="muted pad">Loading the order book…</p>}>
+              <CostSection c={c} yesToken={tokens?.[0]} side={side} n={n} fairUsable={fairUsable} />
+            </Suspense>
+          </section>
 
-        <section className="panel cw-trades">
-          <header className="ph">
-            <h2>Trades</h2>
-            <span className="m3">newest first</span>
-          </header>
-          <Suspense fallback={<p className="muted pad">Loading…</p>}>
-            <TradesSection c={c} yesToken={tokens?.[0]} />
-          </Suspense>
-        </section>
+          <section className="panel cw-priced">
+            <header className="ph">
+              <h2>How this is priced</h2>
+            </header>
+            <div className="pad prose-sm">
+              <p>
+                {c.title} Bid and ask from {venueName}&apos;s market list at {utc(at)}; the order book
+                and trades are live.
+              </p>
+              {c.fairMethod && (
+                <p>
+                  <b>Fair value: {METHODS[c.fairMethod].name}.</b> {METHODS[c.fairMethod].explain}
+                  {c.bid !== null && c.ask !== null && c.fair !== null && fairUsable && (
+                    <>
+                      {" "}
+                      It is {Math.abs(Math.round((c.fair - (c.bid + c.ask) / 2) * 1000) / 10)}¢{" "}
+                      {c.fair > (c.bid + c.ask) / 2 ? "above" : "below"} the midpoint. Not investment
+                      advice.
+                    </>
+                  )}
+                </p>
+              )}
+              {tracked && (
+                <p>
+                  Our options-implied fair value for this contract, minute by minute:{" "}
+                  <Link href={`/c/${c.id}`}>BTC tracker →</Link>
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
+        <div className="cw-col">
+          <section className="panel cw-book">
+            <header className="ph">
+              <h2>Order book</h2>
+              <span className="m3">&ldquo;yes&rdquo;, live</span>
+            </header>
+            <Suspense fallback={<p className="muted pad">Loading…</p>}>
+              <BookSection c={c} yesToken={tokens?.[0]} />
+            </Suspense>
+          </section>
+
+          <section className="panel cw-trades">
+            <header className="ph">
+              <h2>Trades</h2>
+              <span className="m3">newest first</span>
+            </header>
+            <Suspense fallback={<p className="muted pad">Loading…</p>}>
+              <TradesSection c={c} yesToken={tokens?.[0]} />
+            </Suspense>
+          </section>
+          <section className="panel cw-watch">
+            <header className="ph">
+              <h2>Watch and alerts</h2>
+            </header>
+            <div className="pad">
+              <Suspense fallback={null}>
+                <Watch venue={venue} id={c.id} />
+              </Suspense>
+            </div>
+          </section>
+        </div>
       </div>
 
-      <div className="cw-lower">
-        <section className="panel">
-          <header className="ph">
-            <h2>How this is priced</h2>
-          </header>
-          <div className="pad prose-sm">
-            <p>
-              {c.title} Bid and ask from {venueName}&apos;s market list at {utc(at)}; the order book
-              and trades are live.
-            </p>
-            {c.fairMethod && (
-              <p>
-                <b>Fair value: {METHODS[c.fairMethod].name}.</b> {METHODS[c.fairMethod].explain}
-                {c.bid !== null && c.ask !== null && c.fair !== null && fairUsable && (
-                  <>
-                    {" "}
-                    It is {Math.abs(Math.round((c.fair - (c.bid + c.ask) / 2) * 1000) / 10)}¢{" "}
-                    {c.fair > (c.bid + c.ask) / 2 ? "above" : "below"} the midpoint. Not investment
-                    advice.
-                  </>
-                )}
-              </p>
-            )}
-            {tracked && (
-              <p>
-                Our options-implied fair value for this contract, minute by minute:{" "}
-                <Link href={`/c/${c.id}`}>BTC tracker →</Link>
-              </p>
-            )}
-          </div>
-        </section>
-        <section className="panel">
-          <header className="ph">
-            <h2>Watch and alerts</h2>
-          </header>
-          <div className="pad">
-            <Suspense fallback={null}>
-              <Watch venue={venue} id={c.id} />
-            </Suspense>
-          </div>
-        </section>
-        <section className="panel cw-rules">
-          <header className="ph">
-            <h2>Settlement rules</h2>
-          </header>
-          <div className="pad">
-            <Suspense fallback={<p className="muted">Loading…</p>}>
-              <RulesSection c={c} />
-            </Suspense>
-          </div>
-        </section>
-      </div>
+      <section className="fine-print">
+        <h2>Settlement rules</h2>
+        <Suspense fallback={<p className="muted">Loading…</p>}>
+          <RulesSection c={c} />
+        </Suspense>
+      </section>
     </div>
   );
 }

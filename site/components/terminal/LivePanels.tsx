@@ -15,7 +15,8 @@ const usd = (x: number) =>
 
 /** "updated 1 s ago", or a warning when the feed has failed. */
 function Fresh() {
-  const { at, error, streaming } = useLive();
+  const { at, error, streaming, snapshot } = useLive();
+  if (snapshot) return <span className="t-live">snapshot</span>;
   if (error) return <span className="t-stale">feed interrupted, showing last data</span>;
   return <span className="t-live">{!at ? "loading" : streaming ? "live · streaming" : "live · every 2 s"}</span>;
 }

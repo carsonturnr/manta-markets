@@ -1,6 +1,6 @@
 // The live parts of a contract, shared by the contract page and the event page: its price chart,
-// order book, cost calculator, trades and rules. Server components: each fetches its own data
-// (lib/venues.ts, cached briefly) inside the page's Suspense boundaries.
+// order book, cost calculator, trades and rules, the AI brief and the link out to the venue. Server
+// components: each fetches its own data (lib/venues.ts, cached briefly) inside Suspense boundaries.
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { getAlerts, isPaired, isWatched } from "@/lib/account";
 import { deleteAlert, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
 import CostCalc from "@/components/CostCalc";
+import { getBrief } from "@/lib/brief-api";
 import { getContract } from "@/lib/queries";
 import type { Row } from "@/lib/screener";
 import {
@@ -54,73 +55,121 @@ export async function Chart({ c, yesToken, tracked }: { c: Row; yesToken?: strin
   return <CandleChart poly={{ m1, h1 }} />;
 }
 
-export async function BookSection({ c, yesToken }: { c: Row; yesToken?: string }) {
+export async function BookSection({
+  c,
+  yesToken,
+  levels = 12,
+}: {
+  c: Row;
+  yesToken?: string;
+  levels?: number;
+}) {
   const book: Book | null =
     c.venue === "kalshi" ? await kalshiBook(c.id) : yesToken ? await polyBook(yesToken) : null;
   if (!book) return unavailable("The order book", c.venue);
   if (book.bids.length === 0 && book.asks.length === 0) {
     return <p className="muted">No orders on either side.</p>;
   }
-  // The best 12 levels each side are shown; the calculator walks all of them (up to 50).
-  const shown = { bids: book.bids.slice(0, 12), asks: book.asks.slice(0, 12) };
-  const max = Math.max(...shown.bids.map((l) => l.size), ...shown.asks.map((l) => l.size));
+  // The best `levels` each side are shown; the calculator walks all of them (up to 50). One row per
+  // rank, like a stock's depth-of-market: bids on the left, asks on the right, best prices on top.
+  const bids = book.bids.slice(0, levels);
+  const asks = book.asks.slice(0, levels);
+  const max = Math.max(...bids.map((l) => l.size), ...asks.map((l) => l.size));
   const bar = (size: number) => ({ "--w": `${(size / max) * 100}%` }) as React.CSSProperties;
   // Running totals: how many contracts are on offer at this price or better.
-  const total = (ls: typeof shown.bids) => ls.map((_, i) => ls.slice(0, i + 1).reduce((s, l) => s + l.size, 0));
-  const askTotals = total(shown.asks);
-  const bidTotals = total(shown.bids);
+  const total = (ls: typeof bids) => ls.map((_, i) => ls.slice(0, i + 1).reduce((s, l) => s + l.size, 0));
+  const bidTotals = total(bids);
+  const askTotals = total(asks);
   const mid = book.bids[0] && book.asks[0] ? (book.bids[0].price + book.asks[0].price) / 2 : null;
+  const ranks = Array.from({ length: Math.max(bids.length, asks.length) }, (_, i) => i);
   return (
     <>
+      <p className="dom-line num">
+        spread{" "}
+        {book.bids[0] && book.asks[0] ? cents(book.asks[0].price - book.bids[0].price) : "–"}
+        {mid !== null && <> · mid {cents(mid)}</>}
+        {c.fair !== null && <> · fair {cents(c.fair)}</>}
+      </p>
       <div className="table-wrap scroll">
-        <table className="book num">
+        <table className="dom num">
           <thead>
             <tr>
-              <th>Price</th>
+              <th className="dom-total">Total</th>
               <th>Contracts</th>
-              <th>Total</th>
+              <th>Bid</th>
+              <th>Ask</th>
+              <th>Contracts</th>
+              <th className="dom-total">Total</th>
             </tr>
           </thead>
           <tbody>
-            {shown.asks
-              .map((l, i) => (
-                <tr key={`a${l.price}`} className="ask">
-                  <td>{cents(l.price)}</td>
-                  <td className="level" style={bar(l.size)}>
-                    {qty(l.size)}
+            {ranks.map((i) => {
+              const b = bids[i];
+              const a = asks[i];
+              return (
+                <tr key={i}>
+                  <td className="dom-total m3">{b ? qty(bidTotals[i]) : ""}</td>
+                  <td className="dom-bid-size" style={b ? bar(b.size) : undefined}>
+                    {b ? qty(b.size) : ""}
                   </td>
-                  <td className="m3">{qty(askTotals[i])}</td>
+                  <td className="up">{b ? cents(b.price) : ""}</td>
+                  <td className="down">{a ? cents(a.price) : ""}</td>
+                  <td className="dom-ask-size" style={a ? bar(a.size) : undefined}>
+                    {a ? qty(a.size) : ""}
+                  </td>
+                  <td className="dom-total m3">{a ? qty(askTotals[i]) : ""}</td>
                 </tr>
-              ))
-              .reverse()}
-            <tr className="mid">
-              <td colSpan={3}>
-                spread{" "}
-                {book.bids[0] && book.asks[0]
-                  ? cents(book.asks[0].price - book.bids[0].price)
-                  : "–"}
-                {mid !== null && <> · mid {cents(mid)}</>}
-                {c.fair !== null && <> · fair {cents(c.fair)}</>}
-              </td>
-            </tr>
-            {shown.bids.map((l, i) => (
-              <tr key={`b${l.price}`} className="bid">
-                <td>{cents(l.price)}</td>
-                <td className="level" style={bar(l.size)}>
-                  {qty(l.size)}
-                </td>
-                <td className="m3">{qty(bidTotals[i])}</td>
-              </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
       <p className="note">
-        Asks in red, bids in green, for &ldquo;yes&rdquo;.
+        Bids are offers to buy &ldquo;yes&rdquo;, asks are offers to sell it; the spread is the gap
+        between the best of each. Total counts the contracts at that price or better.
         {c.venue === "kalshi" &&
           " Kalshi lists bids for “yes” and for “no”; a “no” bid at 26¢ is shown as a “yes” ask at 74¢."}
+        {levels < 12 && (
+          <>
+            {" "}
+            <Link href={`/contract/${c.venue}/${encodeURIComponent(c.id)}`}>Full book</Link>.
+          </>
+        )}
       </p>
     </>
+  );
+}
+
+/** The venue's own page for this contract's event, where it can be traded (Manta places no
+ * orders). Checked 2026-11-25: kalshi.com/markets/<series>/<event> redirects to the event's page;
+ * polymarket.com/event/<slug> is the event's page. */
+export function TradeLink({ c }: { c: Pick<Row, "venue" | "family" | "event"> }) {
+  const href =
+    c.venue === "kalshi"
+      ? `https://kalshi.com/markets/${c.family.toLowerCase()}/${c.event.toLowerCase()}`
+      : `https://polymarket.com/event/${encodeURIComponent(c.event)}`;
+  return (
+    <a className="trade-link" href={href} target="_blank" rel="noopener noreferrer">
+      Trade on {c.venue === "kalshi" ? "Kalshi" : "Polymarket"} →
+    </a>
+  );
+}
+
+/** The AI summary of Manta's data on this contract (lib/brief-api.ts). Renders nothing when the
+ * key is missing or the call fails. */
+export async function MarketBrief({ c }: { c: Pick<Row, "venue" | "id"> }) {
+  const bullets = await getBrief(c.venue, c.id);
+  if (!bullets) return null;
+  return (
+    <section className="brief">
+      <h2>Market brief</h2>
+      <ul>
+        {bullets.map((b, i) => (
+          <li key={i}>{b}</li>
+        ))}
+      </ul>
+      <p className="note">AI summary of Manta&apos;s data. Not investment advice.</p>
+    </section>
   );
 }
 
@@ -202,10 +251,13 @@ export async function RulesSection({ c }: { c: Row }) {
   if (!rules) return unavailable("The rules", c.venue);
   return (
     <div className="rules">
+      {/* The venue's own words, unedited: said once, up front. */}
       {rules.paragraphs.map((p, i) => (
-        <p key={i}>{p}</p>
+        <p key={i}>
+          {i === 0 && <b>From {c.venue === "kalshi" ? "Kalshi" : "Polymarket"}: </b>}
+          {p}
+        </p>
       ))}
-      <p className="m3">{rules.source}, verbatim.</p>
     </div>
   );
 }
