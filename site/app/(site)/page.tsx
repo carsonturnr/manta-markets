@@ -5,13 +5,15 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import EventCard, { eventHref, pct } from "@/components/EventCard";
+import { BookSection } from "@/components/ContractSections";
+import DistChart from "@/components/DistChart";
 import WaitlistForm from "@/components/WaitlistForm";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { crossed, gap, getPairs } from "@/lib/compare";
 import { type Event, getEvents } from "@/lib/events";
 import { getLiquidity } from "@/lib/liquidity";
 import { getReport } from "@/lib/quality";
-import { mid } from "@/lib/outcomes";
+import { featured, mid, outcomeLabel } from "@/lib/outcomes";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -22,16 +24,21 @@ type Filter = (typeof FILTERS)[number];
 export default function Home({ searchParams }: { searchParams: Promise<Params> }) {
   return (
     <>
-      <section className="hero">
-        <h1>A terminal for prediction markets.</h1>
-        <p>
-          Every crypto, economics and financial contract on Kalshi and Polymarket in one place: a
-          screener, live order books and trades, the same question compared across venues, what a
-          trade really costs after fees, implied distributions, replay and alerts. No sports.
-        </p>
-        <Link href="/terminal" className="btn">
-          Open the terminal
-        </Link>
+      <section className="hero hero-split">
+        <div className="hero-copy">
+          <h1>A terminal for prediction markets.</h1>
+          <p>
+            Every crypto, economics and financial contract on Kalshi and Polymarket in one place: a
+            screener, live order books and trades, the same question compared across venues, what a
+            trade really costs after fees, implied distributions, replay and alerts. No sports.
+          </p>
+          <Link href="/terminal" className="btn">
+            Open the terminal
+          </Link>
+        </div>
+        <Suspense fallback={<div className="panel preview" />}>
+          <Preview />
+        </Suspense>
       </section>
 
       <Suspense fallback={<div className="stats-row" />}>
@@ -67,22 +74,80 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
   );
 }
 
-/** Three figures about what Manta covers, under a strip of today's events sized by volume. */
+/** The hero's picture of the product: four of the terminal's panels on live data. The busiest
+ * Kalshi event's ladder and its featured contract's order book, one implied distribution and the
+ * best cross-venue arbitrage after fees, from the same queries and components the tools use. */
+async function Preview() {
+  await connection(); // request time only: the build never queries the database
+  const [{ events, at }, { pairs }, dists] = await Promise.all([getEvents(), getPairs(), getDistributions()]);
+  const top = events.find((e) => e.venue === "kalshi"); // the order book below reads Kalshi's
+  const o = top ? featured(top.outcomes, 1)[0] : undefined;
+  const ok = dists.filter((x) => x.curve.length > 4);
+  const d = ok.find((x) => x.title.includes("Bitcoin")) ?? ok[0];
+  const arbs = pairs
+    .flatMap((p) => {
+      const x = crossed(p);
+      return x && x.net !== null && x.net > 1e-9 ? [{ p, x }] : [];
+    })
+    .sort((a, b) => b.x.net! - a.x.net!)
+    .slice(0, 3);
+  return (
+    <div className="panel preview">
+      <div className="pv-bar num">
+        <span className="pv-live">Live</span>
+        <span>Manta terminal</span>
+        <span>{at !== null ? `${new Date(at).toISOString().slice(11, 16)} UTC` : ""}</span>
+      </div>
+      <div className="pv-grid">
+        <div className="pv-cell">{top && <EventCard e={top} now={at ?? top.close} />}</div>
+        <div className="pv-cell">
+          <Link href="/terminal" className="pv-h">
+            Order book{o && <span className="m3"> · {outcomeLabel(o)}</span>}
+          </Link>
+          {o && <BookSection c={o} levels={4} />}
+        </div>
+        <div className="pv-cell">
+          <Link href="/distributions" className="pv-h">
+            Implied distribution{d && <span className="m3"> · {d.title}</span>}
+          </Link>
+          {d && <DistChart d={d} width={380} />}
+        </div>
+        <div className="pv-cell">
+          <Link href="/compare" className="pv-h">
+            Arbitrage after fees
+          </Link>
+          {arbs.length === 0 ? (
+            <p className="muted small">None right now: prices checked every minute.</p>
+          ) : (
+            <ul className="pv-arbs num">
+              {arbs.map(({ p, x }) => (
+                <li key={`${p.topic}/${p.question}`}>
+                  <span>
+                    {p.question}
+                    <small>
+                      {p.topic} · buy {x.buy}, sell {x.sell}
+                    </small>
+                  </span>
+                  <b className="up">+{x.net!.toFixed(2)}¢</b>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Three figures about what Manta covers. */
 async function Stats() {
   await connection(); // request time only: the build never queries the database
   const [{ events }, { pairs }, quality] = await Promise.all([getEvents(), getPairs(), getReport()]);
   const contracts = events.reduce((n, e) => n + e.outcomes.length, 0);
   const afterFees = pairs.filter((p) => (crossed(p)?.net ?? 0) > 1e-9).length;
   const worst = quality?.report.venues.reduce((w, v) => (v.coverage < w.coverage ? v : w), quality.report.venues[0]);
-  const total = events.reduce((n, e) => n + e.volume, 0) || 1;
   return (
     <section className="stats-row">
-      {/* Each event as a segment, its width its share of today's volume, coloured by category. */}
-      <div className="strip" aria-hidden="true">
-        {events.slice(0, 60).map((e) => (
-          <i key={`${e.venue}/${e.event}`} className={`cat-${e.category.split(" ")[0].toLowerCase()}`} style={{ flexGrow: e.volume / total }} />
-        ))}
-      </div>
       <div className="figures-row">
         <div>
           <b className="num">{contracts.toLocaleString("en-US")}</b>
