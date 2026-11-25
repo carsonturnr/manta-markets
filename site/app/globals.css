@@ -3308,6 +3308,9 @@ details.how[open] > summary {
   .markets-bar .chip-link {
     flex: none;
     padding: 8px 12px;
+  }
+}
+
 /* ==== Task C (account-analytics): signed-out account, Distributions, Liquidity ============= */
 
 /* Account, signed out: animated mark filling the left half of the page, sign-in on the right. */
@@ -3624,4 +3627,140 @@ details.more[open] > summary {
   margin: 0 0 14px;
   color: var(--text-3);
   font-size: 13px;
+}
+
+/* ---- Research pages (task F): tracker ladders, accuracy answer, quality summary, events, replay ---- */
+/* Tracker: one row per strike, Kalshi's bid–ask as a grey bar and fair value as a mint tick. */
+.fl-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--text-2);
+  max-width: none;
+}
+.fl-key .key {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.fl-key-band {
+  background: var(--ink-3);
+}
+.fl-key-fair {
+  background: var(--fair);
+  width: 3px !important;
+}
+.fl-key-up {
+  background: var(--up-bg);
+  outline: 1px solid var(--up);
+}
+.fl-key-down {
+  background: var(--down-bg);
+  outline: 1px solid var(--down);
+}
+.fl-says {
+  margin: 0 0 20px;
+  max-width: 90ch;
+}
+.fls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+.fl-head,
+.fl-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 104px;
+  align-items: center;
+  gap: 12px;
+}
+.fl-head {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+.fl-head > :last-child,
+.fl-val {
+  text-align: right;
+}
+.fl-scale {
+  display: flex;
+  justify-content: space-between;
+}
+.fl-row {
+  padding: 3px 0;
+  font-size: 13px;
+}
+.fl-row a {
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-row a:hover {
+  text-decoration: underline;
+}
+.fl-track {
+  position: relative;
+  height: 14px;
+  background: var(--ink-soft);
+}
+.fl-band,
+.fl-gap,
+.fl-fair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.fl-band {
+  background: var(--ink-3);
+}
+.fl-gap.up {
+  background: var(--up-bg);
+  border-top: 1px solid var(--up);
+  border-bottom: 1px solid var(--up);
+}
+.fl-gap.down {
+  background: var(--down-bg);
+  border-top: 1px solid var(--down);
+  border-bottom: 1px solid var(--down);
+}
+.fl-fair {
+  width: 3px;
+  margin-left: -1px;
+  top: -3px;
+  bottom: -3px;
+  background: var(--fair);
+}
+.fl-val {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.fl-val b {
+  font-weight: 500;
+  color: var(--text);
+}
+.fl-val b.up {
+  color: var(--up);
+}
+.fl-val b.down {
+  color: var(--down);
+}
+@media (max-width: 900px) {
+  .fls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .fl-head,
+  .fl-row {
+    grid-template-columns: 112px minmax(0, 1fr) 84px;
+    gap: 8px;
+  }
+  .fl-row {
+    font-size: 12px;
+  }
 }
