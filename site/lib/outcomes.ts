@@ -1,8 +1,7 @@
 // How an event's contracts are shown to a reader: the question they answer together, the outcomes
-// worth featuring, whether a price looks cheap against our fair value, and what a dollar amount
-// buys. Pure functions (no database), shared by server pages and client components; tested in
+// worth featuring, whether a price looks cheap against our fair value. Pure
+// functions (no database), shared by server pages and client components; tested in
 // outcomes.test.ts.
-import { type Cost, walk, type Level } from "./cost.ts";
 import { SETTLEMENT, strike } from "./settlement.ts";
 import { underlying } from "./units.ts";
 
@@ -113,25 +112,4 @@ export function question(family: string, os: Outcome[], close: number, now: numb
   // Economic releases: "What will CPI's 12-month change be?"
   if (os.length > 0 && s) return `What will ${subject} be?`;
   return subject;
-}
-
-/** The most contracts `budget` dollars buys as a taker, fees included, walking the asks; and
- * the cost of that many (lib/cost.ts walk). Null if not even one contract is affordable. */
-export function buyWithBudget(
-  budget: number,
-  asks: Level[],
-  fee: (contracts: number, price: number) => number,
-): Cost | null {
-  const depth = asks.reduce((s, l) => s + l.size, 0);
-  // The total cost only rises with the number of contracts, so a binary search finds the most
-  // that fit: lo always fits, hi never does.
-  let lo = 0;
-  let hi = Math.floor(depth) + 1;
-  while (hi - lo > 1) {
-    const n = Math.floor((lo + hi) / 2);
-    const c = walk("buy", n, asks, fee);
-    if (c && c.total <= budget + 1e-9) lo = n;
-    else hi = n;
-  }
-  return lo === 0 ? null : walk("buy", lo, asks, fee);
 }
