@@ -110,7 +110,7 @@ async function Preview() {
           <Link href="/distributions" className="pv-h">
             Implied distribution{d && <span className="m3"> · {d.title}</span>}
           </Link>
-          {d && <DistChart d={d} width={380} />}
+          {d && <DistChart d={d} width={540} />}
         </div>
         <div className="pv-cell">
           <Link href="/compare" className="pv-h">

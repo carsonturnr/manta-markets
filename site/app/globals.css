@@ -3317,21 +3317,22 @@ details.how[open] > summary {
   }
 }
 
-/* ---- Home hero: the pitch on the left, four live terminal panels on the right ----------- */
+/* ---- Home hero: the pitch, centred, with the terminal's panels rising from below it -------- */
 .hero-split {
-  display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  align-items: center;
-  gap: 48px;
-  text-align: left;
-  padding: 56px 0 64px;
+  padding: 72px 0 0;
 }
 .hero-split h1 {
-  font-size: 60px;
-  margin: 0 0 20px;
+  margin: 0 auto 24px;
 }
 .hero-split p {
-  margin: 0 0 28px;
+  margin: 0 auto 36px;
+}
+/* The panel starts low enough that only its top shows on arrival, and fades into the page. */
+.hero-split .preview {
+  max-width: 1120px;
+  margin: 64px auto 0;
+  text-align: left;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
 }
 .preview {
   min-height: 420px;
@@ -3415,15 +3416,7 @@ details.how[open] > summary {
   display: block;
   color: var(--text-3);
 }
-@media (max-width: 1100px) {
-  .hero-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (max-width: 700px) {
-  .hero-split h1 {
-    font-size: 44px;
-  }
   .pv-grid {
     grid-template-columns: minmax(0, 1fr);
   }
