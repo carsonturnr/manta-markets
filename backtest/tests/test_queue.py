@@ -207,7 +207,7 @@ def test_spread_uses_the_mid_before_the_trades_own_book_change():
     assert wx / w == pytest.approx(0.005)
 
 
-def test_opposite_side_reaching_our_price_fills_us():
+def _crossing_market(level_after_cancel: str):
     m = Measure(sample_s=1, place_s=1000)
     book = {
         "market_id": "X",
@@ -216,10 +216,39 @@ def test_opposite_side_reaching_our_price_fills_us():
         "asks": [["0.42", "70"]],
     }
     m.handle({"type": "book", "msg": {"recv_ts": S, **book}})  # we bid 0.40 behind 500
-    gone = {**book, "kind": "delta", "recv_ts": 2 * S, "bids": [["0.40", "0"], ["0.39", "50"]]}
-    m.handle({"type": "book", "msg": gone})  # the bids at 0.40 are cancelled: no trade
-    cross = {**book, "kind": "delta", "recv_ts": 3 * S, "bids": [], "asks": [["0.40", "30"]]}
+    left = [["0.40", level_after_cancel], ["0.39", "50"]]
+    m.handle({"type": "book", "msg": {**book, "kind": "delta", "recv_ts": 2 * S, "bids": left}})
+    return m, book
+
+
+def test_cross_with_nothing_ahead_is_a_pickoff():
+    m, book = _crossing_market("0")  # the 500 ahead of us cancel: no trade
+    cross = {**book, "kind": "delta", "recv_ts": 4 * S, "bids": [], "asks": [["0.40", "30"]]}
     m.handle({"type": "book", "msg": cross})  # a seller posts at 0.40: that would hit us
     bid = next(o for side, _, o in m.orders["X"] if side == "bids")
-    assert bid.fill_at[("behind", 100)] == 3 * S
+    assert bid.fill_at[("behind", 100)] == 4 * S
+    assert bid.cross_kind["behind"] == "pickoff"
     assert len([p for p in m.pending if p[3] == "fills-behind"]) == 3  # 10 s, 60 s, 5 min
+
+
+def test_cross_with_size_still_ahead_is_a_locked_book():
+    m, book = _crossing_market("500")  # (no change) 500 still ahead of us
+    cross = {**book, "kind": "delta", "recv_ts": 3 * S, "bids": [], "asks": [["0.40", "30"]]}
+    m.handle({"type": "book", "msg": cross})  # bid and ask both at 0.40: message order
+    later = {**book, "kind": "delta", "recv_ts": 5 * S, "bids": [], "asks": [["0.41", "5"]]}
+    m.handle({"type": "book", "msg": later})  # still locked 2 s on, then the ask goes
+    bid = next(o for side, _, o in m.orders["X"] if side == "bids")
+    assert ("behind", 1) not in bid.fill_at and ("ahead", 1) not in bid.fill_at
+    assert bid.cross_kind == {"behind": "locked", "proportional": "locked", "ahead": "locked"}
+
+
+def test_locked_book_that_trades_out_becomes_a_pickoff():
+    m, book = _crossing_market("500")
+    cross = {**book, "kind": "delta", "recv_ts": 3 * S, "bids": [], "asks": [["0.40", "30"]]}
+    m.handle({"type": "book", "msg": cross})  # locked: 500 ahead
+    trade = {"market_id": "X", "recv_ts": 3 * S + 10, "side": "sell", "px": "0.40", "sz": "500"}
+    m.handle({"type": "trade", "msg": trade})  # the 500 ahead trade away within the window
+    again = {**cross, "recv_ts": 3 * S + 20, "asks": [["0.40", "25"]]}
+    m.handle({"type": "book", "msg": again})
+    bid = next(o for side, _, o in m.orders["X"] if side == "bids")
+    assert bid.cross_kind["behind"] == "pickoff"

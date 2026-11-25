@@ -15,10 +15,13 @@ page counts them), at the back of the queue. It never changes the recorded marke
 small). We then follow the recorded trades and book changes at its price:
 
 - trades at its price use up the queue ahead of it, then fill it;
-- the opposite side reaching our price (an ask at or below our bid) fills us: that seller would
-  have traded with our order. This happens when the queue at our price has emptied (the fast
-  makers cancelled) and is the worst kind of fill; it was missing until 2026-11-25, when
-  NautilusTrader's simulated venue, which fills this way, showed it (docs/plan-market-maker.md);
+- the opposite side reaching our price (an ask at or below our bid) fills us only when nothing is
+  left ahead of us there: the queue emptied (the fast makers cancelled) and a seller arrived at
+  our price, so our stale order is picked off; the worst kind of fill. While the book still
+  shows size ahead of us, a bid and an ask cannot really rest at the same price: the recorded
+  book is momentarily locked by message order, so it is counted ("locked"), not filled, and
+  looked at again once the 1 s trade matching has moved the queue. Both added 2026-11-25, after
+  NautilusTrader's simulated venue, which fills on crosses, showed them;
 - a trade at a worse price (a seller selling below our bid) means the book traded through our
   price, which would have filled us;
 - the book only shows each price's total size, not who cancelled, so a cancellation is split
@@ -71,6 +74,8 @@ class Resting:
         self.drops: list[list[float]] = []  # [time, size] size drops not yet matched to a trade
         self.credit: list[list[float]] = []  # [time, size] trades not yet matched to a drop
         self.unmatched_trades = 0.0  # trade volume whose size drop never arrived
+        self.cross_at: int | None = None  # when the opposite side first reached our price
+        self.cross_kind: dict[str, str] = {}  # model → "pickoff" or "locked", first episode
 
     def level(self, t: int, size: float) -> None:
         """The recorded size at our price is now `size`."""
@@ -105,12 +110,34 @@ class Resting:
                 if self.past[m] >= q:
                     self.fill_at.setdefault((m, q), t)
 
-    def cross(self, t: int) -> None:
-        """The opposite side's best price reached ours: filled in full, in every model.
+    def crossed(self, t: int) -> list[str]:
+        """The opposite best is at or through our price. Fill each model with nothing left ahead
+        of us; returns the models newly filled. With size still ahead, the book is locked by
+        message order: after MATCH_NS it is classified "locked" (no fill), until then it waits
+        for the trade matching to move the queue.
         shortcut: a large order would only fill up to the crossing size; fine for 1 and 100."""
+        self.expire(t)
+        if self.cross_at is None:
+            self.cross_at = t
+        new = []
         for m in MODELS:
-            for q in SIZES:
-                self.fill_at.setdefault((m, q), t)
+            if self.ahead[m] <= 1e-9:
+                if (m, 1) not in self.fill_at:
+                    new.append(m)
+                for q in SIZES:
+                    self.fill_at.setdefault((m, q), t)
+                self.cross_kind.setdefault(m, "pickoff")
+            elif t - self.cross_at >= MATCH_NS:
+                self.cross_kind.setdefault(m, "locked")
+        return new
+
+    def uncrossed(self, t: int) -> None:
+        """The cross is gone. One that ended with size still ahead was a locked book."""
+        if self.cross_at is not None:
+            for m in MODELS:
+                if self.ahead[m] > 1e-9:
+                    self.cross_kind.setdefault(m, "locked")
+            self.cross_at = None
 
     def expire(self, t: int) -> None:
         """Size drops no trade explained within MATCH_NS are cancellations."""
@@ -238,6 +265,7 @@ class Measure:
             "marks": {},  # "kind|day|h" → [n, Σw, Σw², Σw·x, Σw·x², Σw·spread] (x in dollars)
             "censored": {},  # "kind|h" → markouts with no mid at the horizon
             "at_close": {},  # "kind|h" → markouts valued at the last mid before the close
+            "crosses": {},  # "day|model|pickoff/locked" → crossing episodes
             "unmatched": 0.0,
         }
         self.pending: list[tuple] = []  # heap of markouts waiting for their horizon
@@ -297,14 +325,15 @@ class Measure:
                 crossed = (side == "bids" and best_ask is not None and best_ask <= px) or (
                     side == "asks" and best_bid is not None and best_bid >= px
                 )
-                if crossed:
-                    new = [m for m in ("behind", "ahead") if (m, 1) not in o.fill_at]
-                    o.cross(t)
-                    m0 = self.mid_before(mk, t) if new else None
-                    for m in new:
-                        if m0 is not None:
-                            sign = 1 if side == "bids" else -1
-                            self.mark(t, mk, f"fills-{m}", sign, px, 1.0, m0)
+                if not crossed:
+                    o.uncrossed(t)
+                    continue
+                new = [m for m in o.crossed(t) if m in ("behind", "ahead")]
+                m0 = self.mid_before(mk, t) if new else None
+                for m in new:
+                    if m0 is not None:
+                        sign = 1 if side == "bids" else -1
+                        self.mark(t, mk, f"fills-{m}", sign, px, 1.0, m0)
         h = self.history.get(mk)
         if h is not None and (m := mid(b)) is not None and (not h or h[-1][1] != m):
             h.append((t, m))
@@ -412,6 +441,10 @@ class Measure:
         _, _, o = x
         o.expire(end + MATCH_NS + 1)  # settle what is still waiting to be matched
         self.agg["unmatched"] += o.unmatched_trades
+        if o.cross_at is not None:
+            o.uncrossed(end)
+        for m, kind in o.cross_kind.items():
+            _add(self.agg["crosses"], f"{day_type(o.t0, self.volatile)}|{m}|{kind}", 1)
         dt, b = day_type(o.t0, self.volatile), bucket(o.ahead0)
         for (h, m, q), filled in outcome(o, end).items():
             if filled is not None:
@@ -517,7 +550,18 @@ def merge(parts: list[dict]) -> dict:
         for s, agg in p["series"].items():
             o = out["series"].setdefault(
                 s,
-                {k: {} for k in ("queue", "one_cent", "fills", "marks", "censored", "at_close")}
+                {
+                    k: {}
+                    for k in (
+                        "queue",
+                        "one_cent",
+                        "fills",
+                        "marks",
+                        "censored",
+                        "at_close",
+                        "crosses",
+                    )
+                }
                 | {"unmatched": 0.0},
             )
             o["unmatched"] += agg["unmatched"]
@@ -526,8 +570,8 @@ def merge(parts: list[dict]) -> dict:
             for name in ("one_cent", "fills", "marks"):
                 for k, v in agg[name].items():
                     o[name][k] = plus(o[name].get(k), v)
-            for name in ("censored", "at_close"):
-                for k, v in agg[name].items():
+            for name in ("censored", "at_close", "crosses"):
+                for k, v in agg.get(name, {}).items():
                     o[name][k] = o[name].get(k, 0) + v
     return out
 
@@ -629,6 +673,26 @@ def report(data: dict) -> str:
                         f"| {kind} | {dt} | {h} s | {acc[0]:,} | {100 * sp:+.2f} | "
                         f"{100 * (m - sp):+.2f} | {100 * m:+.2f} ± {200 * se:.2f} |"
                     )
+        out.append("\nOpposite side reaching an order's price, first episode per order and model:")
+        out.append(
+            "| Day type | Model | Picked off (filled) | Locked book (not filled) | Locked share |"
+        )
+        out.append("|---|---|---|---|---|")
+        cr = agg.get("crosses", {})
+        for dt in (*DAY_TYPES, "pooled"):
+            for m in ("behind", "ahead"):
+                pk = sum(
+                    v
+                    for k, v in cr.items()
+                    if k.split("|")[1:] == [m, "pickoff"] and dt in ("pooled", k.split("|")[0])
+                )
+                lk = sum(
+                    v
+                    for k, v in cr.items()
+                    if k.split("|")[1:] == [m, "locked"] and dt in ("pooled", k.split("|")[0])
+                )
+                if pk + lk:
+                    out.append(f"| {dt} | {m} | {pk:,} | {lk:,} | {lk / (pk + lk):.1%} |")
         cens = ", ".join(f"{k} {v:,}" for k, v in sorted(agg["censored"].items()))
         close = ", ".join(f"{k} {v:,}" for k, v in sorted(agg["at_close"].items()))
         out.append(
