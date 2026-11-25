@@ -187,16 +187,25 @@ What this says: **our fair value carries almost no information the book does not
 
 From `manta.markets` (fee rates per series), checked against Kalshi's live API for the series where docs disagreed (2026-11-24): no maker fee on any crypto, S&P, Nasdaq or FX family, KXCPICORE or KXCPICOREYOY; 0.0175 × P × (1 − P) on KXFED, KXFEDDECISION, KXCPI, KXCPIYOY, KXPAYROLLS and KXU3. Taker 0.07 × P × (1 − P) everywhere. KXBTCD and KXBTC15M: maker fee 0.
 
-## Draft quoting rules (sub-step 4, for Carson's approval)
+## Quoting rules (sub-step 4)
 
-From the measurements; nothing here is built yet.
+Approved 2026-11-25 by the coordinating session (Carson delegated the market-maker decisions to it), with two changes, written in below: parameters are tuned on three days and reported on the other three, and a total exposure cap is back.
 
 1. **Family:** KXBTCD stays the main backtest (validated catalog, 47 active contracts, fair value as a guard). KXBTC15M is run as a comparison with the same strategy (`--series`), because it fills seven to eight times as often and loses less per fill; the backtest report shows both.
 2. **Join, never improve:** quote at the best bid and best ask only, 1–10 contracts (the measured queues are hundreds to thousands, so our size never matters to the book). At a 1¢ spread, improving would cross.
 3. **Cancel on signs the level is going:** cancel and rejoin when the mid moves, or when the queue ahead of us falls below a threshold while trades eat it (measurement 2: back-of-queue fills come as the level is consumed). The threshold is chosen in the backtest, at 56 ms and 112 ms latency.
 4. **Fair value only as a guard:** do not post a bid above fair value or an ask below it by more than 2¢ (measurement 3: no predictive value to lean on).
 5. **No quotes in a contract's last 15 minutes** (fair value and price move fastest there; measurement 3's only noticeable slopes are there, with wide errors).
-6. **Inventory:** at most 20 contracts per contract and 50 per hourly event (one Bitcoin bet); skew both quotes away from inventory by stepping back from the side we hold.
+6. **Inventory:** at most 20 contracts per contract and 50 per hourly event (one Bitcoin bet), and **at most 200 contracts in total across all contracts** (long and short counted alike); skew both quotes away from inventory by stepping back from the side we hold. Why 200: a Kalshi contract costs at most $1 and pays $0 or $1, so no position can lose more than $1 a contract; 200 contracts caps the worst case (every position wrong at once) at $200, the same figure as the project's hard cap for any future live trading. It is also far below the queues (median 1,132 contracts), so our orders stay small against the book.
+
+**Tuning and reporting split, fixed before any backtest runs (2026-11-25).** Any parameter chosen in the backtest (rule 3's cancel threshold, the rejoin rule, the skew size) is chosen on the **tuning days** only, and profit and loss is reported on the **reported days**, which are run once, with the chosen parameters, after the choice is written down. Both are shown side by side.
+
+| Set | Days | Day types |
+|---|---|---|
+| Tuning (in-sample) | Tue 2026-11-17, Thu 2026-11-19, Sat 2026-11-21 | two weekdays, one weekend day |
+| Reported (out-of-sample) | Wed 2026-11-18, Sun 2026-11-22, **Mon 2026-11-23 (volatile)** | one weekday, one weekend day, the volatile day |
+
+The choice is the setting with the best total profit and loss over the tuning days, across a small grid written down before the first run; ties go to the simpler setting. 2026-11-19 lost 2 hours (08:00–10:00 UTC) in the measurement run and is re-streamed for the backtest.
 
 Expected result, stated before the backtest: a small loss per fill to adverse selection, partly offset by cancelling; the backtest's job is to measure how much.
 
