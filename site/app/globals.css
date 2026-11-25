@@ -3688,12 +3688,12 @@ details.more[open] > summary {
   cursor: help;
 }
 .t-help:hover,
-.t-help:focus-visible {
+.t-help:focus {
   border-color: var(--text-3);
   color: var(--text);
 }
 .t-help:hover::after,
-.t-help:focus-visible::after {
+.t-help:focus::after {
   content: attr(data-tip);
   position: absolute;
   top: calc(100% + 4px);
@@ -3710,7 +3710,7 @@ details.more[open] > summary {
   white-space: normal;
 }
 /* A panel whose tip is open paints over the panels after it. */
-.t-panel:has(.t-help:hover, .t-help:focus-visible) {
+.t-panel:has(.t-help:hover, .t-help:focus) {
   z-index: 6;
 }
 .t-brief ul {
@@ -3719,6 +3719,7 @@ details.more[open] > summary {
 }
 .t-brief li {
   margin: 0 0 8px;
+  font-size: 12.5px;
   line-height: 1.45;
 }
 .t-brief .t-foot {

@@ -69,7 +69,7 @@ export default function Palette({ commands }: { commands: Command[] }) {
             />
             <ul>
               {hits.map((c, k) => (
-                <li key={c.href ?? c.label}>
+                <li key={`${c.label} ${c.href ?? ""}`}>
                   <button type="button" className={k === i ? "on" : ""} onMouseEnter={() => setI(k)} onClick={() => go(c)}>
                     <span>{c.label}</span>
                     <span className="t-dim">{c.hint}</span>
