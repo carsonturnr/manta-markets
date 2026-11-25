@@ -2,6 +2,7 @@
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-25 — Site presentation: a plain-language layer comes first (markets grouped by event, a simple market page with an AI summary, arbitrage, alerts) and the technical tools sit one level deeper under "Pro tools", every existing page kept at its URL. Still a tools product; the positioning rule stands. Venue links out ("Trade on Kalshi/Polymarket") approved; an AI summary via the Anthropic API approved (key in Vercel production and preview). The terminal-first state is kept on branch carsonturnr/site-design-terminal-v1. — Carson: the site reads as too technical for someone who trades on Polymarket.
 - 2026-11-24 — Chart TradingView logo turned off (`attributionLogo: false`); the link to tradingview.com lives in the site footer and the terminal's status bar. — Carson asked; lightweight-charts' licence needs a visible link on the page, not the logo itself.
 - 2026-11-24 — Compare is framed as cross-venue arbitrage: opportunities after both taker fees first (buy/sell legs, size, dollars), every pair folded by event below. — Carson: lead with what can be acted on; the full list alone wasn't useful.
 - 2026-11-24 — Site design pass: phone header behind a Menu button; error and not-found pages in the site frame; faint grey text raised to #7a7a7a. — At 390 px the header hid search, sign-in and "Open terminal"; there was no error.tsx, so one failing source (the replay server, Kalshi 429s) blanked a page; #6b6b6b on black measured 3.9:1, under the 4.5:1 minimum.
