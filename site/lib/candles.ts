@@ -122,3 +122,12 @@ export function fill(bars: Bar[], minutes: number, until: number): Bar[] {
 export function defaultMinutes(spanSeconds: number): 1 | 15 | 60 {
   return spanSeconds <= 3 * 3600 ? 1 : spanSeconds <= 48 * 3600 ? 15 : 60;
 }
+
+/** Manta's own recorded 1-minute candles, with Kalshi's API filling the minutes the recording
+ * doesn't have (the hour not yet replayed, the days before recording began). Where both have a
+ * minute, the recording wins: it is built from the full book Manta captured. In time order. */
+export function mergeCandles(recorded: KalshiCandle[], api: KalshiCandle[]): KalshiCandle[] {
+  const byTime = new Map(api.map((c) => [c.time, c]));
+  for (const c of recorded) byTime.set(c.time, c);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}

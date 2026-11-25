@@ -3,7 +3,8 @@
 // bid at 26¢ is a "yes" ask at 74¢; on Polymarket a trade in the "no" token at 3.5¢ is a "yes"
 // trade at 96.5¢, on the other side. A failed request returns null and its section says so.
 import { cacheLife } from "next/cache";
-import { type Bar, fromPoints, type KalshiCandle } from "./candles";
+import { type Bar, fromPoints, type KalshiCandle, mergeCandles } from "./candles";
+import { fetchReplay } from "./replayserve";
 
 const KALSHI = "https://api.elections.kalshi.com/trade-api/v2";
 const GAMMA = "https://gamma-api.polymarket.com";
@@ -116,7 +117,7 @@ export async function kalshiCandles(
       ? [n(o.open_dollars), n(o.high_dollars), n(o.low_dollars), n(o.close_dollars)]
       : null;
   // A period with no bid or no ask (a one-sided book) has no midpoint and is left out.
-  return r.candlesticks.flatMap((c) => {
+  const api: KalshiCandle[] = r.candlesticks.flatMap((c) => {
     const bid = ohlc(c.yes_bid);
     const ask = ohlc(c.yes_ask);
     if (!bid || !ask) return [];
@@ -130,6 +131,20 @@ export async function kalshiCandles(
       },
     ];
   });
+  // 1-minute charts lead with Manta's own recording; Kalshi's candles fill what it lacks.
+  return res === "1m" ? mergeCandles(await recordedCandles(ticker), api) : api;
+}
+
+/** One Kalshi market's 1-minute candles from Manta's own recording (the replay files, through
+ * recorder/cmd/replayserve /candles): its last 24 recorded hours. Empty when the replay server
+ * is unreachable or hasn't recorded the market, so the chart falls back to Kalshi's candles. */
+async function recordedCandles(ticker: string): Promise<KalshiCandle[]> {
+  try {
+    const res = await fetchReplay(`/candles/${encodeURIComponent(ticker)}`);
+    return (await res.json()) as KalshiCandle[];
+  } catch {
+    return [];
+  }
 }
 
 export async function kalshiRules(ticker: string): Promise<Rules | null> {
