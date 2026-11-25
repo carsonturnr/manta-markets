@@ -15,6 +15,10 @@ page counts them), at the back of the queue. It never changes the recorded marke
 small). We then follow the recorded trades and book changes at its price:
 
 - trades at its price use up the queue ahead of it, then fill it;
+- the opposite side reaching our price (an ask at or below our bid) fills us: that seller would
+  have traded with our order. This happens when the queue at our price has emptied (the fast
+  makers cancelled) and is the worst kind of fill; it was missing until 2026-11-25, when
+  NautilusTrader's simulated venue, which fills this way, showed it (docs/plan-market-maker.md);
 - a trade at a worse price (a seller selling below our bid) means the book traded through our
   price, which would have filled us;
 - the book only shows each price's total size, not who cancelled, so a cancellation is split
@@ -100,6 +104,13 @@ class Resting:
             for q in SIZES:
                 if self.past[m] >= q:
                     self.fill_at.setdefault((m, q), t)
+
+    def cross(self, t: int) -> None:
+        """The opposite side's best price reached ours: filled in full, in every model.
+        shortcut: a large order would only fill up to the crossing size; fine for 1 and 100."""
+        for m in MODELS:
+            for q in SIZES:
+                self.fill_at.setdefault((m, q), t)
 
     def expire(self, t: int) -> None:
         """Size drops no trade explained within MATCH_NS are cancellations."""
@@ -275,9 +286,25 @@ class Measure:
             self.closed[mk] = (t, mid(old))  # Kalshi clears the book at the close
             self.end(mk, t)
             return
-        for side, px, o in self.orders.get(mk, []):
+        orders = self.orders.get(mk, [])
+        for side, px, o in orders:
             if msg["kind"] == "snapshot" or (side, px) in touched:
                 o.level(t, b[side].get(px, 0.0))
+        if orders:
+            best_bid = max(b["bids"]) if b["bids"] else None
+            best_ask = min(b["asks"]) if b["asks"] else None
+            for side, px, o in orders:
+                crossed = (side == "bids" and best_ask is not None and best_ask <= px) or (
+                    side == "asks" and best_bid is not None and best_bid >= px
+                )
+                if crossed:
+                    new = [m for m in ("behind", "ahead") if (m, 1) not in o.fill_at]
+                    o.cross(t)
+                    m0 = self.mid_before(mk, t) if new else None
+                    for m in new:
+                        if m0 is not None:
+                            sign = 1 if side == "bids" else -1
+                            self.mark(t, mk, f"fills-{m}", sign, px, 1.0, m0)
         h = self.history.get(mk)
         if h is not None and (m := mid(b)) is not None and (not h or h[-1][1] != m):
             h.append((t, m))

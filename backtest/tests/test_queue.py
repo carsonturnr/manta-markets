@@ -205,3 +205,21 @@ def test_spread_uses_the_mid_before_the_trades_own_book_change():
     n, w, _, wx, _, ws = m.agg["marks"]["trades|off-hours|10"]
     assert ws / w == pytest.approx(0.01)  # against 0.41, not the 0.405 after the change
     assert wx / w == pytest.approx(0.005)
+
+
+def test_opposite_side_reaching_our_price_fills_us():
+    m = Measure(sample_s=1, place_s=1000)
+    book = {
+        "market_id": "X",
+        "kind": "snapshot",
+        "bids": [["0.40", "500"]],
+        "asks": [["0.42", "70"]],
+    }
+    m.handle({"type": "book", "msg": {"recv_ts": S, **book}})  # we bid 0.40 behind 500
+    gone = {**book, "kind": "delta", "recv_ts": 2 * S, "bids": [["0.40", "0"], ["0.39", "50"]]}
+    m.handle({"type": "book", "msg": gone})  # the bids at 0.40 are cancelled: no trade
+    cross = {**book, "kind": "delta", "recv_ts": 3 * S, "bids": [], "asks": [["0.40", "30"]]}
+    m.handle({"type": "book", "msg": cross})  # a seller posts at 0.40: that would hit us
+    bid = next(o for side, _, o in m.orders["X"] if side == "bids")
+    assert bid.fill_at[("behind", 100)] == 3 * S
+    assert len([p for p in m.pending if p[3] == "fills-behind"]) == 3  # 10 s, 60 s, 5 min
