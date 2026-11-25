@@ -30,7 +30,7 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
     <>
       <section className="hero hero-split">
         <div className="hero-copy">
-          <h1>Every Kalshi and Polymarket market, in one place.</h1>
+          <h1>A terminal for prediction markets.</h1>
           <p>
             See what&apos;s moving and why with an AI summary, spot price gaps between the two venues
             after fees, and get an email when a price hits your level. Crypto, economics and
