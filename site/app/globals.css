@@ -3510,7 +3510,13 @@ details.how[open] > summary {
     width: auto;
     font-size: 16px; /* 16px or more: phones don't zoom into the box */
   }
+  /* One row of chips that scrolls sideways, rather than an odd second row. */
+  .markets-bar .chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
   .markets-bar .chip-link {
+    flex: none;
     padding: 8px 12px;
   }
 }
