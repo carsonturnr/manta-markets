@@ -88,7 +88,7 @@ async function Live() {
               </p>
               <div className="fls">
                 <FairLadder title="Pays $1 if BTC is above" quotes={above} />
-                <FairLadder title="Pays $1 if BTC is in a range" quotes={range} />
+                <FairLadder title="Pays $1 if BTC is between" quotes={range} />
               </div>
             </div>
           </section>
