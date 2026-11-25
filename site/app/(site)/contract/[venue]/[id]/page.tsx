@@ -7,7 +7,9 @@ import {
   BookSection,
   Chart,
   CostSection,
+  MarketBrief,
   RulesSection,
+  TradeLink,
   TradesSection,
   Watch,
 } from "@/components/ContractSections";
@@ -91,6 +93,12 @@ async function Contract({
             Closes {utc(c.close)} ({until(c.close, at)}).
             {s && <> Settles on {s.settles}.</>}
           </p>
+          <p className="view-note">
+            The detailed view of one contract. The{" "}
+            <Link href={`/m/${venue}/${encodeURIComponent(c.event)}`}>market page</Link> is the
+            simple one; the <Link href="/terminal">terminal</Link> is the live workspace.
+          </p>
+          <TradeLink c={c} />
         </div>
         <Quote c={c} />
       </section>
@@ -102,6 +110,10 @@ async function Contract({
               <Chart c={c} yesToken={tokens?.[0]} tracked={tracked} />
             </Suspense>
           </section>
+
+          <Suspense fallback={null}>
+            <MarketBrief c={c} />
+          </Suspense>
 
           <section className="panel cw-cost">
             <header className="ph">

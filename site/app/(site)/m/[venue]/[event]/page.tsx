@@ -1,15 +1,24 @@
-// An event: one question and every contract that answers it (each strike of "Bitcoin at 5 pm ET",
-// each Fed outcome). One outcome is in focus (?o=<contract id>, by default the most informative):
-// its chance and chart, its order book, trades and rules, what a dollar amount buys, and our fair
-// value with its method. The contract page (/contract/...) keeps the full detail of a single contract.
+// An event, the simple view a trader lands on: one question and every contract that answers it
+// (each strike of "Bitcoin at 5 pm ET", each Fed outcome). One outcome is in focus (?o=<contract id>,
+// by default the most informative): its chance, chart, AI brief, order book and trades, what a
+// dollar amount buys, our fair value, and a link to trade it on the venue. The contract page
+// (/contract/...) is the detailed view of one contract; the terminal is the live workspace.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import AutoRefresh from "@/components/AutoRefresh";
 import BuyBox from "@/components/BuyBox";
-import { BookSection, Chart, RulesSection, TradesSection, unavailable } from "@/components/ContractSections";
-import { closesIn, pct, ProbBar, Verdict } from "@/components/EventCard";
+import {
+  BookSection,
+  Chart,
+  MarketBrief,
+  RulesSection,
+  TradeLink,
+  TradesSection,
+  unavailable,
+} from "@/components/ContractSections";
+import { closesIn, pct, ProbBar } from "@/components/EventCard";
 import Tabs from "@/components/Tabs";
 import { getEvent } from "@/lib/events";
 import { utc } from "@/lib/format";
@@ -73,17 +82,27 @@ async function EventView({
 
       <div className="event-layout">
         <div className="event-main">
-          <div className="focus">
-            <span className="focus-pct num">{pct(m)}</span>
-            <span className="focus-what">
-              chance of <b>{outcomeLabel(o)}</b>
-            </span>
+          <div className="focus-row">
+            <div className="focus">
+              <span className="focus-pct num">{pct(m)}</span>
+              <span className="focus-what">
+                chance of <b>{outcomeLabel(o)}</b>
+              </span>
+            </div>
+            <TradeLink c={o} />
           </div>
+          <p className="focus-help">
+            The midpoint between the best prices to buy and sell &ldquo;yes&rdquo;, which pays $1 if
+            it happens. A price of 40¢ reads as a 40% chance.
+          </p>
           <section className="panel chart-card">
             <Suspense fallback={<p className="muted pad">Loading the chart…</p>}>
               <Chart c={o} yesToken={tokens?.[0]} tracked={got?.tracked ?? false} />
             </Suspense>
           </section>
+          <Suspense fallback={null}>
+            <MarketBrief c={o} />
+          </Suspense>
           <Tabs
             tabs={[
               {
@@ -111,11 +130,14 @@ async function EventView({
             <Suspense fallback={<p className="muted">Loading…</p>}>
               <RulesSection c={o} />
             </Suspense>
-            <p>
-              The full order book and the cost of any size are on the{" "}
-              <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`}>contract page</Link>.
-            </p>
           </section>
+          <p className="view-note">
+            This is the simple view. The{" "}
+            <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`}>contract page</Link> is
+            the detailed one: the full book, the cost of any size, alerts. The{" "}
+            <Link href="/terminal">terminal</Link> is the live workspace, streaming every market at
+            once.
+          </p>
         </div>
 
         <aside className="event-side">
@@ -139,7 +161,7 @@ async function EventView({
                 >
                   <span className="outcome-lab">
                     <span>
-                      {outcomeLabel(x)} <Verdict o={x} />
+                      {outcomeLabel(x)}
                     </span>
                     <ProbBar o={x} />
                   </span>
@@ -196,13 +218,13 @@ function FairValueCard({ o }: { o: Row }) {
         <span>Difference</span>
         <b className={`num ${d > 0 ? "up" : d < 0 ? "down" : ""}`}>
           {d > 0 ? "+" : d < 0 ? "−" : ""}
-          {Math.abs(d).toFixed(1)} pts
+          {Math.abs(d).toFixed(1)} points
         </b>
       </div>
       <p>
-        <strong>{method}.</strong> {o.fairMethod && METHODS[o.fairMethod].explain} Its measured accuracy, against the venues&apos; own prices, is
-        on the <Link href="/stats">accuracy page</Link>. A reference price, not a forecast to trade
-        on. Not investment advice.
+        Fair value is Manta&apos;s own estimate of the chance ({method.toLowerCase()}): a reference
+        price, not a forecast to trade on. How it is made and how accurate it has been:{" "}
+        <Link href="/stats">accuracy page</Link>. Not investment advice.
       </p>
     </section>
   );
