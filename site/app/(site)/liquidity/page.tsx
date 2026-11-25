@@ -119,7 +119,7 @@ async function Liquidity() {
           Narrowest first. Bars stop at {cents(BAR_MAX)}; wider spreads are marked with an arrow.
           Kalshi prices move in 1¢ steps, so 1¢ is its narrowest spread; Polymarket&apos;s move in
           0.1¢ steps. For the full cost of one trade, fees included, use the calculator on any{" "}
-          <Link href="/screener">contract page</Link>.
+          <Link href="/markets">contract page</Link>.
         </p>
       </section>
 

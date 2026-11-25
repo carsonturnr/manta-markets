@@ -65,7 +65,7 @@ async function Contract({
         <p className="muted">
           This contract isn&apos;t open on {venue === "kalshi" ? "Kalshi" : "Polymarket"} among the
           families Manta covers: it has closed, or it was never covered.{" "}
-          <Link href="/screener">Back to the screener</Link>.
+          <Link href="/markets">Back to Markets</Link>.
         </p>
       </>
     );

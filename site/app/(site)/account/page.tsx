@@ -106,7 +106,7 @@ async function Account() {
       <h2>Watchlist</h2>
       {watched.length === 0 ? (
         <p className="muted">
-          Nothing yet. Open a contract from the <Link href="/screener">screener</Link> and press
+          Nothing yet. Open a contract from <Link href="/markets">Markets</Link> and press
           Watch.
         </p>
       ) : (
