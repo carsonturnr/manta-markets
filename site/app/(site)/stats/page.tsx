@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { price, utc } from "@/lib/format";
 import CalChart, { MarkerKey, SERIES } from "@/components/CalChart";
 import { FAMILIES } from "@/lib/families";
-import { score, type EventScore } from "@/lib/scoring";
+import { score, type EventScore, type Score } from "@/lib/scoring";
+import { headline, type Line, verdict } from "@/lib/stats-view";
 import {
   basis,
   brier,
@@ -22,18 +23,11 @@ export default function StatsPage() {
     <>
       <h1>Fair-value accuracy</h1>
       <p className="muted">
-        Research: how well each venue&apos;s prices and our fair values matched what happened. Every figure
-        says how much data it rests on; early on, that is not much.
+        Is Manta&apos;s fair value a better guess than the market&apos;s own price? Every settled
+        contract is scored against what happened.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Accuracy />
-        <h2>Kalshi Bitcoin in detail</h2>
-        <p className="muted">
-          The sections below come from the Bitcoin tracker&apos;s minute-by-minute snapshots.
-        </p>
-        <Gaps />
-        <Calibration />
-        <Basis />
       </Suspense>
     </>
   );
@@ -74,8 +68,13 @@ async function Accuracy() {
         a.venue.localeCompare(b.venue) ||
         a.horizon - b.horizon,
     );
+  const lead = headline(lines);
   return (
     <>
+      {lead ? <Answer line={lead} /> : <p className="muted">Not enough settled closes yet.</p>}
+      <Forest lines={lines} />
+      <details className="more">
+        <summary>Pro: every score, calibration and the Kalshi Bitcoin detail</summary>
       <h2>Accuracy by venue, category and horizon</h2>
       <p className="small">
         For every settled contract, one prediction at each of 5 minutes, 1 hour, 1 day and 1 week
@@ -167,6 +166,7 @@ async function Accuracy() {
               </span>
             ))}
           </div>
+          <div className="cal-pair">
           <CalChart points={cal.points} />
           <div className="table-wrap">
             <table>
@@ -197,8 +197,17 @@ async function Accuracy() {
               </tbody>
             </table>
           </div>
+          </div>
         </>
       )}
+      <h2>Kalshi Bitcoin in detail</h2>
+      <p className="muted">
+        The sections below come from the Bitcoin tracker&apos;s minute-by-minute snapshots.
+      </p>
+      <Gaps />
+      <Calibration />
+      <Basis />
+      </details>
     </>
   );
 }
@@ -417,3 +426,133 @@ async function Basis() {
 }
 
 const signed = (x: number) => `${x >= 0 ? "+" : "−"}$${Math.abs(x).toFixed(2)}`;
+
+const HORIZON_WORDS: Record<number, string> = {
+  5: "Five minutes before the close",
+  60: "An hour before the close",
+  1440: "A day before the close",
+  10080: "A week before the close",
+};
+const CAT_WORDS: Record<string, string> = {
+  Crypto: "Bitcoin and Ether",
+  Economics: "economics",
+  Financials: "stock indexes and currencies",
+};
+const n0 = (x: number) => x.toLocaleString("en-US");
+
+/** The answer first: one comparison in words and three big numbers. */
+function Answer({ line }: { line: Line }) {
+  const { s, venue, horizon, cat } = line;
+  const v = verdict(s)!;
+  const name = VENUE_NAME[venue] ?? venue;
+  const pct = `${Math.abs(v.pct).toFixed(1)}%`;
+  return (
+    <section className="panel acc-answer">
+      <p className="acc-says">
+        {HORIZON_WORDS[horizon] ?? `${horizon} minutes before the close`}, Manta&apos;s fair value
+        on {CAT_WORDS[cat] ?? cat.toLowerCase()} was{" "}
+        {v.kind === "same" ? (
+          <>
+            about as accurate as {name}&apos;s own price: {pct} {v.pct >= 0 ? "better" : "worse"} on
+            average, a difference chance alone could produce.
+          </>
+        ) : (
+          <>
+            <b className={v.kind === "better" ? "up" : "down"}>
+              {pct} {v.kind === "better" ? "more" : "less"} accurate
+            </b>{" "}
+            than {name}&apos;s own price, more than chance alone would explain.
+          </>
+        )}
+      </p>
+      <div className="acc-figures">
+        <div>
+          <span>{name}&apos;s price</span>
+          <b className="num">{s.venueF!.toFixed(4)}</b>
+          <span>Brier score</span>
+        </div>
+        <div>
+          <span>Manta fair value (options)</span>
+          <b className="num">{s.fair!.toFixed(4)}</b>
+          <span>Brier score</span>
+        </div>
+        <div>
+          <span>Closes scored</span>
+          <b className="num">{n0(s.fairEvents)}</b>
+          <span>{n0(s.nFair)} contracts</span>
+        </div>
+      </div>
+      <p className="note">
+        <b>Brier score</b>: the average squared miss between a price and what happened (1 if the
+        contract paid, 0 if not); lower is better, and always saying 50¢ scores 0.25. Contracts of
+        one close win or lose together, so the sample that counts is the number of closes.
+      </p>
+    </section>
+  );
+}
+
+/** Every comparison with enough closes for a range: Manta's fair value against the venue's price
+ *  on the same contracts, as a share of the venue's score, with its 90% range. Left of zero,
+ *  Manta's fair value was more accurate; a range across zero is no measurable difference. */
+function Forest({ lines }: { lines: Line[] }) {
+  const rows = lines.filter((l) => l.s.diff !== null && l.s.venueF);
+  if (rows.length === 0) return null;
+  const rel = (x: number, s: Score) => (x / s.venueF!) * 100; // Brier difference as % of the venue's
+  // Scale to the widest range, but at most ±50%: a 5-close range would flatten the rest.
+  const reach = Math.min(
+    50,
+    Math.max(5, ...rows.flatMap((l) => l.s.diff!.map((d) => Math.abs(rel(d, l.s))))),
+  );
+  const pos = (p: number) => `${50 + (Math.max(-reach, Math.min(reach, p)) / reach) * 50}%`;
+  return (
+    <section className="panel stack">
+      <header className="ph">
+        <h2>Every comparison, with its uncertainty</h2>
+        <span className="right m3">fair value against the venue&apos;s price</span>
+      </header>
+      <div className="pad forest">
+        <div className="forest-row forest-axis small m3">
+          <span />
+          <span className="forest-track">
+            <span style={{ left: 0 }}>← Manta more accurate</span>
+            <span style={{ left: "50%", transform: "translateX(-50%)" }}>no difference</span>
+            <span style={{ right: 0 }}>venue more accurate →</span>
+          </span>
+          <span>closes</span>
+        </div>
+        {rows.map((l) => {
+          const [a, b] = l.s.diff!;
+          const mid = rel(l.s.fair! - l.s.venueF!, l.s);
+          const kind = verdict(l.s)!.kind;
+          return (
+            <div key={`${l.cat}${l.venue}${l.horizon}`} className={`forest-row ${kind}`}>
+              <span>
+                {VENUE_NAME[l.venue] ?? l.venue} {l.cat.toLowerCase()} ·{" "}
+                {HORIZONS.find(([m]) => m === l.horizon)?.[1] ?? `${l.horizon} min`}
+              </span>
+              <span
+                className="forest-track"
+                title={`Fair minus venue Brier: ${signedB(a)} to ${signedB(b)} (90% range), ${mid >= 0 ? "+" : "−"}${Math.abs(mid).toFixed(1)}% of the venue's score`}
+              >
+                <span
+                  className="forest-range"
+                  style={{ left: pos(rel(a, l.s)), width: `calc(${pos(rel(b, l.s))} - ${pos(rel(a, l.s))})` }}
+                />
+                <span className="forest-dot" style={{ left: pos(mid) }} />
+              </span>
+              <span className="num">{n0(l.s.fairEvents)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="note">
+        The dot is how much higher or lower fair value&apos;s Brier score was than the venue&apos;s,
+        as a share of the venue&apos;s; the bar is its 90% range from resampling whole closes. Mint:
+        Manta measurably more accurate; red: measurably less; grey: no measurable difference.
+        Ranges past ±{Math.round(reach)}% are cut at the edge. Crypto fair values come from
+        Deribit&apos;s options; elsewhere they are a consensus of the venues&apos; own books, so
+        expect little difference there.
+      </p>
+    </section>
+  );
+}

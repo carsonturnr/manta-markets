@@ -3764,3 +3764,130 @@ details.more[open] > summary {
     font-size: 12px;
   }
 }
+
+/* Accuracy: the answer in words and three big numbers, then every comparison as a range. */
+.acc-answer {
+  margin: 24px 0 16px;
+}
+.acc-says {
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.3;
+  max-width: 34em;
+  margin: 0;
+  padding: 28px 32px 8px;
+}
+.acc-says b {
+  font-weight: 400;
+}
+.acc-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+}
+.acc-figures > div {
+  padding: 20px 32px;
+}
+.acc-figures > div + div {
+  border-left: 1px solid var(--line);
+}
+.acc-figures span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.acc-figures b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin: 4px 0;
+}
+.acc-answer .note {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.forest-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.forest-row > :last-child {
+  text-align: right;
+}
+.forest-track {
+  position: relative;
+  height: 16px;
+}
+.forest-row:not(.forest-axis) .forest-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  bottom: -6px;
+  border-left: 1px dashed var(--text-3);
+}
+.forest-axis .forest-track span {
+  position: absolute;
+  white-space: nowrap;
+}
+.forest-range {
+  position: absolute;
+  top: 6px;
+  height: 4px;
+  min-width: 2px;
+  background: var(--ink-2);
+}
+.forest-dot {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--ink);
+}
+.forest-row.better .forest-range,
+.forest-row.better .forest-dot {
+  background: var(--up);
+}
+.forest-row.worse .forest-range,
+.forest-row.worse .forest-dot {
+  background: var(--down);
+}
+.cal-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 412px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .acc-says {
+    font-size: 21px;
+    padding: 20px 20px 4px;
+  }
+  .acc-figures > div {
+    padding: 14px 12px;
+  }
+  .acc-figures b {
+    font-size: 24px;
+  }
+  .forest-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 4px 12px;
+  }
+  .forest-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .forest-axis .forest-track span:nth-child(2) {
+    display: none;
+  }
+  .cal-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
