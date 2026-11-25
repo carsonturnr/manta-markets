@@ -11,8 +11,11 @@ Type=oneshot
 User=manta
 EnvironmentFile=/etc/manta/env
 Environment=GOMEMLIMIT=1GiB
-# Kalshi's ladders of "above" thresholds (site/lib/replay.ts REPLAY_FAMILIES lists the same).
-Environment=REPLAY_SERIES=KXBTCD,KXETHD,KXINXU,KXNASDAQ100U,KXCPI,KXCPIYOY,KXCPICORE,KXCPICOREYOY,KXPAYROLLS,KXU3,KXFED
+# Every recorded Kalshi series (recorder/internal/tap/kalshi.go KalshiSeries): the replay page
+# reads the "above" ladders (site/lib/replay.ts REPLAY_FAMILIES); the charts' 1-minute candles
+# (replayserve /candles) read every market. Run time barely depends on the count: reading the
+# hour's Kalshi file dominates.
+Environment=REPLAY_SERIES=KXBTCD,KXBTC,KXBTC15M,KXETHD,KXETH,KXETH15M,KXFEDDECISION,KXFED,KXCPI,KXCPIYOY,KXCPICORE,KXCPICOREYOY,KXPAYROLLS,KXU3,KXINX,KXINXU,KXNASDAQ100,KXNASDAQ100U,KXEURUSD,KXEURUSDH,KXUSDJPY,KXUSDJPYH
 ExecStart=/opt/manta/replay.sh
 CPUQuota=50%
 MemoryMax=1500M
