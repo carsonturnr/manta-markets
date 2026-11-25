@@ -1,4 +1,4 @@
-// Presentation helpers for the accuracy page (/stats): which comparison leads, and what it says in
+// Presentation helpers for the accuracy answer (/insights): which comparison leads, and what it says in
 // words. Pure, tested in stats-view.test.ts; the scores themselves come from scoring.ts unchanged.
 import type { Score } from "./scoring";
 
@@ -21,4 +21,17 @@ export function verdict(s: Score): { kind: "better" | "worse" | "same"; pct: num
   const pct = ((s.venueF - s.fair) / s.venueF) * 100;
   const kind = s.diff[1] < 0 ? "better" : s.diff[0] > 0 ? "worse" : "same";
   return { kind, pct };
+}
+
+/** How far a set of calibration buckets sits from the diagonal: the average gap between what the
+ *  prices said and the share that paid out, weighted by contracts per bucket (0.03 = 3 points).
+ *  `n` is the number of contracts behind it. Only the series in `who` count. */
+export function calibrationMiss(
+  points: { who: string; n: number; pred: number; hit: number }[],
+  who: string[],
+): { n: number; miss: number } | null {
+  const ps = points.filter((p) => who.includes(p.who));
+  const n = ps.reduce((a, p) => a + p.n, 0);
+  if (n === 0) return null;
+  return { n, miss: ps.reduce((a, p) => a + p.n * Math.abs(p.hit - p.pred), 0) / n };
 }
