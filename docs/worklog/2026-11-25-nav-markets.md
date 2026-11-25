@@ -4,7 +4,7 @@
 - Header: Markets · Arbitrage (/compare) · Alerts (/account), then a "Tools" menu (Terminal, Screener table, Distributions, Liquidity, Replay, Events, Bitcoin fair value, Fair-value accuracy, Data quality), Search and "Open terminal". Every page keeps its URL. The menu is a two-column panel: each tool with a small line drawing of what it shows and one sentence. The search box's unused "/" hint is gone.
 - New /markets: one card per event (components/EventCard.tsx, getEvents()), filter chips (All, Crypto, Economics, Financials, Closing today), a text search and an order (most traded, closing soonest). First 24 cards, then "Show all N events". A line explains chance: a 37¢ contract pays $1 if it happens, so traders put it at about 37%.
 - Filters live in lib/markets.ts (pick, search, order) with tests; the home page's busiest-markets section now uses the same `pick`.
-- Header search, home "All markets", the not-found and error pages, and the terminal's "Markets" link go to /markets. /screener is unchanged and listed under Pro tools.
+- Header search, home "All markets", the not-found and error pages, and the terminal's "Markets" link go to /markets. /screener is unchanged and listed under Tools.
 
 ## Why
 Carson (2026-11-25): the site read as too technical for a Polymarket trader. A plain-language layer comes first; the technical pages sit one level deeper.
@@ -20,4 +20,4 @@ Carson (2026-11-25): the site read as too technical for a Polymarket trader. A p
 ## Follow-ups
 - Footer left as it was (Carson wants it reworked last); it still says "Screener" etc.
 - Links owned by other worktrees still point at /screener: the contract page's "Back to the screener" (A), /account's empty watchlist and /liquidity's "contract page" (C).
-- Signed-in header (account menu beside Pro tools) not checked: Clerk refuses localhost with production keys.
+- Signed-in header (account menu beside Tools) not checked: Clerk refuses localhost with production keys.
