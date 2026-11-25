@@ -2577,7 +2577,7 @@ a.hero-card:hover .hero-chart-card {
     "mon chart chart book"
     "mon chart chart depth"
     "mon fair ticket tape"
-    "mon board alerts tape";
+    "brief board alerts tape";
 }
 .t-grid-monitor {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -2597,10 +2597,11 @@ a.hero-card:hover .hero-chart-card {
 }
 .t-grid-catalysts {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr) minmax(0, 0.55fr) minmax(0, 0.45fr);
   grid-template-areas:
     "cal chart dist"
-    "cal board fair";
+    "cal board fair"
+    "brief board fair";
 }
 @media (max-width: 1100px) {
   .terminal {
@@ -3800,4 +3801,99 @@ details.more[open] > summary {
   margin: 0 0 14px;
   color: var(--text-3);
   font-size: 13px;
+}
+
+/* ---- Terminal (task E): resizable panels, panel help, the brief panel ---- */
+/* The separators sit over the 1px hairlines between panels: 7px wide to grab, mint while held. */
+.t-resizable {
+  position: relative;
+}
+.t-sep {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+}
+.t-sep-col {
+  width: 7px;
+  margin-left: -3.5px;
+  cursor: col-resize;
+}
+.t-sep-row {
+  height: 7px;
+  margin-top: -3.5px;
+  cursor: row-resize;
+}
+.t-sep::after {
+  content: "";
+  position: absolute;
+  inset: 3px 0;
+}
+.t-sep-col::after {
+  inset: 0 3px;
+}
+.t-sep:hover::after,
+.t-sep:active::after,
+.t-sep:focus-visible::after {
+  background: var(--mint);
+}
+.t-sep:focus-visible {
+  outline: none;
+}
+@media (max-width: 1100px) {
+  .t-sep {
+    display: none;
+  }
+}
+/* "?" at the right of each panel header; its sentence shows below it on hover or focus. */
+.t-panel > header {
+  position: relative;
+}
+.t-help {
+  margin-left: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-3);
+  font: 10.5px/14px var(--mono);
+  cursor: help;
+}
+.t-help:hover,
+.t-help:focus-visible {
+  border-color: var(--text-3);
+  color: var(--text);
+}
+.t-help:hover::after,
+.t-help:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 6px;
+  z-index: 10;
+  width: max-content;
+  max-width: min(320px, calc(100% - 12px));
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 12px/1.45 var(--font-sans), system-ui, sans-serif;
+  text-align: left;
+  white-space: normal;
+}
+/* A panel whose tip is open paints over the panels after it. */
+.t-panel:has(.t-help:hover, .t-help:focus-visible) {
+  z-index: 6;
+}
+.t-brief ul {
+  margin: 0;
+  padding: 10px 10px 4px 26px;
+}
+.t-brief li {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+.t-brief .t-foot {
+  border-top: 0;
 }

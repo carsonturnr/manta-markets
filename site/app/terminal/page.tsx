@@ -1,6 +1,7 @@
 // The trader workspace (step 12): one full screen of panels around the contract in focus. The focus
 // is in the URL (?m=kalshi:TICKER or ?m=polymarket:0x…), so a view can be shared, and so is the
-// layout preset (?layout=market|monitor|arb|catalysts). Live panels (book, depth, tape, ticket)
+// layout preset (?layout=market|monitor|arb|catalysts); each preset's panel borders can be dragged
+// (components/terminal/ResizableGrid.tsx), sizes kept per layout in the browser. Live panels (book, depth, tape, ticket)
 // poll /api/live every 2 s; the rest re-render from the server every 15 s.
 import Link from "next/link";
 import { connection } from "next/server";
@@ -13,7 +14,18 @@ import Live from "@/components/terminal/Live";
 import { BookPanel, DepthPanel, TapePanel, TicketPanel } from "@/components/terminal/LivePanels";
 import Monitor from "@/components/terminal/Monitor";
 import Palette, { type Command } from "@/components/terminal/Palette";
-import { AlertsPanel, ArbPanel, BoardPanel, CalendarPanel, DistPanel, FairPanel } from "@/components/terminal/Panels";
+import {
+  AlertsPanel,
+  ArbPanel,
+  BoardPanel,
+  BriefPanel,
+  CalendarPanel,
+  DistPanel,
+  FairPanel,
+  HELP,
+} from "@/components/terminal/Panels";
+import ResizableGrid from "@/components/terminal/ResizableGrid";
+import { RESET_EVENT } from "@/lib/grid";
 import { monitorRows } from "@/lib/monitor";
 import { getEvents } from "@/lib/events";
 import { utc } from "@/lib/format";
@@ -24,14 +36,14 @@ import { polyTokens } from "@/lib/venues";
 export const metadata = { title: "Manta terminal" };
 
 type Params = Record<string, string | string[] | undefined>;
-type PanelKey = "mon" | "chart" | "book" | "depth" | "tape" | "ticket" | "fair" | "board" | "arb" | "dist" | "cal" | "alerts";
+type PanelKey = "mon" | "chart" | "book" | "depth" | "tape" | "ticket" | "fair" | "board" | "arb" | "dist" | "cal" | "alerts" | "brief";
 
 // Each preset is a CSS grid (its areas are in globals.css, .t-grid-<name>) and the panels it shows.
 const LAYOUTS: Record<string, { name: string; panels: PanelKey[] }> = {
-  market: { name: "Market", panels: ["mon", "chart", "book", "depth", "fair", "ticket", "tape", "board", "alerts"] },
+  market: { name: "Market", panels: ["mon", "chart", "book", "depth", "fair", "ticket", "tape", "board", "alerts", "brief"] },
   monitor: { name: "Monitor", panels: ["mon", "chart", "arb", "cal"] },
   arb: { name: "Cross-venue", panels: ["arb", "chart", "book", "depth", "tape"] },
-  catalysts: { name: "Catalysts", panels: ["cal", "dist", "board", "fair", "chart"] },
+  catalysts: { name: "Catalysts", panels: ["cal", "dist", "board", "fair", "chart", "brief"] },
 };
 
 // The short code and title shown on each panel's header.
@@ -48,6 +60,7 @@ const TITLES: Record<PanelKey, [string, string]> = {
   dist: ["DIST", "Implied distribution"],
   cal: ["CAL", "Catalysts"],
   alerts: ["ALRT", "Alerts"],
+  brief: ["AI", "Brief"],
 };
 
 const pct = (p: number | null) => (p === null ? "–" : `${(Math.round(p * 1000) / 10).toFixed(1)}%`);
@@ -96,6 +109,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
       hint: l.panels.map((x) => TITLES[x][0]).join(" "),
       href: `/terminal?m=${encodeURIComponent(focus)}&layout=${k}`,
     })),
+    { label: "Reset layout", hint: `${layout.name} panels back to their default sizes`, event: RESET_EVENT },
     ...rows.map((r) => ({
       label: r.question,
       hint: `${r.venue === "kalshi" ? "Kalshi" : "Polymarket"} · ${r.category}`,
@@ -109,6 +123,9 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         <header>
           <span className="t-code">{TITLES[k][0]}</span>
           <h2>{TITLES[k][1]}</h2>
+          <button type="button" className="t-help" aria-label={`About ${TITLES[k][1]}: ${HELP[k]}`} data-tip={HELP[k]}>
+            ?
+          </button>
         </header>
         <div className="t-body">{body}</div>
       </section>
@@ -167,7 +184,12 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
       </div>
 
       <Live venue={o.venue} id={o.id} token={tokens?.[0]}>
-        <div className={`t-grid t-grid-${layoutKey}`}>
+        <ResizableGrid
+          key={layoutKey}
+          layout={layoutKey}
+          className={`t-grid t-grid-${layoutKey}`}
+          names={Object.fromEntries(Object.entries(TITLES).map(([k, t]) => [k, t[1]]))}
+        >
           {panel("mon", <Monitor rows={rows} focus={focus} layout={layoutKey} now={now} />)}
           {panel(
             "chart",
@@ -205,7 +227,13 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
               <AlertsPanel venue={o.venue} id={o.id} />
             </Suspense>,
           )}
-        </div>
+          {panel(
+            "brief",
+            <Suspense fallback={wait}>
+              <BriefPanel venue={o.venue} id={o.id} />
+            </Suspense>,
+          )}
+        </ResizableGrid>
       </Live>
 
       <footer className="t-status">

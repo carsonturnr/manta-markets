@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Watch } from "@/components/ContractSections";
 import DistChart from "@/components/DistChart";
 import { arbitrage } from "@/lib/arb";
+import { getBrief } from "@/lib/brief-api";
 import { crossed, getPairs, type Pair } from "@/lib/compare";
 import { kalshiFee, polymarketFee } from "@/lib/cost";
 import { fmtValue, getDistributions } from "@/lib/distributions";
@@ -17,9 +18,45 @@ import { METHODS } from "@/lib/settlement";
 import { eventScores } from "@/lib/stats";
 import { kalshiBook, polyBook, polyTokens } from "@/lib/venues";
 
-
 const pct = (p: number | null) => (p === null ? "–" : `${(Math.round(p * 1000) / 10).toFixed(1)}%`);
 const cents = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000) / 10}¢`);
+
+/** One sentence per panel, behind the "?" in its header: what it shows, for a trader who knows
+ * stock charts but not prediction-market terms. */
+export const HELP: Record<string, string> = {
+  mon: "Every market Manta follows, with its price, spread and 24-hour move; pick one to put it in focus.",
+  chart: "The contract's price over time: a price of 55¢ means the market gives the outcome a 55% chance.",
+  book: "Orders waiting to buy (bids) and sell (asks); the gap between the best of each is the spread you pay to trade now.",
+  depth: "How many contracts wait near the best prices on each side, so how large a trade the market can take without moving.",
+  tape: "Every trade as it prints, newest first: a buy took someone's ask, a sell hit someone's bid.",
+  ticket: "What a dollar amount would buy on the live book, after fees; Manta places no orders.",
+  fair: "Manta's own estimate of the chance, from options prices or the other venue, beside the market's price and its track record.",
+  board: "Every outcome of this event in one table: each strike or range is its own contract, priced from 0 to 100¢.",
+  arb: "The same question on Kalshi and Polymarket; when one's bid is above the other's ask, buying one and selling the other locks in the difference.",
+  dist: "The spread of final values the strike prices imply, like reading a probability curve from an option chain.",
+  cal: "Scheduled economic releases (jobs, inflation, the Fed) whose contracts close soonest, with the market's favourite outcome.",
+  alerts: "Watch this contract, or get an email when its price, spread or depth crosses a level you set.",
+  brief: "A short AI summary of Manta's data on this contract: recent moves, the book, trades and fair value.",
+};
+
+/** The market brief (lib/brief-api.ts) for the contract in focus, as the market page shows it. */
+export async function BriefPanel({ venue, id }: { venue: string; id: string }) {
+  const bullets = await getBrief(venue, id);
+  return (
+    <div className="t-brief">
+      {bullets ? (
+        <ul>
+          {bullets.map((b, i) => (
+            <li key={i}>{b}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="t-empty">No summary for this contract right now.</p>
+      )}
+      <p className="t-foot">AI summary of Manta&apos;s data. Not investment advice.</p>
+    </div>
+  );
+}
 
 /** Watch and alerts for the contract in focus. Signed out, a link to sign in on the account page:
  * Clerk's sign-in button can't render on the server inside the terminal's live-data wrapper. */
