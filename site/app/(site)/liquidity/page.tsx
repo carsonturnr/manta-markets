@@ -3,7 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
-import { getLiquidity, type HourCell } from "@/lib/liquidity";
+import { getLiquidity, type HourCell, type Now } from "@/lib/liquidity";
+import { hourProfile, isThin, THIN_SIZE, THIN_SPREAD } from "@/lib/liquidity-view";
 
 export const metadata = { title: "Manta: liquidity and cost to trade" };
 
@@ -11,14 +12,23 @@ export default function LiquidityPage() {
   return (
     <>
       <h1>Liquidity and cost to trade</h1>
-      <p>
-        How cheap each contract family is to trade, and when. Sampled every 15 minutes from the
-        venues&apos; market lists. Only active contracts count: quoted on both sides, with a
-        midpoint from 5¢ to 95¢ (strikes far from the price sit at 0/1¢ and would drown every
-        median). Spread is the median ask minus bid; size is the median of the smaller of the best
-        bid&apos;s and best ask&apos;s sizes, what a quick round trip can use. For the cost of a
-        particular trade, use the calculator on any <Link href="/screener">contract page</Link>.
-      </p>
+      <p>Where and when it costs least to trade, from samples of every market every 15 minutes.</p>
+      <dl className="liq-terms">
+        <div>
+          <dt>Spread</dt>
+          <dd>
+            The gap between the best price to buy and the best price to sell: buying and selling
+            straight back costs about this much per contract, before fees.
+          </dd>
+        </div>
+        <div>
+          <dt>Depth</dt>
+          <dd>
+            How many contracts wait at those best prices: how big an order fills before the price
+            gets worse.
+          </dd>
+        </div>
+      </dl>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Liquidity />
       </Suspense>
@@ -30,6 +40,8 @@ const NAME = new Map(FAMILIES.map((f) => [`${f.venue}/${f.family}`, f.name]));
 const ORDER = FAMILIES.map((f) => `${f.venue}/${f.family}`);
 const venueName = (v: string) => (v === "kalshi" ? "Kalshi" : "Polymarket");
 const cents = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000) / 10}¢`);
+/** Spread in tenths of a cent, as shown: ties on the page rank by depth, not by invisible digits. */
+const tenth = (r: Now) => Math.round(r.spread! * 1000);
 const qty = (n: number | null) =>
   n === null
     ? "–"
@@ -46,60 +58,234 @@ async function Liquidity() {
   const rows = [...now].sort(
     (a, b) => rank(`${a.venue}/${a.family}`) - rank(`${b.venue}/${b.family}`),
   );
+  const label = (r: Now) =>
+    `${NAME.get(`${r.venue}/${r.family}`) ?? r.family} (${venueName(r.venue)})`;
+  const quoted = rows.filter((r) => r.spread !== null);
+  const cheapest = quoted
+    .filter((r) => !isThin(r))
+    .sort((a, b) => tenth(a) - tenth(b) || (b.size ?? 0) - (a.size ?? 0))
+    .slice(0, 3);
+  const thin = rows.filter(isThin).sort((a, b) => (b.spread ?? 1) - (a.spread ?? 1));
+  const profile = hourProfile(hours);
   return (
     <>
+      <div className="liq-answers">
+        <section className="panel pad">
+          <h2>Cheapest to trade now</h2>
+          <ol>
+            {cheapest.map((r) => (
+              <li key={`${r.venue}/${r.family}`}>
+                <Link href={`/screener?family=${r.family}`}>{label(r)}</Link>:{" "}
+                <span className="num">{cents(r.spread)}</span> spread,{" "}
+                <span className="num">{qty(r.size)}</span> contracts deep
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className="panel pad">
+          <h2>Best time of day</h2>
+          <p>
+            <BestHours profile={profile} />
+          </p>
+        </section>
+        <section className="panel pad">
+          <h2>Thin right now</h2>
+          {thin.length === 0 ? (
+            <p>No market is thin right now.</p>
+          ) : (
+            <p>
+              {thin.length} of {rows.length} markets have a spread of {cents(THIN_SPREAD)} or more,
+              or fewer than {THIN_SIZE} contracts at the best price. Widest:{" "}
+              {thin.slice(0, 3).map((r, i) => (
+                <span key={`${r.venue}/${r.family}`}>
+                  {i > 0 && "; "}
+                  {label(r)}{" "}
+                  <span className="num">{r.spread === null ? "no quotes" : cents(r.spread)}</span>
+                </span>
+              ))}
+              .
+            </p>
+          )}
+        </section>
+      </div>
+
       <section className="panel stack">
         <header className="ph">
-          <h2>Now</h2>
+          <h2>Spread right now, by market</h2>
           <span className="right m3">Sample of {at === null ? "–" : utc(at)}</span>
         </header>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Family</th>
-              <th style={{ textAlign: "left" }}>Venue</th>
-              <th>Active / open</th>
-              <th>Median spread</th>
-              <th>Median size at best</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={`${r.venue}/${r.family}`}>
-                <td>
-                  <Link href={`/screener?family=${r.family}`}>
-                    {NAME.get(`${r.venue}/${r.family}`) ?? r.family}
-                  </Link>
-                </td>
-                <td style={{ textAlign: "left" }} className={`venue ${r.venue}`}>
-                  {venueName(r.venue)}
-                </td>
-                <td className="num">
-                  {r.active} / {r.contracts}
-                </td>
-                <td className="num">{cents(r.spread)}</td>
-                <td className="num">{qty(r.size)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="note">
-        Kalshi prices move in 1¢ steps, so 1¢ is its narrowest spread; Polymarket&apos;s move in
-        0.1¢ steps. Size is in contracts (Polymarket: shares, the same thing).
-      </p>
-      </section>
-      <section className="panel stack">
-        <Heatmap rows={rows.map((r) => `${r.venue}/${r.family}`)} hours={hours} />
+        <SpreadBars rows={quoted} label={label} />
         <p className="note">
-          {samples} {samples === 1 ? "sample" : "samples"} since{" "}
-          {since === null ? "–" : utc(since)} ({days.toFixed(1)} days).{" "}
-          {days < 3 &&
-            "Too little yet to say much about the hour of day: each cell rests on a few samples, all from the same day or two. It fills in as days accumulate."}
+          Narrowest first. Bars stop at {cents(BAR_MAX)}; wider spreads are marked with an arrow.
+          Kalshi prices move in 1¢ steps, so 1¢ is its narrowest spread; Polymarket&apos;s move in
+          0.1¢ steps. For the full cost of one trade, fees included, use the calculator on any{" "}
+          <Link href="/screener">contract page</Link>.
         </p>
       </section>
+
+      <section className="panel stack">
+        <header className="ph">
+          <h2>Spread through the day</h2>
+          <span className="right m3">all markets, last 14 days, UTC</span>
+        </header>
+        <HourBars profile={profile} />
+        <p className="note">
+          Bars below the dashed line: hours when spreads are narrower than usual, so trading costs
+          less. Each market&apos;s median spread in that hour is compared with its own typical hour,
+          then averaged over markets. {samples} {samples === 1 ? "sample" : "samples"} since{" "}
+          {since === null ? "–" : utc(since)} ({days.toFixed(1)} days).
+          {days < 3 && " Too few days yet to trust: it fills in as days accumulate."}
+        </p>
+      </section>
+
+      <details className="more">
+        <summary>Pro: every market&apos;s numbers and the hour-by-hour heat map</summary>
+        <section className="panel stack">
+          <header className="ph">
+            <h2>Every market now</h2>
+            <span className="right m3">Sample of {at === null ? "–" : utc(at)}</span>
+          </header>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Family</th>
+                  <th style={{ textAlign: "left" }}>Venue</th>
+                  <th>Active / open</th>
+                  <th>Median spread</th>
+                  <th>Median depth at best</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={`${r.venue}/${r.family}`}>
+                    <td>
+                      <Link href={`/screener?family=${r.family}`}>
+                        {NAME.get(`${r.venue}/${r.family}`) ?? r.family}
+                      </Link>
+                    </td>
+                    <td style={{ textAlign: "left" }} className={`venue ${r.venue}`}>
+                      {venueName(r.venue)}
+                    </td>
+                    <td className="num">
+                      {r.active} / {r.contracts}
+                    </td>
+                    <td className="num">{cents(r.spread)}</td>
+                    <td className="num">{qty(r.size)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="note">
+            Kalshi prices move in 1¢ steps, so 1¢ is its narrowest spread; Polymarket&apos;s move in
+            0.1¢ steps. Size is in contracts (Polymarket: shares, the same thing).
+          </p>
+        </section>
+        <section className="panel stack">
+          <Heatmap rows={rows.map((r) => `${r.venue}/${r.family}`)} hours={hours} />
+        </section>
+      </details>
     </>
+  );
+}
+
+const BAR_MAX = 0.1; // bars are drawn to 10¢: most spreads are 1–5¢, and one 40¢ outlier would flatten them
+const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
+/** An hour UTC as New York's clock reads it today ("1 pm"), for US traders. */
+const ny = (h: number) => {
+  const d = new Date();
+  d.setUTCHours(h, 0, 0, 0);
+  return d.toLocaleString("en-US", { hour: "numeric", timeZone: "America/New_York" }).toLowerCase();
+};
+
+/** The day's best and worst hours, in words. Under 5% either way, the hour doesn't matter. */
+function BestHours({ profile }: { profile: (number | null)[] }) {
+  const known = profile.flatMap((v, h) => (v === null ? [] : [{ h, v }]));
+  if (known.length < 12) return <>Not enough hours sampled yet.</>;
+  const best = known.reduce((a, b) => (b.v < a.v ? b : a));
+  const worst = known.reduce((a, b) => (b.v > a.v ? b : a));
+  if (1 - best.v < 0.05 && worst.v - 1 < 0.05)
+    return <>Spreads barely change with the time of day: every hour is within 5% of typical.</>;
+  return (
+    <>
+      Spreads are narrowest around <b className="num">{hh(best.h)} UTC</b> ({ny(best.h)} in New
+      York), about {Math.round((1 - best.v) * 100)}% below a typical hour, and widest around{" "}
+      <b className="num">{hh(worst.h)} UTC</b> ({ny(worst.h)}), {Math.round((worst.v - 1) * 100)}%
+      above.
+    </>
+  );
+}
+
+function SpreadBars({ rows, label }: { rows: Now[]; label: (r: Now) => string }) {
+  const sorted = [...rows].sort((a, b) => tenth(a) - tenth(b) || (b.size ?? 0) - (a.size ?? 0));
+  return (
+    <div className="spread-bars pad">
+      {sorted.map((r) => (
+        <div key={`${r.venue}/${r.family}`} className={isThin(r) ? "row thin" : "row"}>
+          <span className="name">
+            <Link href={`/screener?family=${r.family}`}>{label(r)}</Link>
+          </span>
+          <span className="track">
+            <span
+              className="bar"
+              style={{ width: `${(Math.min(r.spread!, BAR_MAX) / BAR_MAX) * 100}%` }}
+            />
+          </span>
+          <span className="num val">
+            {cents(r.spread)}
+            {r.spread! > BAR_MAX && " →"}
+          </span>
+          <span className="num m3 depth">{qty(r.size)} deep</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 24 bars, one per hour, from a centre line at a typical hour's spread: down where spreads are
+ * narrower than usual (cheaper), up where wider. */
+function HourBars({ profile }: { profile: (number | null)[] }) {
+  const known = profile.filter((v): v is number => v !== null);
+  const reach = Math.max(0.1, ...known.map((v) => Math.abs(v - 1))) * 1.1;
+  const best = known.length ? Math.min(...known) : null;
+  return (
+    <div className="pad">
+      <div className="hour-bars">
+        <span className="edge top m3 small">wider</span>
+        <span className="edge bottom m3 small">narrower</span>
+        {profile.map((v, h) => {
+          const share = v === null ? 0 : (Math.abs(v - 1) / reach) * 50;
+          return (
+            <span
+              key={h}
+              className={v !== null && v === best ? "col best" : "col"}
+              title={
+                v === null
+                  ? `${hh(h)} UTC: no sample yet`
+                  : `${hh(h)} UTC: spreads ${Math.abs(Math.round((v - 1) * 100))}% ${v < 1 ? "narrower" : "wider"} than a typical hour`
+              }
+            >
+              <span
+                className={v !== null && v < 1 ? "bar down" : "bar"}
+                style={
+                  v !== null && v < 1
+                    ? { top: "50%", height: `${share}%` }
+                    : { bottom: "50%", height: `${share}%` }
+                }
+              />
+            </span>
+          );
+        })}
+      </div>
+      <div className="hour-axis">
+        {profile.map((_, h) => (
+          <span key={h} className="small num">
+            {h % 3 === 0 ? String(h).padStart(2, "0") : ""}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

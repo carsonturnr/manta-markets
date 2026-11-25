@@ -18,8 +18,14 @@ export const metadata = { title: "Manta: account" };
 export default function AccountPage() {
   return (
     <div className="wide">
-      <h1>Your watchlist and alerts</h1>
-      <Suspense fallback={<p className="muted">Loading…</p>}>
+      <Suspense
+        fallback={
+          <>
+            <h1>Your watchlist and alerts</h1>
+            <p className="muted">Loading…</p>
+          </>
+        }
+      >
         <Account />
       </Suspense>
     </div>
@@ -45,22 +51,21 @@ async function Account() {
   if (!userId) {
     return (
       <div className="signed-out">
-        <div className="panel ascii-panel">
-          <MantaAscii />
-        </div>
+        <MantaAscii />
         <div className="signed-out-side">
-          <p className="lede">
-            Sign in to keep a watchlist, get alerts by email and make API keys.
-          </p>
-          <ul className="perks">
-            <li>Watchlist</li>
-            <li>Price alerts</li>
-            <li>Spread and depth alerts</li>
-            <li>Cross-venue gap alerts</li>
+          <h1>Your markets, watched while you&apos;re away</h1>
+          <ul className="sell">
             <li>
-              <Link href="/docs/api">API keys</Link>
+              Keep a watchlist of the contracts you follow, with the latest bid, ask and fair value.
+            </li>
+            <li>Get an email when a price crosses your level, or a spread or depth changes.</li>
+            <li>Hear when Kalshi and Polymarket disagree on the same question.</li>
+            <li>
+              Make <Link href="/docs/api">API keys</Link> to pull Manta&apos;s analytics into your
+              own tools.
             </li>
           </ul>
+          <p className="muted small">Sign in with Google or a code sent to your email.</p>
           {/* Clerk's own form, in place: hash routing keeps it on this URL. */}
           <SignIn
             routing="hash"
@@ -97,6 +102,7 @@ async function Account() {
 
   return (
     <>
+      <h1>Your watchlist and alerts</h1>
       <h2>Watchlist</h2>
       {watched.length === 0 ? (
         <p className="muted">

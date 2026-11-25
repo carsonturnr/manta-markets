@@ -8,7 +8,15 @@ const PAD = { left: 44, right: 16, top: 12, bottom: 28 };
 
 /** `width` is the drawing's width in SVG units: match it to the space the chart gets, so its text
  * stays near its set size instead of scaling up with a wide panel. */
-export default function DistChart({ d, width: W = 840 }: { d: Dist; width?: number }) {
+export default function DistChart({
+  d,
+  width: W = 840,
+  legend = true,
+}: {
+  d: Dist;
+  width?: number;
+  legend?: boolean; // off where one legend serves several charts
+}) {
   // Show where the outcome is in doubt: from the last strike still at ≥ 99% to the first at
   // ≤ 1%. Ladders list strikes far out where nothing happens, which would squeeze the curve.
   const lo = d.curve.findLast(([, p]) => p >= 0.99)?.[0] ?? d.curve[0][0];
@@ -24,26 +32,34 @@ export default function DistChart({ d, width: W = 840 }: { d: Dist; width?: numb
   const fmt = (v: number) => fmtValue(d.family, v);
   return (
     <>
-      <div className="legend">
-        <span>
-          <span className="key" style={{ background: "var(--kalshi)", height: 2 }} />
-          Chance it ends above x
-        </span>
-        <span>
-          <span className="key" style={{ background: "var(--kalshi)", opacity: 0.15 }} />
-          Middle 50%
-        </span>
-        <span>
-          <span className="key" style={{ background: "var(--text-3)", height: 2 }} />
-          Median (dashed)
-        </span>
-      </div>
+      {legend && (
+        <div className="legend">
+          <span>
+            <span className="key" style={{ background: "var(--kalshi)", height: 2 }} />
+            Chance it ends above x
+          </span>
+          <span>
+            <span className="key" style={{ background: "var(--kalshi)", opacity: 0.15 }} />
+            Likely range (middle 50%)
+          </span>
+          <span>
+            <span className="key" style={{ background: "var(--text-3)", height: 2 }} />
+            Middle estimate (dashed)
+          </span>
+        </div>
+      )}
       <div className="chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Implied distribution: ${d.title}`}>
           {[0, 0.25, 0.5, 0.75, 1].map((p) => (
             <g key={p}>
               <line x1={PAD.left} x2={W - PAD.right} y1={y(p)} y2={y(p)} stroke="var(--grid)" />
-              <text x={PAD.left - 6} y={y(p) + 4} textAnchor="end" fontSize="12" fill="var(--text-3)">
+              <text
+                x={PAD.left - 6}
+                y={y(p) + 4}
+                textAnchor="end"
+                fontSize="12"
+                fill="var(--text-3)"
+              >
                 {p * 100}%
               </text>
             </g>
@@ -73,7 +89,13 @@ export default function DistChart({ d, width: W = 840 }: { d: Dist; width?: numb
               strokeDasharray="4 4"
             />
           )}
-          <path d={line} fill="none" stroke="var(--kalshi)" strokeWidth={2} strokeLinejoin="round" />
+          <path
+            d={line}
+            fill="none"
+            stroke="var(--kalshi)"
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
           {shown.length <= 60 &&
             shown.map(([v, p]) => (
               <circle key={v} cx={x(v)} cy={y(p)} r={3} fill="var(--kalshi)">
