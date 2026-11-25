@@ -103,3 +103,4 @@ docs/                  product.md, milestone plans, decisions.md
 - Database DDL: the Supabase MCP connection is read-only (`supabase_read_only_user`). Approved migrations run with the admin `DATABASE_URL` from the repo-root `.env` (psycopg via `uv run` in pricing/), never printing the URL; the VM's `manta-snap --init` applies the whole of db/schema.sql on the next deploy.
 - API routes (site/app/api/v1): call `authorize()` before validating the query, so a caller without a valid key always gets 401, never a 400 that reveals the query rules (/cost did it the other way round until 2026-11-23).
 - Site CSS: `.panel` has `overflow: hidden`, which stops `position: sticky` inside it (table headings stay put); a sticky child needs that panel set to `overflow: visible` (globals.css `.panel:has(> .screener-table)`).
+- Kalshi's website answers 429 to curl and fetch tools; check a kalshi.com URL in a real browser (its API at api.elections.kalshi.com is fine).
