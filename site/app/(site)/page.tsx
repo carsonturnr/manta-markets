@@ -5,15 +5,21 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import EventCard, { eventHref, pct } from "@/components/EventCard";
-import { BookSection } from "@/components/ContractSections";
-import DistChart from "@/components/DistChart";
+import { Chart } from "@/components/ContractSections";
+import Mark from "@/components/Mark";
+import { SnapshotLive } from "@/components/terminal/Live";
+import { BookPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePanels";
+import Monitor from "@/components/terminal/Monitor";
 import WaitlistForm from "@/components/WaitlistForm";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { crossed, gap, getPairs } from "@/lib/compare";
 import { type Event, getEvents } from "@/lib/events";
 import { getLiquidity } from "@/lib/liquidity";
 import { getReport } from "@/lib/quality";
-import { featured, mid, outcomeLabel } from "@/lib/outcomes";
+import { monitorRows } from "@/lib/monitor";
+import { mid, outcomeLabel, usableFair, whenET } from "@/lib/outcomes";
+import { getMarket } from "@/lib/screener";
+import { kalshiBook, kalshiTrades } from "@/lib/venues";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -74,70 +80,105 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
   );
 }
 
-/** The hero's picture of the product: four of the terminal's panels on live data. The busiest
- * Kalshi event's ladder and its featured contract's order book, one implied distribution and the
- * best cross-venue arbitrage after fees, from the same queries and components the tools use. */
+/** The hero's picture of the product: the terminal itself, on Kalshi's most-traded contract (in dollars) in
+ * the last 24 hours. The same panels as /terminal (markets, price chart, book, depth, trades) fed one
+ * server-side reading of the book and trades, so the home page streams nothing. */
 async function Preview() {
   await connection(); // request time only: the build never queries the database
-  const [{ events, at }, { pairs }, dists] = await Promise.all([getEvents(), getPairs(), getDistributions()]);
-  const top = events.find((e) => e.venue === "kalshi"); // the order book below reads Kalshi's
-  const o = top ? featured(top.outcomes, 1)[0] : undefined;
-  const ok = dists.filter((x) => x.curve.length > 4);
-  const d = ok.find((x) => x.title.includes("Bitcoin")) ?? ok[0];
-  const arbs = pairs
-    .flatMap((p) => {
-      const x = crossed(p);
-      return x && x.net !== null && x.net > 1e-9 ? [{ p, x }] : [];
-    })
-    .sort((a, b) => b.x.net! - a.x.net!)
-    .slice(0, 3);
+  const { events, at } = await getEvents();
+  const now = at ?? 0;
+  // Kalshi's most-traded contract in dollars (contracts × midpoint): by contract count alone, 2¢
+  // long shots win. Kalshi only, as the chart and book here read Kalshi's public API.
+  const kalshi = events.filter((x) => x.venue === "kalshi");
+  const dollars = (r: (typeof kalshi)[number]["outcomes"][number]) => r.volume * (mid(r) ?? 0);
+  const o = kalshi.flatMap((x) => x.outcomes).sort((a, b) => dollars(b) - dollars(a))[0];
+  const e = o && kalshi.find((x) => x.outcomes.includes(o));
+  if (!o || !e) return <div className="panel preview" />;
+  const [book, trades, market] = await Promise.all([kalshiBook(o.id), kalshiTrades(o.id), getMarket(o.venue, o.id)]);
+  const focus = `${o.venue}:${o.id}`;
+  const fair = usableFair(o);
+  const head = (code: string, title: string) => (
+    <header>
+      <span className="t-code">{code}</span>
+      <h2>{title}</h2>
+    </header>
+  );
   return (
-    <div className="panel preview">
-      <div className="pv-bar num">
-        <span className="pv-live">Live</span>
-        <span>Manta terminal</span>
-        <span>{at !== null ? `${new Date(at).toISOString().slice(11, 16)} UTC` : ""}</span>
+    <div className="terminal pv-terminal">
+      <header className="t-top">
+        <Link href={`/terminal?m=${encodeURIComponent(focus)}`} className="t-brand">
+          <Mark /> Manta <span className="t-dim">Terminal</span>
+        </Link>
+        <nav className="t-layouts" aria-label="Terminal layouts">
+          {[
+            ["market", "Market"],
+            ["monitor", "Monitor"],
+            ["arb", "Cross-venue"],
+            ["catalysts", "Catalysts"],
+          ].map(([k, name]) => (
+            <Link key={k} href={`/terminal?m=${encodeURIComponent(focus)}&layout=${k}`} className={k === "market" ? "on" : undefined}>
+              {name}
+            </Link>
+          ))}
+        </nav>
+      </header>
+      <div className="t-focus num">
+        <span className="t-venue kalshi">Kalshi</span>
+        <b className="t-focus-q">{e.question}</b>
+        <span className="t-focus-o">{outcomeLabel(o)}</span>
+        <span>
+          <span className="t-dim">Mid</span> <b>{pct1(mid(o))}</b>
+        </span>
+        <span>
+          <span className="t-dim">Fair</span> <b className="t-mint">{pct1(fair)}</b>
+        </span>
+        <span>
+          <span className="t-dim">Traded 24 h</span> ${Math.round(dollars(o)).toLocaleString("en-US")}
+        </span>
+        <span>
+          <span className="t-dim">Closes</span> {whenET(e.close, now)}
+        </span>
       </div>
-      <div className="pv-grid">
-        <div className="pv-cell">{top && <EventCard e={top} now={at ?? top.close} />}</div>
-        <div className="pv-cell">
-          <Link href="/terminal" className="pv-h">
-            Order book{o && <span className="m3"> · {outcomeLabel(o)}</span>}
-          </Link>
-          {o && <BookSection c={o} levels={4} />}
+      <SnapshotLive book={book} trades={trades} at={now}>
+        <div className="t-grid pv-grid-term">
+          <section className="t-panel" style={{ gridArea: "mon" }}>
+            {head("MON", "Markets")}
+            <div className="t-body">
+              <Monitor rows={monitorRows(events)} focus={focus} layout="market" now={now} />
+            </div>
+          </section>
+          <section className="t-panel" style={{ gridArea: "chart" }}>
+            {head("GP", "Price")}
+            <div className="t-body">
+              <Chart c={o} tracked={market?.tracked ?? false} />
+            </div>
+          </section>
+          <section className="t-panel" style={{ gridArea: "book" }}>
+            {head("BOOK", "Order book")}
+            <div className="t-body">
+              <BookPanel fair={fair} />
+            </div>
+          </section>
+          <section className="t-panel" style={{ gridArea: "depth" }}>
+            {head("DPTH", "Depth and liquidity")}
+            <div className="t-body">
+              <DepthPanel />
+            </div>
+          </section>
+          <section className="t-panel" style={{ gridArea: "tape" }}>
+            {head("TAPE", "Trades")}
+            <div className="t-body">
+              <TapePanel />
+            </div>
+          </section>
         </div>
-        <div className="pv-cell">
-          <Link href="/distributions" className="pv-h">
-            Implied distribution{d && <span className="m3"> · {d.title}</span>}
-          </Link>
-          {d && <DistChart d={d} width={540} />}
-        </div>
-        <div className="pv-cell">
-          <Link href="/compare" className="pv-h">
-            Arbitrage after fees
-          </Link>
-          {arbs.length === 0 ? (
-            <p className="muted small">None right now: prices checked every minute.</p>
-          ) : (
-            <ul className="pv-arbs num">
-              {arbs.map(({ p, x }) => (
-                <li key={`${p.topic}/${p.question}`}>
-                  <span>
-                    {p.question}
-                    <small>
-                      {p.topic} · buy {x.buy}, sell {x.sell}
-                    </small>
-                  </span>
-                  <b className="up">+{x.net!.toFixed(2)}¢</b>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+      </SnapshotLive>
     </div>
   );
 }
+
+/** A probability as a percent with one decimal, as the terminal shows it. */
+const pct1 = (p: number | null) => (p === null ? "–" : `${(Math.round(p * 1000) / 10).toFixed(1)}%`);
 
 /** Three figures about what Manta covers. */
 async function Stats() {

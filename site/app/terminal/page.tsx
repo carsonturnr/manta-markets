@@ -13,11 +13,12 @@ import DistChart from "@/components/DistChart";
 import Mark from "@/components/Mark";
 import Live from "@/components/terminal/Live";
 import { BookPanel, DepthPanel, TapePanel, TicketPanel } from "@/components/terminal/LivePanels";
-import Monitor, { type MonitorRow } from "@/components/terminal/Monitor";
+import Monitor from "@/components/terminal/Monitor";
 import Palette, { type Command } from "@/components/terminal/Palette";
 import { arbitrage } from "@/lib/arb";
 import { crossed, getPairs, type Pair } from "@/lib/compare";
 import { kalshiFee, polymarketFee } from "@/lib/cost";
+import { monitorRows } from "@/lib/monitor";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { type Event, getEvents } from "@/lib/events";
 import { utc } from "@/lib/format";
@@ -96,26 +97,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
   const focus = `${o.venue}:${o.id}`;
   const fair = usableFair(o);
 
-  const rows: MonitorRow[] = events.map((x) => {
-    const f = featured(x.outcomes, 1)[0];
-    const fm = f ? mid(f) : null;
-    const ff = f ? usableFair(f) : null;
-    return {
-      key: `${x.venue}/${x.event}`,
-      venue: x.venue,
-      question: x.question,
-      category: x.category,
-      close: x.close,
-      volume: x.volume,
-      usd: x.volumeUnit === "usd",
-      outcomes: x.outcomes.length,
-      focusId: f?.id ?? x.outcomes[0].id,
-      label: f ? outcomeLabel(f) : "",
-      mid: fm,
-      spread: f && f.bid !== null && f.ask !== null ? f.ask - f.bid : null,
-      gap: ff !== null && fm !== null ? ff - fm : null,
-    };
-  });
+  const rows = monitorRows(events);
   const commands: Command[] = [
     ...Object.entries(LAYOUTS).map(([k, l]) => ({
       label: `Layout: ${l.name}`,
