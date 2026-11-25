@@ -1,8 +1,9 @@
 // The trader workspace (step 12): one full screen of panels around the contract in focus. The focus
 // is in the URL (?m=kalshi:TICKER or ?m=polymarket:0x…), so a view can be shared, and so is the
 // layout preset (?layout=market|monitor|arb|catalysts); each preset's panel borders can be dragged
-// (components/terminal/ResizableGrid.tsx), sizes kept per layout in the browser. Live panels (book, depth, tape, ticket)
-// poll /api/live every 2 s; the rest re-render from the server every 15 s.
+// (components/terminal/ResizableGrid.tsx), sizes kept per layout in the browser. Live panels (book,
+// depth, tape, cost) stream or poll every 2 s; the rest re-render from the server every 15 s. The
+// Market page (/m/...) shows the same panels in one column, and each links to the other.
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
@@ -11,7 +12,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import { Chart } from "@/components/ContractSections";
 import Mark from "@/components/Mark";
 import Live from "@/components/terminal/Live";
-import { BookPanel, DepthPanel, TapePanel, TicketPanel } from "@/components/terminal/LivePanels";
+import { BookPanel, CostPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePanels";
 import Monitor from "@/components/terminal/Monitor";
 import Palette, { type Command } from "@/components/terminal/Palette";
 import {
@@ -22,7 +23,8 @@ import {
   CalendarPanel,
   DistPanel,
   FairPanel,
-  HELP,
+  Panel,
+  TITLES,
 } from "@/components/terminal/Panels";
 import ResizableGrid from "@/components/terminal/ResizableGrid";
 import { RESET_EVENT } from "@/lib/grid";
@@ -36,31 +38,14 @@ import { polyTokens } from "@/lib/venues";
 export const metadata = { title: "Manta terminal" };
 
 type Params = Record<string, string | string[] | undefined>;
-type PanelKey = "mon" | "chart" | "book" | "depth" | "tape" | "ticket" | "fair" | "board" | "arb" | "dist" | "cal" | "alerts" | "brief";
+type PanelKey = "mon" | "chart" | "book" | "depth" | "tape" | "cost" | "fair" | "board" | "arb" | "dist" | "cal" | "alerts" | "brief";
 
 // Each preset is a CSS grid (its areas are in globals.css, .t-grid-<name>) and the panels it shows.
 const LAYOUTS: Record<string, { name: string; panels: PanelKey[] }> = {
-  market: { name: "Market", panels: ["mon", "chart", "book", "depth", "fair", "ticket", "tape", "board", "alerts", "brief"] },
+  market: { name: "Market", panels: ["mon", "chart", "book", "depth", "fair", "cost", "tape", "board", "alerts", "brief"] },
   monitor: { name: "Monitor", panels: ["mon", "chart", "arb", "cal"] },
   arb: { name: "Cross-venue", panels: ["arb", "chart", "book", "depth", "tape"] },
   catalysts: { name: "Catalysts", panels: ["cal", "dist", "board", "fair", "chart", "brief"] },
-};
-
-// The short code and title shown on each panel's header.
-const TITLES: Record<PanelKey, [string, string]> = {
-  mon: ["MON", "Markets"],
-  chart: ["GP", "Price"],
-  book: ["BOOK", "Order book"],
-  depth: ["DPTH", "Depth and liquidity"],
-  tape: ["TAPE", "Trades"],
-  ticket: ["TKT", "Ticket"],
-  fair: ["FV", "Fair value"],
-  board: ["EVT", "Every outcome"],
-  arb: ["ARB", "Cross-venue arbitrage"],
-  dist: ["DIST", "Implied distribution"],
-  cal: ["CAL", "Catalysts"],
-  alerts: ["ALRT", "Alerts"],
-  brief: ["AI", "Brief"],
 };
 
 const pct = (p: number | null) => (p === null ? "–" : `${(Math.round(p * 1000) / 10).toFixed(1)}%`);
@@ -119,16 +104,9 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
 
   const panel = (k: PanelKey, body: React.ReactNode) =>
     has(k) ? (
-      <section key={k} className="t-panel" style={{ gridArea: k }}>
-        <header>
-          <span className="t-code">{TITLES[k][0]}</span>
-          <h2>{TITLES[k][1]}</h2>
-          <button type="button" className="t-help" aria-label={`About ${TITLES[k][1]}: ${HELP[k]}`} data-tip={HELP[k]}>
-            ?
-          </button>
-        </header>
-        <div className="t-body">{body}</div>
-      </section>
+      <Panel key={k} k={k} style={{ gridArea: k }}>
+        {body}
+      </Panel>
     ) : null;
   const wait = <p className="t-empty">Loading…</p>;
 
@@ -156,8 +134,6 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
           <Link href="/markets">Markets</Link>
           <Link href="/compare">Compare</Link>
           <Link href="/liquidity">Liquidity</Link>
-          <Link href="/distributions">Distributions</Link>
-          <Link href="/replay">Replay</Link>
         </nav>
         <AccountNav />
       </header>
@@ -178,8 +154,8 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
         <span>
           <span className="t-dim">Closes</span> {whenET(e.close, now)}
         </span>
-        <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`} className="t-dim">
-          Contract page →
+        <Link href={`/m/${o.venue}/${encodeURIComponent(e.event)}?o=${encodeURIComponent(o.id)}`} className="t-dim">
+          Market page →
         </Link>
       </div>
 
@@ -200,7 +176,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
           {panel("book", <BookPanel fair={fair} />)}
           {panel("depth", <DepthPanel />)}
           {panel("tape", <TapePanel />)}
-          {panel("ticket", <TicketPanel venue={o.venue} rate={o.feeTaker} />)}
+          {panel("cost", <CostPanel venue={o.venue} rate={o.feeTaker} fair={fair} />)}
           {panel(
             "fair",
             <Suspense fallback={wait}>

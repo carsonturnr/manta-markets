@@ -738,21 +738,18 @@ td.prob {
 }
 
 /* ---- Stat strips -------------------------------------------------------------------------- */
-.stats,
-.quote {
+.stats {
   display: flex;
   flex-wrap: wrap;
   gap: 12px 36px;
   margin: 16px 0 24px;
 }
-.stats div span,
-.quote div span {
+.stats div span {
   display: block;
   font-size: 12.5px;
   color: var(--text-3);
 }
-.stats div b,
-.quote div b {
+.stats div b {
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -892,33 +889,7 @@ td.prob {
   margin: 0 auto;
 }
 
-/* ---- Contract page (/contract/...): a workspace of cards --------------------------------- */
-.workspace {
-  display: grid;
-  gap: 16px;
-}
-.cw-head {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 16px 40px;
-  padding: 8px 4px;
-  background: none;
-  box-shadow: none;
-  border-radius: 0;
-  overflow: visible;
-}
-.cw-title {
-  min-width: 0;
-  flex: 1 1 480px;
-}
-.cw-title h1 {
-  font-size: 34px;
-  margin: 6px 0;
-}
-.cw-title p {
-  margin: 0;
-}
+/* ---- Contract parts: crumbs, the cost calculator, the venue's rules ------------------------- */
 .crumbs {
   font-size: 13px;
   color: var(--text-3);
@@ -926,69 +897,7 @@ td.prob {
 .crumbs a {
   color: var(--text-2);
 }
-.cw-head .quote {
-  margin: 0;
-}
-/* Two columns, each a stack: chart, calculator, pricing notes; book, trades, alerts. Stacks
-   rather than grid rows, so a short panel on one side leaves no gap on the other. */
-.cw-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 16px;
-  align-items: start;
-}
-.cw-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-.cw-chart,
-.cw-book {
-  height: 540px;
-}
-.cw-trades {
-  max-height: 420px;
-}
-.cw-book table,
-.cw-trades table {
-  min-width: 0;
-}
-.cw-book td,
-.cw-trades td {
-  height: 26px;
-  font-size: 13px;
-  border-bottom: 0;
-}
-/* One column: the stacks open up and the panels interleave, book straight after the chart. */
-@media (max-width: 1000px) {
-  .cw-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .cw-col {
-    display: contents;
-  }
-  .cw-chart {
-    height: 460px;
-    order: 1;
-  }
-  .cw-book {
-    height: auto;
-    order: 2;
-  }
-  .cw-cost {
-    order: 3;
-  }
-  .cw-trades {
-    order: 4;
-  }
-  .cw-priced {
-    order: 5;
-  }
-  .cw-watch {
-    order: 6;
-  }
-}
+
 .cost-inputs {
   display: flex;
   flex-wrap: wrap;
@@ -1730,22 +1639,6 @@ h1.h2 {
   box-shadow: inset 0 0 0 1px var(--line-2);
 }
 
-/* ---- /distributions: small multiples of the term structure -------------------------------- */
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-  gap: 16px;
-}
-.grid-2 > * {
-  background: var(--panel);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 16px 20px;
-}
-.grid-2 h3 {
-  margin: 0 0 4px;
-}
-
 /* ---- /replay ----------------------------------------------------------------------------- */
 .replay-controls {
   display: flex;
@@ -1880,9 +1773,7 @@ h1.h2 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.chart-pad {
-  padding-top: 0;
-}
+
 /* Key figures in a side card: a label, then the number. */
 .figures dl {
   margin: 0;
@@ -1996,34 +1887,7 @@ h1.h2 {
   margin: 0 0 22px;
   font-size: 13.5px;
 }
-.event-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 24px;
-  align-items: start;
-}
-@media (max-width: 1100px) {
-  .event-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  /* One column: the main column's parts join the grid so the buy box and outcomes can come
-     straight after the chart, before the book, instead of after everything. */
-  .event-main {
-    display: contents;
-  }
-  .event-side {
-    position: static;
-  }
-  .event-main > .focus-row,
-  .event-main > .focus-help,
-  .event-main > .chart-card,
-  .event-main > .brief {
-    order: -2;
-  }
-  .event-side {
-    order: -1;
-  }
-}
+
 .focus {
   display: flex;
   align-items: baseline;
@@ -2044,144 +1908,7 @@ h1.h2 {
   color: var(--text);
   font-weight: 600;
 }
-.chart-card {
-  height: 440px;
-}
-.verdict-card {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-  padding: 18px 20px;
-  border-radius: var(--radius);
-  background: var(--panel-2);
-}
-.verdict-card span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--text-3);
-}
-.verdict-card b {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.verdict-card p {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--text-2);
-  max-width: none;
-}
-.verdict-card p strong {
-  color: var(--text);
-}
-.tabs {
-  margin-top: 28px;
-}
-.tab-row {
-  display: flex;
-  gap: 22px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
-.tab-row button {
-  margin-bottom: -1px;
-  padding: 10px 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: var(--text-3);
-  font-weight: 500;
-  cursor: pointer;
-}
-.tab-row button.on {
-  color: var(--text);
-  border-color: var(--text);
-}
-.tabs [role="tabpanel"] table {
-  min-width: 0;
-}
-.tabs .table-wrap {
-  box-shadow: none;
-  padding: 0;
-}
-.tabs .note {
-  padding: 10px 0;
-}
-.event-side {
-  display: grid;
-  gap: 16px;
-  position: sticky;
-  top: 76px;
-}
-.card-h {
-  margin: 0 0 14px;
-  font-size: 15px;
-}
-.ladder {
-  display: flex;
-  flex-direction: column;
-  max-height: 460px;
-  overflow: auto;
-  margin: 0 -8px;
-}
-.ladder-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 46px;
-  align-items: center;
-  gap: 12px;
-  padding: 7px 8px;
-  border-radius: 8px;
-  color: var(--text);
-}
-.ladder-row:hover {
-  text-decoration: none;
-  background: var(--panel-2);
-}
-.ladder-row.on {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.ladder-row > b {
-  text-align: right;
-  font-weight: 600;
-}
-/* The buy box: a side, an amount, what it gets. */
-.seg.wide {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-radius: 10px;
-  margin-bottom: 14px;
-}
-.seg.wide button {
-  border-radius: 8px;
-}
-.amount {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 50px;
-  padding: 0 14px;
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px var(--line-2);
-  font-size: 22px;
-  font-weight: 600;
-}
-.amount:focus-within {
-  box-shadow: 0 0 0 2px var(--focus);
-}
-.amount input[type="text"] {
-  flex: 1;
-  min-width: 0;
-  height: 46px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-}
-.amount input:focus-visible {
-  outline: none;
-}
+
 .quick {
   display: flex;
   gap: 6px;
@@ -2400,7 +2127,7 @@ h1.h2 {
   grid-template-areas:
     "mon chart chart book"
     "mon chart chart depth"
-    "mon fair ticket tape"
+    "mon fair cost tape"
     "brief board alerts tape";
 }
 .t-grid-monitor {
@@ -2856,15 +2583,11 @@ h1.h2 {
   background: var(--panel-2);
   box-shadow: inset 2px 0 0 var(--mint);
 }
-/* The ticket and alerts reuse the site's buy box and alert form; tighten them for a panel. */
-.t-panel .buy,
+/* The cost calculator and alerts reuse the site's forms; tighten them for a panel. */
 .t-panel .watch {
   padding: 10px;
 }
-.t-panel .amount {
-  height: 40px;
-  font-size: 18px;
-}
+
 .terminal li a {
   text-decoration: none;
 }
@@ -3029,44 +2752,6 @@ details.how[open] > summary {
 .fine-print b {
   color: var(--text-2);
   font-weight: 500;
-}
-
-/* ---- Distributions: one panel, a strip of figures over the chart ------------------------ */
-.dist-stats {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin: 0;
-  border-bottom: 1px solid var(--line);
-}
-.dist-stats > div {
-  padding: 16px 24px;
-}
-.dist-stats > div + div {
-  border-left: 1px solid var(--line);
-}
-.dist-stats dt {
-  font-size: 12px;
-  color: var(--text-3);
-}
-.dist-stats dd {
-  margin: 4px 0 0;
-  font-size: 17px;
-}
-.dist-stats dd.big {
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.dist-panel .chart-pad {
-  padding-top: 16px;
-}
-@media (max-width: 900px) {
-  .dist-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .dist-stats > div + div {
-    border-left: 0;
-  }
 }
 
 /* ---- Home hero: the pitch, centred, with the terminal's panels rising from below it -------- */
@@ -3373,25 +3058,6 @@ details.how[open] > summary {
   }
 }
 
-/* Distributions: one ladder per market, each a sentence over its chart. */
-.dist-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 16px;
-}
-.dist-card .ph h2 {
-  font-size: 15px;
-}
-.expects {
-  margin: 0;
-  padding-bottom: 12px;
-  color: var(--text);
-}
-.big-expects {
-  font-family: var(--serif);
-  font-size: 22px;
-  line-height: 1.35;
-}
 details.more {
   margin-top: 32px;
 }
@@ -3405,14 +3071,6 @@ details.more > summary:hover {
 }
 details.more[open] > summary {
   margin-bottom: 12px;
-}
-@media (max-width: 700px) {
-  .dist-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .big-expects {
-    font-size: 18px;
-  }
 }
 
 /* Liquidity: plain answers first, then bars; the full table and heat map behind a disclosure. */
@@ -3545,44 +3203,7 @@ details.more[open] > summary {
   }
 }
 
-/* ---- Market page (task A): side-by-side order book, market brief, venue link ---- */
-/* Depth-of-market: bids left with their size bars growing left, asks right growing right. */
-.dom {
-  width: 100%;
-}
-.dom th,
-.dom td {
-  text-align: right;
-}
-.dom th:nth-child(n + 4),
-.dom td:nth-child(n + 4) {
-  text-align: left;
-}
-.dom td:nth-child(3) {
-  border-right: 1px solid var(--line);
-}
-.dom-bid-size {
-  background: linear-gradient(to left, var(--up-bg) var(--w), transparent var(--w));
-}
-.dom-ask-size {
-  background: linear-gradient(to right, var(--down-bg) var(--w), transparent var(--w));
-}
-.dom-line {
-  max-width: none;
-  margin: 0 0 8px;
-  text-align: center;
-  color: var(--text-3);
-  font-size: 12px;
-}
-/* The contract page's book column is narrow: the running totals don't fit beside both sides. */
-.cw-book .dom-total {
-  display: none;
-}
-@media (max-width: 560px) {
-  .dom-total {
-    display: none;
-  }
-}
+/* ---- Market page (task A): market brief, venue link ---- */
 .brief {
   margin: 20px 0;
   padding: 16px 18px;
@@ -3613,10 +3234,7 @@ details.more[open] > summary {
 .trade-link:hover {
   border-color: var(--text-3);
 }
-.view-note {
-  color: var(--text-3);
-  font-size: 13px;
-}
+
 .focus-row {
   display: flex;
   flex-wrap: wrap;
@@ -3632,44 +3250,7 @@ details.more[open] > summary {
 
 /* ---- Research pages (task F): tracker ladders, accuracy answer, quality summary, events, replay ---- */
 /* Tracker: one row per strike, Kalshi's bid–ask as a grey bar and fair value as a mint tick. */
-.fl-key {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  color: var(--text-2);
-  max-width: none;
-}
-.fl-key .key {
-  display: inline-block;
-  width: 12px;
-  height: 10px;
-  margin-right: 4px;
-  vertical-align: -1px;
-}
-.fl-key-band {
-  background: var(--ink-3);
-}
-.fl-key-fair {
-  background: var(--fair);
-  width: 3px !important;
-}
-.fl-key-up {
-  background: var(--up-bg);
-  outline: 1px solid var(--up);
-}
-.fl-key-down {
-  background: var(--down-bg);
-  outline: 1px solid var(--down);
-}
-.fl-says {
-  margin: 0 0 20px;
-  max-width: 90ch;
-}
-.fls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 32px;
-}
+
 .fl-head,
 .fl-row {
   display: grid;
@@ -3750,11 +3331,7 @@ details.more[open] > summary {
 .fl-val b.down {
   color: var(--down);
 }
-@media (max-width: 900px) {
-  .fls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+
 @media (max-width: 560px) {
   .fl-head,
   .fl-row {
@@ -4107,4 +3684,130 @@ details.more[open] > summary {
 }
 .t-brief .t-foot {
   border-top: 0;
+}
+
+/* ---- Task G (market-unify): the Market page (/m/...), the terminal's panels in two columns ---- */
+/* The panels are the terminal's own (.t-panel); here they stack at their natural height, in a wide
+   column (chart, book, depth, trades) and a narrow one (cost, fair value, outcomes, ...). */
+.mkt-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mkt-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 16px;
+  align-items: start;
+  margin-top: 20px;
+  font-size: 13px;
+}
+.mkt-main,
+.mkt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.mkt .t-panel {
+  border: 1px solid var(--line);
+}
+.mkt .t-panel p {
+  font-size: inherit;
+  max-width: none;
+}
+.mkt .t-panel a {
+  color: inherit;
+}
+.mkt .t-panel a:hover {
+  color: var(--mint);
+}
+.mkt .t-body {
+  flex: none; /* the terminal's flex: 1 would let a body's flex-basis override its height */
+}
+.mkt [data-panel="chart"] .t-body {
+  height: 460px;
+}
+.mkt [data-panel="book"] .t-body,
+.mkt [data-panel="tape"] .t-body,
+.mkt [data-panel="board"] .t-body,
+.mkt [data-panel="ladder"] .t-body {
+  max-height: 420px;
+}
+.mkt .t-depth {
+  height: 160px;
+}
+/* The terminal's dense tables (.terminal table), for the same panels outside it. */
+.mkt .t-panel table {
+  min-width: 0;
+  width: 100%;
+}
+.mkt .t-panel th,
+.mkt .t-panel td {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.mkt .t-panel th:first-child,
+.mkt .t-panel td:first-child {
+  padding-left: 10px;
+}
+.mkt .t-panel th {
+  background: var(--bg);
+  font-size: 11px;
+}
+.t-panel .cost {
+  padding: 10px 0;
+}
+.t-panel .cost-inputs {
+  padding: 0 10px 10px;
+}
+.t-panel .cost .quick {
+  margin: 0;
+}
+.t-panel .kv-row {
+  gap: 10px 24px;
+  padding: 0 10px 8px;
+}
+.t-panel .kv-row b {
+  font-size: 18px;
+}
+.t-panel .cost > .note,
+.t-panel .cost > .muted {
+  padding: 0 10px;
+  font-size: 12px;
+}
+.mkt .fine-print details {
+  margin-top: 8px;
+}
+.mkt .fine-print summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+/* One column on a phone and tablet: both stacks join one list, in reading order. */
+@media (max-width: 1000px) {
+  .mkt-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mkt-main,
+  .mkt-side {
+    display: contents;
+  }
+  .mkt [data-panel="cost"] { order: 1; }
+  .mkt [data-panel="book"] { order: 2; }
+  .mkt [data-panel="depth"] { order: 3; }
+  .mkt [data-panel="tape"] { order: 4; }
+  .mkt [data-panel="fair"] { order: 5; }
+  .mkt [data-panel="pair"] { order: 6; }
+  .mkt [data-panel="board"] { order: 7; }
+  .mkt [data-panel="dist"] { order: 8; }
+  .mkt [data-panel="ladder"] { order: 9; }
+  .mkt [data-panel="brief"] { order: 10; }
+  .mkt [data-panel="chart"] .t-body {
+    height: 380px;
+  }
 }
