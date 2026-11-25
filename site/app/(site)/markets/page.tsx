@@ -1,6 +1,6 @@
 // Markets: every open question as one card per event ("What will the Fed decide on December 9?",
 // "Where will Bitcoin be at 5 pm ET today?"), the plain-language way in; the full table of
-// contracts stays at /screener under Pro tools. Server-rendered from getEvents(); the only
+// contracts stays at /screener under Tools. Server-rendered from getEvents(); the only
 // browser code is the search box's live form.
 import Link from "next/link";
 import { connection } from "next/server";

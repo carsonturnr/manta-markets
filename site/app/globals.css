@@ -3396,7 +3396,7 @@ details.how[open] > summary {
   color: #000;
 }
 
-/* ---- Task B (nav-markets): header "Pro tools" menu and the Markets page (/markets) ---------- */
+/* ---- Task B (nav-markets): header "Tools" menu and the Markets page (/markets) ---------- */
 .pro-tools {
   position: relative;
 }
@@ -3419,33 +3419,64 @@ details.how[open] > summary {
 .pro-tools[data-open="true"] > button svg {
   transform: rotate(180deg);
 }
-/* Wide screens: a square drop-down under the button, closed until opened. */
+/* Wide screens: a square panel under the button, closed until opened. Two columns of tools,
+   each a small drawing, its name and one sentence. */
 .pro-tools-list {
   display: none;
   position: absolute;
   top: calc(100% + 14px);
-  right: 0;
+  right: -160px;
   z-index: 30;
-  min-width: 220px;
-  flex-direction: column;
-  padding: 6px 0;
+  width: 640px;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 8px;
   background: var(--bg);
   border: 1px solid var(--line-2);
 }
 .pro-tools[data-open="true"] .pro-tools-list {
+  display: grid;
+}
+.site-header .tool-item {
   display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 10px;
+  color: var(--text-2);
 }
-.site-header .pro-tools-list a {
-  padding: 8px 16px;
-  white-space: nowrap;
-}
-.site-header .pro-tools-list a:hover {
+.site-header .tool-item:hover,
+.site-header .tool-item:focus-visible,
+.site-header .tool-item[aria-current="page"] {
   background: var(--panel-2);
+  text-decoration: none;
+}
+.tool-thumb {
+  flex: none;
+  width: 64px;
+  height: 40px;
+  padding: 3px;
+  box-sizing: content-box;
+  border: 1px solid var(--line-2);
+  background: var(--panel);
+  color: var(--text-3);
+}
+.tool-item b {
+  display: block;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+}
+.tool-item b + span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-2);
 }
 .pro-tools-h {
   display: none;
 }
-/* Phones: inside the Menu panel the Pro tools are always listed, under a small heading. */
+/* Phones: inside the Menu panel the tools are always listed, one per row, under a small heading. */
 @media (max-width: 960px) {
   .pro-tools > button {
     display: none;
@@ -3453,16 +3484,23 @@ details.how[open] > summary {
   .pro-tools-list,
   .pro-tools[data-open="true"] .pro-tools-list {
     display: flex;
+    flex-direction: column;
     position: static;
-    min-width: 0;
+    width: auto;
     padding: 0;
+    gap: 0;
     border: 0;
   }
-  .site-header .pro-tools-list a {
+  .header-menu nav .tool-item {
     padding: 12px 0;
+    font-size: 15px;
   }
-  .site-header .pro-tools-list a:hover {
+  .site-header .tool-item:hover {
     background: none;
+  }
+  .tool-thumb {
+    width: 48px;
+    height: 30px;
   }
   .pro-tools-h {
     display: block;

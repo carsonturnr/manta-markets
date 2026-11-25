@@ -22,7 +22,6 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             {/* Search is the Markets page's text filter: a plain GET form, no JavaScript. */}
             <form action="/markets" className="search" role="search">
               <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
-              <kbd>/</kbd>
             </form>
             <AccountNav />
             <Link href="/terminal" className="btn btn-sm">
