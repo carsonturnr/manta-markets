@@ -4108,3 +4108,91 @@ details.more[open] > summary {
 .t-brief .t-foot {
   border-top: 0;
 }
+
+/* ---- Task H (markets-home-nav): Markets table help, home figures and pages, simpler footer ---- */
+/* A column heading's one-line help, shown under it on hover or keyboard focus. */
+/* th is position: sticky (table headings), which already anchors the absolute tip. */
+.markets-table th > span[tabindex] {
+  cursor: help;
+}
+.th-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  width: max-content;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 400 12px/1.45 var(--font-sans), system-ui, sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+}
+.markets-table th:nth-last-child(-n + 3) .th-tip {
+  left: auto;
+  right: 0;
+}
+.markets-table th:hover .th-tip,
+.markets-table th:focus-within .th-tip {
+  display: block;
+}
+
+/* Home: five figures in a row, each with its one-line meaning. */
+.home-figures .figures-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.home-figures .figures-row > div {
+  padding: 24px 24px 28px;
+}
+.home-figures .figures-row b {
+  font-size: 34px;
+}
+.home-figures .figures-row span {
+  display: block;
+  color: var(--text-2);
+}
+.home-figures small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+@media (max-width: 1100px) {
+  .home-figures .figures-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-figures .figures-row > div {
+    border-top: 1px dashed var(--rail);
+  }
+  .home-figures .figures-row > div:nth-child(odd) {
+    border-left: 0;
+  }
+}
+@media (max-width: 600px) {
+  .home-figures .figures-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-figures .figures-row > div {
+    border-left: 0;
+  }
+}
+.home-pages {
+  margin-bottom: 80px;
+}
+
+/* Footer: two short columns of links and the credits; no wordmark. */
+.site-foot .in {
+  padding-bottom: 48px;
+}
+.site-foot .foot-cols {
+  grid-template-columns: repeat(2, minmax(0, 220px));
+}
+.home-pages .ranked-q span {
+  white-space: normal;
+}
