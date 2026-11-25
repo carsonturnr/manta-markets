@@ -80,8 +80,11 @@ export default function MantaAscii() {
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const u = (c - cx) / mw + 0.5;
-          const v = ((r - cy) / (mh * (1 + (flap - 1) * Math.abs(u - 0.5) * 2)) + 0.5);
-          const k = u >= 0 && u < 1 && v >= 0 && v < 1 ? cover(Math.floor(u * ART_W), Math.floor(v * ART_H)) : 0;
+          const v = (r - cy) / (mh * (1 + (flap - 1) * Math.abs(u - 0.5) * 2)) + 0.5;
+          const k =
+            u >= 0 && u < 1 && v >= 0 && v < 1
+              ? cover(Math.floor(u * ART_W), Math.floor(v * ART_H))
+              : 0;
           let ch: string;
           if (k > 0) {
             ch = RAMP[Math.round(k * (RAMP.length - 1))];
@@ -89,9 +92,18 @@ export default function MantaAscii() {
           } else {
             // The field: ripples spreading from two drifting points, like water under the ray,
             // crossed by one slow diagonal swell. Their sum picks a character and a grey.
-            const d1 = Math.hypot(c - cols * (0.3 + 0.1 * Math.sin(s * 0.11)), (r - rows * 0.7) * 2);
-            const d2 = Math.hypot(c - cols * (0.75 + 0.1 * Math.cos(s * 0.09)), (r - rows * 0.25) * 2);
-            const w = Math.sin(d1 * 0.22 - s * 1.1) + Math.sin(d2 * 0.18 - s * 0.8) + Math.sin((c - r * 2) * 0.05 + s * 0.4);
+            const d1 = Math.hypot(
+              c - cols * (0.3 + 0.1 * Math.sin(s * 0.11)),
+              (r - rows * 0.7) * 2,
+            );
+            const d2 = Math.hypot(
+              c - cols * (0.75 + 0.1 * Math.cos(s * 0.09)),
+              (r - rows * 0.25) * 2,
+            );
+            const w =
+              Math.sin(d1 * 0.22 - s * 1.1) +
+              Math.sin(d2 * 0.18 - s * 0.8) +
+              Math.sin((c - r * 2) * 0.05 + s * 0.4);
             const f = Math.max(0, (w - 0.3) / 2.7); // 0 to 1, the lower half of the range left blank
             ch = FIELD[Math.min(FIELD.length - 1, Math.floor(f * FIELD.length))];
             if (ch === " ") continue;

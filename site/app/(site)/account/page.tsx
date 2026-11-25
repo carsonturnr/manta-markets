@@ -55,7 +55,9 @@ async function Account() {
         <div className="signed-out-side">
           <h1>Your markets, watched while you&apos;re away</h1>
           <ul className="sell">
-            <li>Keep a watchlist of the contracts you follow, with the latest bid, ask and fair value.</li>
+            <li>
+              Keep a watchlist of the contracts you follow, with the latest bid, ask and fair value.
+            </li>
             <li>Get an email when a price crosses your level, or a spread or depth changes.</li>
             <li>Hear when Kalshi and Polymarket disagree on the same question.</li>
             <li>
