@@ -272,8 +272,6 @@ function Advanced() {
             <Link href={href} className="row-link">
               <span className="ranked-q">
                 <b>{name}</b>
-              </span>
-              <span className="ranked-q">
                 <span>{text}</span>
               </span>
               <span className="gap-pts">Open →</span>

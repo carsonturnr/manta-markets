@@ -3660,3 +3660,7 @@ details.more[open] > summary {
 .terms {
   margin-top: -4px;
 }
+/* The tools band has no figure column: the tool, then "Open". */
+.tools-band .ranked li a {
+  grid-template-columns: minmax(0, 1fr) 80px;
+}

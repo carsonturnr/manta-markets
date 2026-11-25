@@ -119,7 +119,7 @@ async function Pairs() {
       )}
       {feesTakeIt.length > 0 && (
         <p className="small muted">
-          {feesTakeIt.length} more differ before fees but not after:{" "}
+          {feesTakeIt.length} more {feesTakeIt.length === 1 ? "differs" : "differ"} before fees but not after:{" "}
           {feesTakeIt.map((p) => p.question).join("; ")}.
         </p>
       )}
@@ -139,7 +139,7 @@ async function Pairs() {
             <summary className="ph">
               <h3>{t}</h3>
               <span className="m3">
-                {ps.length} {ps.length === 1 ? "pair" : "pairs"}
+                {ps.length} {ps.length === 1 ? "question" : "questions"}
                 {n > 0 && <b className="up"> · {n} worth taking</b>} · Kalshi closes {utc(ps[0].close)}
               </span>
             </summary>
