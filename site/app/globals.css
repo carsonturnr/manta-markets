@@ -989,25 +989,6 @@ td.prob {
     order: 6;
   }
 }
-/* A bar behind each order-book size, its width set inline as --w: pink asks, green bids. */
-.book tr.ask td:first-child {
-  color: var(--down);
-}
-.book tr.bid td:first-child {
-  color: var(--up);
-}
-.book tr.ask td.level {
-  background: linear-gradient(to left, var(--down-bg) var(--w), transparent var(--w));
-}
-.book tr.bid td.level {
-  background: linear-gradient(to left, var(--up-bg) var(--w), transparent var(--w));
-}
-.book tr.mid td {
-  text-align: center;
-  color: var(--text-3);
-  font-size: 12px;
-  height: 32px;
-}
 .cost-inputs {
   display: flex;
   flex-wrap: wrap;
@@ -2182,8 +2163,10 @@ a.hero-card:hover .hero-chart-card {
   .event-side {
     position: static;
   }
-  .event-main > .focus,
-  .event-main > .chart-card {
+  .event-main > .focus-row,
+  .event-main > .focus-help,
+  .event-main > .chart-card,
+  .event-main > .brief {
     order: -2;
   }
   .event-side {
@@ -3732,4 +3715,89 @@ details.more[open] > summary {
   .spread-bars .depth {
     display: none;
   }
+}
+
+/* ---- Market page (task A): side-by-side order book, market brief, venue link ---- */
+/* Depth-of-market: bids left with their size bars growing left, asks right growing right. */
+.dom {
+  width: 100%;
+}
+.dom th,
+.dom td {
+  text-align: right;
+}
+.dom th:nth-child(n + 4),
+.dom td:nth-child(n + 4) {
+  text-align: left;
+}
+.dom td:nth-child(3) {
+  border-right: 1px solid var(--line);
+}
+.dom-bid-size {
+  background: linear-gradient(to left, var(--up-bg) var(--w), transparent var(--w));
+}
+.dom-ask-size {
+  background: linear-gradient(to right, var(--down-bg) var(--w), transparent var(--w));
+}
+.dom-line {
+  max-width: none;
+  margin: 0 0 8px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 12px;
+}
+/* The contract page's book column is narrow: the running totals don't fit beside both sides. */
+.cw-book .dom-total {
+  display: none;
+}
+@media (max-width: 560px) {
+  .dom-total {
+    display: none;
+  }
+}
+.brief {
+  margin: 20px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+}
+.brief h2 {
+  margin: 0 0 8px;
+}
+.brief ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.brief li {
+  margin: 6px 0;
+  line-height: 1.5;
+}
+.brief .note {
+  margin: 10px 0 0;
+}
+.trade-link {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.trade-link:hover {
+  border-color: var(--text-3);
+}
+.view-note {
+  color: var(--text-3);
+  font-size: 13px;
+}
+.focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.focus-help {
+  margin: 0 0 14px;
+  color: var(--text-3);
+  font-size: 13px;
 }
