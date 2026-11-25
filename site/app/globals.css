@@ -3628,3 +3628,350 @@ details.more[open] > summary {
   color: var(--text-3);
   font-size: 13px;
 }
+
+/* ---- Research pages (task F): tracker ladders, accuracy answer, quality summary, events, replay ---- */
+/* Tracker: one row per strike, Kalshi's bid–ask as a grey bar and fair value as a mint tick. */
+.fl-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--text-2);
+  max-width: none;
+}
+.fl-key .key {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.fl-key-band {
+  background: var(--ink-3);
+}
+.fl-key-fair {
+  background: var(--fair);
+  width: 3px !important;
+}
+.fl-key-up {
+  background: var(--up-bg);
+  outline: 1px solid var(--up);
+}
+.fl-key-down {
+  background: var(--down-bg);
+  outline: 1px solid var(--down);
+}
+.fl-says {
+  margin: 0 0 20px;
+  max-width: 90ch;
+}
+.fls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+.fl-head,
+.fl-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 104px;
+  align-items: center;
+  gap: 12px;
+}
+.fl-head {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+.fl-head > :last-child,
+.fl-val {
+  text-align: right;
+}
+.fl-scale {
+  display: flex;
+  justify-content: space-between;
+}
+.fl-row {
+  padding: 3px 0;
+  font-size: 13px;
+}
+.fl-row a {
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fl-row a:hover {
+  text-decoration: underline;
+}
+.fl-track {
+  position: relative;
+  height: 14px;
+  background: var(--ink-soft);
+}
+.fl-band,
+.fl-gap,
+.fl-fair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.fl-band {
+  background: var(--ink-3);
+}
+.fl-gap.up {
+  background: var(--up-bg);
+  border-top: 1px solid var(--up);
+  border-bottom: 1px solid var(--up);
+}
+.fl-gap.down {
+  background: var(--down-bg);
+  border-top: 1px solid var(--down);
+  border-bottom: 1px solid var(--down);
+}
+.fl-fair {
+  width: 3px;
+  margin-left: -1px;
+  top: -3px;
+  bottom: -3px;
+  background: var(--fair);
+}
+.fl-val {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.fl-val b {
+  font-weight: 500;
+  color: var(--text);
+}
+.fl-val b.up {
+  color: var(--up);
+}
+.fl-val b.down {
+  color: var(--down);
+}
+@media (max-width: 900px) {
+  .fls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .fl-head,
+  .fl-row {
+    grid-template-columns: 112px minmax(0, 1fr) 84px;
+    gap: 8px;
+  }
+  .fl-row {
+    font-size: 12px;
+  }
+}
+
+/* Accuracy: the answer in words and three big numbers, then every comparison as a range. */
+.acc-answer {
+  margin: 24px 0 16px;
+}
+.acc-says {
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.3;
+  max-width: 34em;
+  margin: 0;
+  padding: 28px 32px 8px;
+}
+.acc-says b {
+  font-weight: 400;
+}
+.acc-figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+}
+.acc-figures > div {
+  padding: 20px 32px;
+}
+.acc-figures > div + div {
+  border-left: 1px solid var(--line);
+}
+.acc-figures span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.acc-figures b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  margin: 4px 0;
+}
+.acc-answer .note {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.forest-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.forest-row > :last-child {
+  text-align: right;
+}
+.forest-track {
+  position: relative;
+  height: 16px;
+}
+.forest-row:not(.forest-axis) .forest-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  bottom: -6px;
+  border-left: 1px dashed var(--text-3);
+}
+.forest-axis .forest-track span {
+  position: absolute;
+  white-space: nowrap;
+}
+.forest-range {
+  position: absolute;
+  top: 6px;
+  height: 4px;
+  min-width: 2px;
+  background: var(--ink-2);
+}
+.forest-dot {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--ink);
+}
+.forest-row.better .forest-range,
+.forest-row.better .forest-dot {
+  background: var(--up);
+}
+.forest-row.worse .forest-range,
+.forest-row.worse .forest-dot {
+  background: var(--down);
+}
+.cal-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 412px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .acc-says {
+    font-size: 21px;
+    padding: 20px 20px 4px;
+  }
+  .acc-figures > div {
+    padding: 14px 12px;
+  }
+  .acc-figures b {
+    font-size: 24px;
+  }
+  .forest-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: 4px 12px;
+  }
+  .forest-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .forest-axis .forest-track span:nth-child(2) {
+    display: none;
+  }
+  .cal-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Data quality: one sentence, then each venue's coverage with the time it missed as a bar. */
+.lead-says {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1.35;
+  max-width: 40em;
+  margin: 8px 0 24px;
+}
+.lead-says b {
+  font-weight: 400;
+}
+.q-row {
+  display: grid;
+  grid-template-columns: 110px 72px minmax(0, 1fr) 180px 110px;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.q-row b {
+  font-weight: 500;
+  text-align: right;
+}
+.q-row > :nth-child(4),
+.q-row > :last-child {
+  text-align: right;
+}
+.q-track {
+  height: 10px;
+  background: var(--line);
+}
+.q-bar {
+  display: block;
+  height: 100%;
+  min-width: 1px;
+  background: var(--bad);
+}
+@media (max-width: 900px) {
+  .lead-says {
+    font-size: 18px;
+  }
+  .q-row {
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 4px 12px;
+  }
+  .q-track {
+    grid-column: 1 / -1;
+  }
+  .q-row > :nth-child(4) {
+    text-align: left;
+  }
+}
+/* The 7-day grid: recorded blocks in quiet grey so the missing time is what stands out. */
+.cell-ok {
+  background: var(--ink-3);
+}
+.cell-blip {
+  background: var(--ink-3);
+  box-shadow: inset 0 -3px 0 var(--bad);
+}
+
+/* Events: one card per release with its biggest mover's chart. */
+.ev-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.ev-card {
+  color: var(--text);
+  text-decoration: none;
+}
+.ev-card:hover {
+  box-shadow: 0 0 0 1px var(--line-2);
+  text-decoration: none;
+}
+.ev-card .chart {
+  padding: 16px 24px 0;
+}
+@media (max-width: 900px) {
+  .ev-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

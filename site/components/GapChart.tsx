@@ -77,6 +77,14 @@ export default function GapChart({ points }: { points: Point[] }) {
           <span className="key" style={{ background: "var(--fair)", height: 2 }} />
           Fair value (options)
         </span>
+        <span>
+          <span className="key" style={{ background: "var(--up)", opacity: 0.5 }} />
+          fair above the ask
+        </span>
+        <span>
+          <span className="key" style={{ background: "var(--down)", opacity: 0.5 }} />
+          fair below the bid
+        </span>
       </div>
       <div className="chart">
         <svg
@@ -100,6 +108,21 @@ export default function GapChart({ points }: { points: Point[] }) {
             </text>
           ))}
           <path d={band} fill="var(--kalshi)" fillOpacity={0.25} />
+          {/* The gap, wherever fair value is outside the band: a tint from the band's edge to it. */}
+          {points.map((p) =>
+            p.fair === null || (p.fair >= p.bid && p.fair <= p.ask) ? null : (
+              <line
+                key={p.t}
+                x1={x(p.t)}
+                x2={x(p.t)}
+                y1={y(p.fair)}
+                y2={y(p.fair > p.ask ? p.ask : p.bid)}
+                stroke={p.fair > p.ask ? "var(--up)" : "var(--down)"}
+                strokeOpacity={0.35}
+                strokeWidth={Math.max(1, (W - PAD.left - PAD.right) / points.length)}
+              />
+            ),
+          )}
           <path d={fairPath} fill="none" stroke="var(--fair)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           {h && (
             <g>

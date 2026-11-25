@@ -5,12 +5,13 @@ import { Suspense } from "react";
 import GapChart from "@/components/GapChart";
 import { cents, cents1, describe, gap, price, utc } from "@/lib/format";
 import { getContract } from "@/lib/queries";
+import { outside } from "@/lib/tracker-view";
 
 export default function ContractPage({ params }: PageProps<"/c/[ticker]">) {
   return (
     <>
       <p className="small">
-        <Link href="/tracker">← all contracts</Link>
+        <Link href="/tracker">← Bitcoin fair value, every contract</Link>
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         {params.then(({ ticker }) => (
@@ -40,6 +41,11 @@ async function Contract({ ticker }: { ticker: string }) {
           Settled <b>{c.result}</b> at {price(c.settlement!)} (Kalshi&apos;s 60-second average).
         </p>
       )}
+      {last && !c.result && (
+        <p className="big-expects">
+          <Now bid={last.bid} ask={last.ask} fair={last.fair} />
+        </p>
+      )}
       {last && (
         <div className="stats">
           <div>
@@ -64,7 +70,7 @@ async function Contract({ ticker }: { ticker: string }) {
           </div>
         </div>
       )}
-      <h2>Minute by minute</h2>
+      <h2>Kalshi against fair value, minute by minute</h2>
       {points.length < 2 ? (
         <p className="muted">Not enough snapshots yet to draw a line.</p>
       ) : (
@@ -72,9 +78,33 @@ async function Contract({ ticker }: { ticker: string }) {
       )}
       <p className="small">
         The band is Kalshi&apos;s bid to ask: buy at the top edge, sell at the bottom. The line is
-        our fair value. When the line leaves the band, the gap between the two is wider than
-        Kalshi&apos;s spread.
+        Manta&apos;s fair value, the chance implied by Deribit&apos;s Bitcoin options. Where the
+        line leaves the band, the tint marks the gap: wider than Kalshi&apos;s spread.
       </p>
+    </>
+  );
+}
+
+/** The contract now, in one sentence: where fair value sits against Kalshi's bid–ask. */
+function Now({ bid, ask, fair }: { bid: number; ask: number; fair: number | null }) {
+  const k = `${cents(bid)}–${cents(ask)}¢`;
+  if (fair === null)
+    return <>Kalshi {k}. No fair value in the final 60 seconds before the close.</>;
+  const by = outside({ bid, ask, fair });
+  if (by === 0)
+    return (
+      <>
+        Kalshi {k}, fair value {cents1(fair)}¢: inside Kalshi&apos;s spread, so the options and
+        Kalshi agree.
+      </>
+    );
+  return (
+    <>
+      Kalshi {k}, fair value {cents1(fair)}¢:{" "}
+      <span className={by > 0 ? "up" : "down"}>
+        {Math.abs(by).toFixed(1)}¢ {by > 0 ? "above the ask" : "below the bid"}
+      </span>
+      . By the options, &ldquo;yes&rdquo; is priced {by > 0 ? "low" : "high"} on Kalshi.
     </>
   );
 }
