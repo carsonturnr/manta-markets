@@ -55,7 +55,7 @@ const alpha = (hex: string, a: number) => {
 export default function CandleChart({ kalshi, poly, fair }: Props) {
   const [frame, setFrame] = useState<Frame>(FRAMES[1]);
   const [source, setSource] = useState<"mid" | "trades">("mid");
-  const [kind, setKind] = useState<"candles" | "line">("line");
+  const [kind, setKind] = useState<"candles" | "line">("candles");
   const [show, setShow] = useState({ fair: true, quotes: true, volume: true });
   const [hover, setHover] = useState<Bar | null>(null);
   // Where the pointer is over the chart, for the hover card; null when it's off the chart.

@@ -1,6 +1,6 @@
 "use client";
 // The home page's demo of the terminal: the layout tabs switch the grid in place instead of
-// opening /terminal; a click anywhere else opens /terminal on this contract and layout. Every panel the four layouts use is rendered once on the server; each carries
+// opening /terminal; a button in its header opens the full terminal on this contract and layout. Every panel the four layouts use is rendered once on the server; each carries
 // the layouts it belongs to (data-layouts) and the CSS hides the rest.
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -35,21 +35,16 @@ export default function TerminalDemo({
             </button>
           ))}
         </nav>
+        {/* Always on show: the demo works in place, and this is how to get the real thing. */}
+        <Link href={`/terminal?m=${encodeURIComponent(contract)}&layout=${layout}`} className="btn btn-sm pv-full">
+          Open the full terminal →
+        </Link>
       </header>
       {focus}
       {/* Market uses the demo's own smaller grid; the others are the terminal's (.t-grid-<name>). */}
       <div className={`t-grid ${layout === "market" ? "pv-grid-term" : `t-grid-${layout}`}`} data-layout={layout}>
         {children}
       </div>
-      {/* Over the panels (the header and its tabs sit above it): the demo is a picture to open,
-          not a second terminal to work in. */}
-      <Link
-        href={`/terminal?m=${encodeURIComponent(contract)}&layout=${layout}`}
-        className="pv-open"
-        aria-label="Open the terminal on this contract"
-      >
-        <span>Open the terminal →</span>
-      </Link>
     </div>
   );
 }
