@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { crossed, gap, getPairs, type Pair } from "@/lib/compare";
+import { arbitrage, crossed, gap, getPairs, type Pair } from "@/lib/compare";
 import { utc } from "@/lib/format";
 
 export const metadata = { title: "Manta: cross-venue arbitrage" };
@@ -11,15 +11,15 @@ export default function ComparePage() {
     <>
       <h1>Cross-venue arbitrage</h1>
       <p className="lede">
-        The same question on Kalshi and Polymarket. When one venue&apos;s ask is below the
-        other&apos;s bid, buying on one and selling on the other locks in the difference, if it
-        survives both taker fees. Checked every minute.
+        Arbitrage: buy on one venue, sell the same thing on the other, keep the difference. This
+        page finds the questions Kalshi and Polymarket both list and shows where the gap is still
+        there after both venues&apos; fees. Checked every minute.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Pairs />
       </Suspense>
       <details className="panel pad prose-sm how">
-        <summary>How pairs are matched, and what the columns mean</summary>
+        <summary>How questions are matched, and what the table columns mean</summary>
       <ul className="kinds">
         <li>
           <b>Same bet</b>: the identical outcome, settled on the same source (the Fed&apos;s
@@ -69,13 +69,7 @@ async function Pairs() {
   if (pairs.length === 0) return <p className="muted">No pairs right now.</p>;
   const topics = [...new Set(pairs.map((p) => p.topic))];
   const crossings = pairs.filter((p) => crossed(p) !== null).length;
-  // Arbitrage: prices that cross with something left after both legs' taker fees, best first.
-  const arbs = pairs
-    .flatMap((p) => {
-      const x = crossed(p);
-      return x && x.net !== null && x.net > 1e-9 ? [{ p, x }] : [];
-    })
-    .sort((a, b) => b.x.net! - a.x.net!);
+  const arbs = arbitrage(pairs);
   const feesTakeIt = pairs.filter((p) => {
     const x = crossed(p);
     return x !== null && !(x.net !== null && x.net > 1e-9);
@@ -84,19 +78,19 @@ async function Pairs() {
     <>
       <div className="tiles">
         <div className="panel tile">
-          <span>Arbitrage after fees</span>
+          <span>Gaps worth taking</span>
           <b className={arbs.length > 0 ? "up" : undefined}>{arbs.length}</b>
-          <small>{crossings} cross before fees</small>
+          <small>{crossings} before fees</small>
         </div>
         <div className="panel tile">
           <span>Best, per contract</span>
           <b className={arbs.length > 0 ? "up" : undefined}>
-            {arbs.length > 0 ? `${arbs[0].x.net!.toFixed(2)}¢` : "–"}
+            {arbs.length > 0 ? `${arbs[0].x.net.toFixed(2)}¢` : "–"}
           </b>
-          <small>after both taker fees</small>
+          <small>after both venues&apos; fees</small>
         </div>
         <div className="panel tile">
-          <span>Pairs watched</span>
+          <span>Questions on both</span>
           <b>{pairs.length}</b>
           <small>in {topics.length} events</small>
         </div>
@@ -108,28 +102,32 @@ async function Pairs() {
       </div>
 
       <h2>Arbitrage now</h2>
+      <p className="small muted terms">
+        <b>After fees</b>: what is left per contract once both venues take their trading fee.{" "}
+        <b>Size</b>: how many contracts are on offer at both prices; the thinner side limits it.
+      </p>
       {arbs.length === 0 ? (
         <p className="muted">
-          None right now: {crossings === 0 ? "no prices cross." : `${crossings} cross, but fees take it all.`}
+          None right now: {crossings === 0 ? "the prices agree." : `${crossings} differ, but fees would eat the profit.`}
         </p>
       ) : (
         <div className="arbs">
-          {arbs.map(({ p, x }) => (
-            <Arb key={`${p.topic}/${p.question}`} p={p} x={x} />
+          {arbs.map((a) => (
+            <Arb key={`${a.p.topic}/${a.p.question}`} a={a} />
           ))}
         </div>
       )}
       {feesTakeIt.length > 0 && (
         <p className="small muted">
-          {feesTakeIt.length} more cross before fees but not after:{" "}
+          {feesTakeIt.length} more {feesTakeIt.length === 1 ? "differs" : "differ"} before fees but not after:{" "}
           {feesTakeIt.map((p) => p.question).join("; ")}.
         </p>
       )}
 
-      <h2>Every pair</h2>
+      <h2>Every matched question</h2>
       <p className="small muted">
-        Bitcoin and Ether pairs appear only in the hour before noon New York time, the one hour both
-        venues list the same moment.
+        Both venues&apos; prices side by side, grouped by event. Bitcoin and Ether appear only in the
+        hour before noon New York time, the one hour both venues list the same moment.
       </p>
       {topics.map((t) => {
         const ps = pairs.filter((p) => p.topic === t);
@@ -141,8 +139,8 @@ async function Pairs() {
             <summary className="ph">
               <h3>{t}</h3>
               <span className="m3">
-                {ps.length} {ps.length === 1 ? "pair" : "pairs"}
-                {n > 0 && <b className="up"> · {n} arbitrage</b>} · Kalshi closes {utc(ps[0].close)}
+                {ps.length} {ps.length === 1 ? "question" : "questions"}
+                {n > 0 && <b className="up"> · {n} worth taking</b>} · Kalshi closes {utc(ps[0].close)}
               </span>
             </summary>
             {shared && <p className="small pad-x shared-note">{shared}</p>}
@@ -175,15 +173,15 @@ async function Pairs() {
   );
 }
 
-const KIND = { same: "Same bet", bundle: "Bundle", near: "Near" } as const;
+// How closely the two venues' contracts match, in plain words.
+const KIND = {
+  same: "Same bet on both venues",
+  bundle: "Bundle: several Polymarket ranges bought together match one Kalshi contract",
+  near: "Near match",
+} as const;
 
 /** One arbitrage: what to buy and sell where, what's left after fees, and how much of it there is. */
-function Arb({ p, x }: { p: Pair; x: NonNullable<ReturnType<typeof crossed>> }) {
-  const buy = x.buy === "Kalshi" ? p.kalshi : p.poly;
-  const sell = x.buy === "Kalshi" ? p.poly : p.kalshi;
-  // As many contracts as both best prices carry: the thinner side limits it.
-  const size =
-    buy.askSize !== null && sell.bidSize !== null ? Math.floor(Math.min(buy.askSize, sell.bidSize)) : null;
+function Arb({ a: { p, x, buy, sell, size } }: { a: ReturnType<typeof arbitrage>[number] }) {
   const link = (venue: "kalshi" | "polymarket", ids: string[], label: string) =>
     ids.length === 1 ? (
       <Link href={`/contract/${venue}/${encodeURIComponent(ids[0])}`}>{label}</Link>
@@ -197,7 +195,7 @@ function Arb({ p, x }: { p: Pair; x: NonNullable<ReturnType<typeof crossed>> }) 
         <b>{p.question}</b>
         <span className="small muted">
           {p.topic} · {KIND[p.kind]}
-          {p.kind !== "same" && p.note && <>: {p.note}</>}
+          {p.kind === "near" && p.note && <>. {p.note}</>}
         </span>
       </div>
       <div className="arb-legs num">
@@ -210,20 +208,20 @@ function Arb({ p, x }: { p: Pair; x: NonNullable<ReturnType<typeof crossed>> }) 
       </div>
       <div className="arb-figs num">
         <span>
-          <small>Gross</small>
+          <small>Price gap</small>
           <b>{x.cents.toFixed(1)}¢</b>
         </span>
         <span>
           <small>After fees</small>
-          <b className="up">{x.net!.toFixed(2)}¢</b>
+          <b className="up">{x.net.toFixed(2)}¢</b>
         </span>
         <span>
           <small>Size</small>
           <b>{size !== null ? size.toLocaleString("en-US") : "–"}</b>
         </span>
         <span>
-          <small>In all</small>
-          <b className="up">{size !== null ? `$${((x.net! * size) / 100).toFixed(2)}` : "–"}</b>
+          <small>Profit at full size</small>
+          <b className="up">{size !== null ? `$${((x.net * size) / 100).toFixed(2)}` : "–"}</b>
         </span>
       </div>
     </article>
@@ -245,8 +243,8 @@ function PairRow({ p, showNote }: { p: Pair; showNote: boolean }) {
         </span>
         {x && (
           <span className={x.net !== null && x.net > 1e-9 ? "small status-bad" : "small"}>
-            Crosses by {x.cents.toFixed(1)}¢
-            {x.net === null ? ", fees unknown" : x.net > 1e-9 ? `, ${x.net.toFixed(2)}¢ after fees` : ", fees take it all"}
+            {x.cents.toFixed(1)}¢ to buy low and sell high
+            {x.net === null ? ", fees unknown" : x.net > 1e-9 ? `, ${x.net.toFixed(2)}¢ after fees` : ", fees eat it all"}
           </span>
         )}
       </td>

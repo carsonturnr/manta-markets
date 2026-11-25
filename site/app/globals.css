@@ -3975,3 +3975,39 @@ details.more[open] > summary {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- Task D (home-arbitrage): plain-language home and arbitrage pages ---------------------- */
+.hero-btns {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.split-sec .text-link {
+  display: inline-block;
+  margin-top: 16px;
+}
+/* Home arbitrage rows: the question on its own line, then the trade in one sentence. */
+.arb-home a {
+  grid-template-columns: 160px 96px minmax(0, 1fr);
+}
+.arb-home-q {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.arb-home .up {
+  color: var(--up);
+}
+@media (max-width: 700px) {
+  .arb-home a {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.terms {
+  margin-top: -4px;
+}
+/* The tools band has no figure column: the tool, then "Open". */
+.tools-band .ranked li a {
+  grid-template-columns: minmax(0, 1fr) 80px;
+}
