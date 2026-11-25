@@ -1,5 +1,6 @@
+// How it's built: the data-quality and coverage view, moved from the old /quality page
+// (2026-11-26). Updated every 15 minutes from the recorder's own report.
 import { connection } from "next/server";
-import { Suspense } from "react";
 import { utc } from "@/lib/format";
 import {
   type Category,
@@ -9,25 +10,6 @@ import {
   type VenueReport,
   VENUES,
 } from "@/lib/quality";
-
-export const metadata = { title: "Manta: data quality" };
-
-export default function QualityPage() {
-  return (
-    <>
-      <h1>Data quality</h1>
-      <p className="muted">
-        Every number on Manta comes from our own recorder of the venues&apos; feeds. Before trusting
-        a chart or a backtest, check here what it captured and what it missed. Updated every 15
-        minutes.
-      </p>
-      <Suspense fallback={<p className="muted">Loading…</p>}>
-        <Quality />
-      </Suspense>
-      <Checks />
-    </>
-  );
-}
 
 const ms = (iso: string) => new Date(iso).getTime();
 
@@ -42,7 +24,7 @@ function duration(msec: number): string {
 }
 
 /** 599450768 → "599.5M". */
-function count(n: number): string {
+export function count(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}k`;
@@ -57,7 +39,7 @@ const LIVE_MS = 2 * 60_000;
 // The report is written every 15 minutes; older than this, something is wrong with the job.
 const STALE_MS = 40 * 60_000;
 
-async function Quality() {
+export default async function Quality() {
   await connection(); // request time only: the build never queries the database
   const got = await getReport();
   if (!got) return <p className="muted">No report yet.</p>;
@@ -88,9 +70,12 @@ async function Quality() {
       <Summary venues={venues} />
       <Missed venues={venues} at={at} />
       <Timeline venues={venues} at={at} />
-      <Venues venues={venues} at={at} />
-      <Families report={report} />
-      <RecentGaps venues={venues} gapS={report.gap_seconds} />
+      <details className="more">
+        <summary>More: every venue, every contract family and the latest gaps</summary>
+        <Venues venues={venues} at={at} />
+        <Families report={report} />
+        <RecentGaps venues={venues} gapS={report.gap_seconds} />
+      </details>
     </>
   );
 }
@@ -135,7 +120,7 @@ function Missed({ venues, at }: { venues: VenueReport[]; at: number }) {
   return (
     <section className="panel stack">
       <header className="ph">
-        <h2>Captured, by venue</h2>
+        <h3>Captured, by venue</h3>
         <span className="right m3">since each venue was added</span>
       </header>
       <div className="pad q-bars">
@@ -177,7 +162,7 @@ function rate(v: VenueReport, at: number): number {
 function Venues({ venues, at }: { venues: VenueReport[]; at: number }) {
   return (
     <>
-      <h2>Venues</h2>
+      <h3>Venues</h3>
       <p className="small">
         Coverage is the share of time since the venue was added that isn&apos;t in a gap.
       </p>
@@ -252,7 +237,7 @@ function Timeline({ venues, at }: { venues: VenueReport[]; at: number }) {
   const days = rows[0].cells.filter((c) => new Date(c.start).getUTCHours() === 0);
   return (
     <>
-      <h2>Last 7 days, where the gaps fell</h2>
+      <h3>Last 7 days, where the gaps fell</h3>
       <div className="legend">
         <span>
           <span className="key cell-ok" />
@@ -317,7 +302,7 @@ function Families({ report }: { report: Report }) {
   const extra = report.families.filter((f) => !known.has(`${f.venue}/${f.family}`));
   return (
     <>
-      <h2>Contract families</h2>
+      <h3>Contract families</h3>
       <p className="small">
         Every family is on an explicit allow-list: Kalshi series are checked against Kalshi&apos;s
         category when the recorder starts, Polymarket events must match a strict pattern and tags.
@@ -385,7 +370,7 @@ function RecentGaps({ venues, gapS }: { venues: VenueReport[]; gapS: number }) {
   if (gaps.length === 0) return null;
   return (
     <>
-      <h2>Most recent gaps</h2>
+      <h3>Most recent gaps</h3>
       <p className="small">
         From the last message before the gap to the first after it (anything over {gapS} s). Gaps at
         the same moment on every venue are restarts of the recorder, usually a deploy.
@@ -418,10 +403,10 @@ function RecentGaps({ venues, gapS }: { venues: VenueReport[]; gapS: number }) {
 
 // Checks run on the recordings, from the project's own notes (docs/milestone-4-backtest.md).
 // Static: each was a one-off measurement, dated, not a live figure.
-function Checks() {
+export function Checks() {
   return (
     <>
-      <h2>How we check the data</h2>
+      <h3>How we check the data</h3>
       <ul className="checks">
         <li>
           <b>Order books rebuilt from the recording match Kalshi&apos;s.</b>{" "}
