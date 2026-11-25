@@ -106,7 +106,7 @@ function Summary({ venues }: { venues: VenueReport[] }) {
   const longest = gaps.at(-1);
   const median = gaps.length ? gaps[Math.floor(gaps.length / 2)].len : 0;
   return (
-    <p className="q-says">
+    <p className="lead-says">
       Since {utc(since).replace(/, .*/, "")} the recorder has kept{" "}
       <b className="num">{count(records)}</b> messages from {venues.length} venues and captured at
       least <b className="num">{pct(lowest)}</b> of the time on every one.
