@@ -47,12 +47,12 @@ export async function Chart({ c, yesToken, tracked }: { c: Row; yesToken?: strin
     ]);
     if (!m1 || !h1) return unavailable("Price history", c.venue);
     const fair = ours?.points.flatMap((p) => (p.fair === null ? [] : [{ t: p.t, fair: p.fair }]));
-    return <CandleChart kalshi={{ m1, h1 }} fair={fair} />;
+    return <CandleChart kalshi={{ m1, h1 }} fair={fair} close={c.close} />;
   }
   if (!yesToken) return unavailable("Price history", c.venue);
   const [m1, h1] = await Promise.all([polyCandles(yesToken, "1m"), polyCandles(yesToken, "1h")]);
   if (!m1 || !h1) return unavailable("Price history", c.venue);
-  return <CandleChart poly={{ m1, h1 }} />;
+  return <CandleChart poly={{ m1, h1 }} close={c.close} />;
 }
 
 export async function BookSection({

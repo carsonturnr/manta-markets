@@ -1,7 +1,7 @@
 // Run with: npm test (node's built-in test runner; Node strips the types itself).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Bar, fromPoints, group, type KalshiCandle, midBars, tradeBars } from "./candles.ts";
+import { type Bar, defaultMinutes, fill, fromPoints, group, type KalshiCandle, midBars, tradeBars } from "./candles.ts";
 
 const bar = (time: number, o: number, h: number, l: number, c: number, v = 0): Bar => ({
   time,
@@ -75,4 +75,30 @@ test("Polymarket's price points become candles", () => {
     bar(1795348800, 0.5, 0.52, 0.5, 0.52),
     bar(1795348860, 0.49, 0.49, 0.49, 0.49),
   ]);
+});
+
+test("fill: skipped minutes become flat zero-volume bars at the last close, up to the end", () => {
+  const b = (time: number, close: number, volume = 5) => ({ time, open: close, high: close, low: close, close, volume });
+  const out = fill([b(0, 0.4), b(180, 0.5)], 1, 300);
+  assert.deepEqual(
+    out.map((x) => [x.time, x.close, x.volume]),
+    [
+      [0, 0.4, 5],
+      [60, 0.4, 0],
+      [120, 0.4, 0],
+      [180, 0.5, 5],
+      [240, 0.5, 0],
+      [300, 0.5, 0],
+    ],
+  );
+  assert.equal(out[1].high, 0.4);
+  assert.deepEqual(fill([], 1, 600), []);
+  // `until` inside the last bar adds nothing.
+  assert.equal(fill([b(0, 0.4)], 5, 120).length, 1);
+});
+
+test("defaultMinutes picks the bar length from the contract's data span", () => {
+  assert.equal(defaultMinutes(2 * 3600), 1);
+  assert.equal(defaultMinutes(20 * 3600), 15);
+  assert.equal(defaultMinutes(10 * 86400), 60);
 });

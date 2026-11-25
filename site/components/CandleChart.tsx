@@ -22,7 +22,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type Bar, group, type KalshiCandle, midBars, tradeBars } from "@/lib/candles";
+import { type Bar, defaultMinutes, fill, group, type KalshiCandle, midBars, tradeBars } from "@/lib/candles";
 
 // Each timeframe is regrouped from one of the two resolutions the server fetched.
 const FRAMES = [
@@ -38,6 +38,7 @@ type Props = {
   kalshi?: { m1: KalshiCandle[]; h1: KalshiCandle[] }; // bid, ask and trades
   poly?: { m1: Bar[]; h1: Bar[] }; // one price per period, no volume
   fair?: { t: number; fair: number }[]; // ms, probability: our options-implied fair value
+  close?: number; // unix ms: the contract's close; flat bars are drawn up to it (or to now)
 };
 
 const cents = (p: number) => `${(Math.round(p * 1000) / 10).toFixed(1)}%`;
@@ -52,8 +53,14 @@ const alpha = (hex: string, a: number) => {
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 };
 
-export default function CandleChart({ kalshi, poly, fair }: Props) {
-  const [frame, setFrame] = useState<Frame>(FRAMES[1]);
+export default function CandleChart({ kalshi, poly, fair, close }: Props) {
+  // Open on the bar length that suits the contract's life (hourly: 1m, daily: 15m, longer: 1h).
+  const [frame, setFrame] = useState<Frame>(() => {
+    // The hourly history reaches back further than the 1-minute one, so it measures the life.
+    const span = Math.max(...[kalshi?.m1, kalshi?.h1, poly?.m1, poly?.h1].map((bs) => (bs?.length ? bs[bs.length - 1].time - bs[0].time : 0)));
+    const want = defaultMinutes(span);
+    return FRAMES.find((f) => f.minutes === want) ?? FRAMES[1];
+  });
   const [source, setSource] = useState<"mid" | "trades">("mid");
   const [kind, setKind] = useState<"candles" | "line">("candles");
   const [show, setShow] = useState({ fair: true, quotes: true, volume: true });
@@ -61,6 +68,10 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
   // Where the pointer is over the chart, for the hover card; null when it's off the chart.
   const [at, setAt] = useState<{ x: number; y: number; w: number } | null>(null);
 
+  // Flat bars run to the close, or to when the chart opened while the contract is still open (unix
+  // seconds, whole minute). Captured once: newer candles from a refresh still draw after it.
+  const [openedAt] = useState(() => Date.now());
+  const end = Math.floor(Math.min(close ?? openedAt, openedAt) / 60_000) * 60;
   // The bars for the chosen timeframe, plus the bid and ask at each bar's close (Kalshi only).
   const { bars, quotes } = useMemo(() => {
     if (kalshi) {
@@ -70,12 +81,14 @@ export default function CandleChart({ kalshi, poly, fair }: Props) {
       const last = new Map<number, KalshiCandle>(); // the last raw candle in each period
       for (const c of raw) last.set(Math.floor(c.time / step) * step, c);
       return {
-        bars: group(base, frame.minutes),
+        // Mid candles are continuous (Kalshi skips unchanged minutes: fill draws them flat);
+        // trade candles keep their gaps, since a minute without a trade has no traded price.
+        bars: source === "mid" ? fill(group(base, frame.minutes), frame.minutes, end) : group(base, frame.minutes),
         quotes: [...last].map(([time, c]) => ({ time, bid: c.bid[3], ask: c.ask[3] })),
       };
     }
-    return { bars: poly ? group(poly[frame.from], frame.minutes) : [], quotes: [] };
-  }, [kalshi, poly, frame, source]);
+    return { bars: poly ? fill(group(poly[frame.from], frame.minutes), frame.minutes, end) : [], quotes: [] };
+  }, [kalshi, poly, frame, source, end]);
 
   // Our fair value, one point per period (the last in it), within the bars' time span.
   const fairLine = useMemo(() => {
