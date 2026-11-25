@@ -1,12 +1,19 @@
 """Hand-worked cases for the queue model (manta_backtest.queue)."""
 
+import math
+from datetime import datetime
+
+import pytest
+
 from manta_backtest.queue import (
-    HORIZONS_S,
     MATCH_NS,
     Measure,
     Resting,
     active,
     bucket,
+    day_type,
+    mean_se,
+    merge,
     outcome,
     stretches,
 )
@@ -71,24 +78,83 @@ def test_outcome_censors_short_lives():
 
 
 def test_measure_end_to_end():
-    m = Measure(sample_s=1, place_s=10)
+    m = Measure(sample_s=1, place_s=1000)
     book = {
         "market_id": "X",
         "kind": "snapshot",
         "bids": [["0.40", "50"]],
         "asks": [["0.42", "70"]],
     }
-    m.handle({"type": "book", "msg": {"recv_ts": S, **book}})
-    assert len(m.orders["X"]) == 2  # one at the bid, one at the ask, 50 and 70 ahead
+    m.handle({"type": "book", "msg": {"recv_ts": S, **book}})  # mid 0.41; orders 50 and 70 behind
     trade = {"market_id": "X", "recv_ts": 2 * S, "side": "sell", "px": "0.40", "sz": "60"}
-    m.handle({"type": "trade", "msg": trade})  # a taker sells 60 into the bid
-    closed = {**book, "bids": [], "asks": [], "recv_ts": 4 * S}
-    m.handle({"type": "book", "msg": closed})  # the close, 3 s after placing
-    bid = next(r["out"] for r in m.results if r["side"] == "bids")
-    ask = next(r["out"] for r in m.results if r["side"] == "asks")
-    assert bid[(10, "behind", 1)] is True  # 10 of the 60 reached us
-    assert bid[(10, "behind", 100)] is None  # not filled in full, and lived only 3 s
-    assert ask[(HORIZONS_S[0], "ahead", 1)] is None
+    m.handle({"type": "trade", "msg": trade})  # a taker sells 60 into the bid: 10 reach us
+    delta = {**book, "kind": "delta", "recv_ts": 3 * S, "bids": [["0.40", "0"], ["0.39", "100"]]}
+    m.handle({"type": "book", "msg": delta})  # the bid falls: mid 0.405
+    m.handle({"type": "book", "msg": {**delta, "recv_ts": 100 * S, "bids": [], "asks": []}})
+    closed = {**book, "bids": [], "asks": [], "recv_ts": 101 * S}
+    m.handle({"type": "book", "msg": closed})  # the close
+    m.handle({"type": "book", "msg": {**book, "market_id": "Y", "recv_ts": 400 * S}})
+
+    fills = m.agg["fills"]
+    assert fills["off-hours|0-100|10|behind|1"] == [1, 2]  # the bid filled, the ask did not
+    assert fills["off-hours|0-100|10|behind|100"] == [0, 2]
+    assert "off-hours|0-100|300|behind|1" in fills  # lived 100 s: 300 s still counted (filled)
+
+    marks = m.agg["marks"]
+    for kind in ("trades", "fills-behind", "fills-ahead"):
+        w = 60 if kind == "trades" else 1
+        n, sw, _, swx, _, sws = marks[f"{kind}|off-hours|10"]
+        assert n == 1 and sw == w
+        assert swx / sw == pytest.approx(0.005)  # bought at 0.40, mid 0.405 ten seconds later
+        assert sws / sw == pytest.approx(0.01)  # spread earned: mid 0.41 at the trade
+    assert marks["trades|off-hours|300"][3] / 60 == pytest.approx(0.005)  # at the close's mid
+    assert m.agg["at_close"]["trades|300"] == 1
+
+
+def test_markout_sell_side_and_mean():
+    m = Measure(sample_s=1000, place_s=1000)
+    m.books["X"] = {"bids": {0.40: 10}, "asks": {0.42: 10}}
+    m.mark(0, "X", "trades", -1, 0.42, 2.0, 0.41)  # a maker sold 2 at 0.42, mid 0.41
+    m.books["X"] = {"bids": {0.43: 10}, "asks": {0.45: 10}}  # the price rose to mid 0.44
+    m.resolve(10 * S)
+    acc = m.agg["marks"]["trades|off-hours|10"]
+    mean, se, spread = mean_se(acc)
+    assert spread == pytest.approx(0.01)
+    assert mean == pytest.approx(-0.02)  # sold at 0.42, now worth 0.44
+    assert math.isnan(se)  # one trade: no error estimate
+
+
+def test_day_types():
+    t = lambda iso: int(datetime.fromisoformat(iso + "+00:00").timestamp() * 1e9)  # noqa: E731
+    vol = [(t("2026-11-19T13:00"), t("2026-11-19T18:00"))]
+    assert day_type(t("2026-11-23T15:00"), vol) == "us-hours"  # Monday 10:00 New York
+    assert day_type(t("2026-11-23T21:00"), vol) == "off-hours"  # 16:00, the close
+    assert day_type(t("2026-11-22T15:00"), vol) == "weekend"
+    assert day_type(t("2026-11-19T14:00"), vol) == "volatile"
+
+
+def test_merge_joins_samples_and_adds_totals():
+    part = {
+        "hours": 2,
+        "trades": {"KXBTCD": [1, 2.0, 3.0]},
+        "series": {
+            "KXBTCD": {
+                "queue": {"weekend": [5, 6]},
+                "one_cent": {"weekend": [1, 2]},
+                "fills": {"k": [1, 3]},
+                "marks": {"k": [1, 1, 1, 0.5, 0.25, 0.1]},
+                "censored": {"k": 1},
+                "at_close": {},
+                "unmatched": 4.0,
+            }
+        },
+    }
+    out = merge([part, part])
+    agg = out["series"]["KXBTCD"]
+    assert out["hours"] == 4 and out["trades"]["KXBTCD"] == [2, 4.0, 6.0]
+    assert agg["queue"]["weekend"] == [5, 6, 5, 6]
+    assert agg["one_cent"]["weekend"] == [2, 4] and agg["fills"]["k"] == [2, 6]
+    assert agg["censored"]["k"] == 2 and agg["unmatched"] == 8.0
 
 
 def test_active_and_bucket():
@@ -120,3 +186,22 @@ def test_stretches_split_on_missing_hours():
         ],
         ["k/2026-11-30/23-0000.jsonl.gz", "k/2026-12-01/00-0000.jsonl.gz"],
     ]
+
+
+def test_spread_uses_the_mid_before_the_trades_own_book_change():
+    m = Measure(sample_s=1, place_s=1000)
+    book = {
+        "market_id": "X",
+        "kind": "snapshot",
+        "bids": [["0.40", "50"]],
+        "asks": [["0.42", "70"]],
+    }
+    m.handle({"type": "book", "msg": {"recv_ts": S, **book}})  # watched from here: mid 0.41
+    delta = {**book, "kind": "delta", "recv_ts": 5 * S, "bids": [["0.40", "0"], ["0.39", "9"]]}
+    m.handle({"type": "book", "msg": delta})  # the bid is eaten; its trade arrives just after
+    trade = {"market_id": "X", "recv_ts": 5 * S + 1000, "side": "sell", "px": "0.40", "sz": "50"}
+    m.handle({"type": "trade", "msg": trade})
+    m.resolve(16 * S)
+    n, w, _, wx, _, ws = m.agg["marks"]["trades|off-hours|10"]
+    assert ws / w == pytest.approx(0.01)  # against 0.41, not the 0.405 after the change
+    assert wx / w == pytest.approx(0.005)

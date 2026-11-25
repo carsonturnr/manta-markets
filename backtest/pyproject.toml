@@ -18,6 +18,8 @@ manta-catalog = "manta_backtest.catalog:main"
 manta-catalog-check = "manta_backtest.check:main"
 manta-fair-series = "manta_backtest.fairseries:main"
 manta-queue = "manta_backtest.queue:main"
+manta-queue-report = "manta_backtest.queue:report_main"
+manta-fair-predict = "manta_backtest.predict:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

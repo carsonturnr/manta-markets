@@ -32,7 +32,7 @@ Details moved out of AGENTS.md (2026-11-21) to keep it short. AGENTS.md links he
 
 M is the series fee multiplier, C the number of contracts, P the price in dollars (0.01–0.99).
 
-- Kalshi (fee schedule "July 2026, 7.7.26 Update", read 2026-11-16): takers pay 0.07 × M × C × P × (1 − P), makers 0.0175 × M × C × P × (1 − P) only where a series charges them, rounded up so fee + position cost is a whole $0.0001; no settlement fee. Crypto, index and FX series are `quadratic` (no maker fee); Fed, CPI, payrolls and unemployment are `quadratic_with_maker_fees` (makers pay). The API's per-series `fee_type` and `fee_multiplier` are the live source (the PDF's list omits KXPAYROLLS, which the API marks with maker fees). Polymarket (docs.polymarket.com): takers pay rate × C × P × (1 − P), rate 0.07 crypto and 0.05 economics, from each market's `feeSchedule`; makers pay nothing.
+- Kalshi (fee schedule "July 2026, 7.7.26 Update", read 2026-11-16): takers pay 0.07 × M × C × P × (1 − P), makers 0.0175 × M × C × P × (1 − P) only where a series charges them, rounded up so fee + position cost is a whole $0.0001; no settlement fee. Crypto, index and FX series are `quadratic` (no maker fee); KXFED, KXFEDDECISION, KXCPI, KXCPIYOY, KXPAYROLLS and KXU3 are `quadratic_with_maker_fees` (makers pay); the core CPI series KXCPICORE and KXCPICOREYOY are `quadratic` (checked on the live API 2026-11-24). The API's per-series `fee_type` and `fee_multiplier` are the live source (the PDF's list omits KXPAYROLLS, which the API marks with maker fees). Polymarket (docs.polymarket.com): takers pay rate × C × P × (1 − P), rate 0.07 crypto and 0.05 economics, from each market's `feeSchedule`; makers pay nothing.
 
 ## Infra
 

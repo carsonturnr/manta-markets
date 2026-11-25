@@ -34,7 +34,7 @@ CI (.github/workflows/ci.yml) runs the recorder, pricing and site checks (site: 
 recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve
 recorder/internal/     tap (venue clients), rawlog, book, contracts, crossvenue, normalize, replay, md, fixed
 pricing/src/manta_pricing/   fair-value model and analytics; tests in pricing/tests/
-backtest/src/manta_backtest/ catalog, check, fairseries
+backtest/src/manta_backtest/ catalog, check, fairseries, queue (market-maker measurements), predict
 site/app/              one folder per page (screener, c/[ticker], contract/[venue]/[id], compare, liquidity, distributions, replay, stats, quality, tracker, account, privacy)
 site/components/       charts and forms
 site/lib/              queries and pure analytics; tests are lib/*.test.ts next to the code
