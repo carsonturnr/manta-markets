@@ -4,6 +4,7 @@
 //	GET /file/<event>/<hour>.json.gz  one event's hour, as written
 //	GET /events                       ["2026-12-04-payrolls", …]: the event-response releases
 //	GET /events/<release>.json        one release's event response (cmd/eventresponse)
+//	GET /candles/<ticker>             one Kalshi market's 1-minute candles over its last 24 recorded hours
 //
 // Every request must carry "Authorization: Bearer <REPLAY_TOKEN>"; only the site's server knows
 // it. Paths are opened through os.Root, which refuses anything outside the replay directory.
@@ -15,6 +16,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
@@ -28,10 +30,15 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/carsonturnr/manta-markets/recorder/internal/replay"
 )
 
 // An event ticker and an hour, the only names the directory holds.
 var fileName = regexp.MustCompile(`^/file/([A-Z0-9-]+)/(\d{4}-\d{2}-\d{2}T\d{2})\.json\.gz$`)
+
+// A Kalshi market ticker, e.g. KXBTCD-26NOV2517-T59749.99.
+var tickerName = regexp.MustCompile(`^/candles/([A-Z0-9][A-Z0-9.-]*)$`)
 
 // A release id: its date and kind, e.g. 2026-12-04-payrolls.
 var releaseName = regexp.MustCompile(`^/events/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)\.json$`)
@@ -66,6 +73,10 @@ func main() {
 		}
 		if r.URL.Path == "/events" {
 			serveReleases(w, root)
+			return
+		}
+		if m := tickerName.FindStringSubmatch(r.URL.Path); m != nil {
+			serveCandles(w, root, m[1])
 			return
 		}
 		if m := releaseName.FindStringSubmatch(r.URL.Path); m != nil {
@@ -144,4 +155,58 @@ func serveReleases(w http.ResponseWriter, root *os.Root) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)
+}
+
+// candleHours is how far back /candles reads: the site's 1-minute charts show the last day.
+const candleHours = 24
+
+// serveCandles answers one market's 1-minute candles (replay.Candles) from its event's last
+// candleHours hour files, oldest first; a market with no recording yet is an empty list.
+func serveCandles(w http.ResponseWriter, root *os.Root, ticker string) {
+	ev := replay.Event(ticker)
+	hours, _ := fs.ReadDir(root.FS(), ev) // missing folder: not recorded
+	var names []string
+	for _, h := range hours {
+		if name, ok := strings.CutSuffix(h.Name(), ".json.gz"); ok && !strings.HasPrefix(name, ".") {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	if len(names) > candleHours {
+		names = names[len(names)-candleHours:]
+	}
+	var minutes []replay.Minute
+	var trades []replay.Trade
+	for _, name := range names {
+		var file struct {
+			Markets map[string]replay.Market `json:"markets"`
+		}
+		if err := readGz(root, ev+"/"+name+".json.gz", &file); err != nil {
+			log.Printf("candles %s: %s: %v", ticker, name, err) // a damaged hour is skipped
+			continue
+		}
+		m := file.Markets[ticker]
+		minutes = append(minutes, m.Minutes...)
+		trades = append(trades, m.Trades...)
+	}
+	out := replay.Candles(minutes, trades)
+	if out == nil {
+		out = []replay.Candle{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+func readGz(root *os.Root, path string, v any) error {
+	f, err := root.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+	return json.NewDecoder(z).Decode(v)
 }

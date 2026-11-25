@@ -1,7 +1,7 @@
 // Run with: npm test (node's built-in test runner; Node strips the types itself).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Bar, defaultMinutes, fill, fromPoints, group, type KalshiCandle, midBars, tradeBars } from "./candles.ts";
+import { type Bar, defaultMinutes, fill, fromPoints, group, type KalshiCandle, mergeCandles, midBars, tradeBars } from "./candles.ts";
 
 const bar = (time: number, o: number, h: number, l: number, c: number, v = 0): Bar => ({
   time,
@@ -101,4 +101,24 @@ test("defaultMinutes picks the bar length from the contract's data span", () => 
   assert.equal(defaultMinutes(2 * 3600), 1);
   assert.equal(defaultMinutes(20 * 3600), 15);
   assert.equal(defaultMinutes(10 * 86400), 60);
+});
+
+test("mergeCandles: recorded minutes win, Kalshi's API fills the rest, in time order", () => {
+  const k = (time: number, mid: number, volume: number): KalshiCandle => ({
+    time,
+    bid: [mid - 0.01, mid - 0.01, mid - 0.01, mid - 0.01],
+    ask: [mid + 0.01, mid + 0.01, mid + 0.01, mid + 0.01],
+    trade: null,
+    volume,
+  });
+  const out = mergeCandles([k(60, 0.5, 9), k(120, 0.6, 1)], [k(0, 0.4, 2), k(60, 0.45, 3), k(180, 0.7, 0)]);
+  assert.deepEqual(
+    out.map((c) => [c.time, c.volume]),
+    [
+      [0, 2],
+      [60, 9],
+      [120, 1],
+      [180, 0],
+    ],
+  );
 });
