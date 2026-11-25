@@ -22,6 +22,7 @@ manta-queue-report = "manta_backtest.queue:report_main"
 manta-fair-predict = "manta_backtest.predict:main"
 manta-mm-probe = "manta_backtest.strategy:probe_main"
 manta-mm-backtest = "manta_backtest.strategy:backtest_main"
+manta-mm-report = "manta_backtest.strategy:report_main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.9"]

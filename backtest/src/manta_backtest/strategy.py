@@ -19,6 +19,7 @@ import bisect
 import heapq
 import json
 import tempfile
+import urllib.request
 from decimal import Decimal
 from pathlib import Path
 
@@ -45,7 +46,7 @@ from nautilus_trader.trading import Strategy
 
 from manta_backtest.catalog import build_tools
 from manta_backtest.fairseries import markets
-from manta_backtest.mm import trades_first
+from manta_backtest.mm import Fill, kalshi_fee, split, trades_first
 from manta_backtest.queue import HORIZONS_S
 
 HOUR = 3600 * 1_000_000_000
@@ -58,10 +59,14 @@ def replay(
     latency_ns: int = 0,
     reorder: bool = True,
     trade_execution: bool = True,
+    series: set[str] | None = None,
 ) -> None:
-    """Run `strategy` over everything in `catalog`, an hour at a time."""
+    """Run `strategy` over the contracts of `series` (all if None) in `catalog`, an hour at a
+    time."""
     cat = ParquetDataCatalog(str(catalog))
-    insts = cat.instruments()
+    insts = [
+        i for i in cat.instruments() if not series or i.id.symbol.value.split("-")[0] in series
+    ]
     ids = [str(i.id) for i in insts]
     eng = BacktestEngine(
         BacktestEngineConfig(logging=LoggerConfig(stdout_level=LogLevel.ERROR, bypass_logging=True))
@@ -204,7 +209,13 @@ def probe_main() -> None:
     ap.add_argument("--book-only", action="store_true", help="fill only when the book crosses")
     a = ap.parse_args()
     probe = Probe(closes(a.markets, set(a.series.split(","))))
-    replay(a.catalog, probe, reorder=not a.no_reorder, trade_execution=not a.book_only)
+    replay(
+        a.catalog,
+        probe,
+        reorder=not a.no_reorder,
+        trade_execution=not a.book_only,
+        series=set(a.series.split(",")),
+    )
     print(json.dumps({"rejected": probe.rejected, "shares": probe.shares(probe.last)}, indent=1))
 
 
@@ -252,6 +263,10 @@ class MarketMaker(Strategy):
         self.waiting: list[tuple[int, int]] = []  # (due time, fill index) for the mid 60 s on
         self.submitted = self.rejected = 0
         self.peak = 0.0  # largest total position held
+        self.settled: dict[str, float] = {}  # ticker → position held to its close
+        self.next_purge = 0
+        self.n_live: dict[str, int] = {}  # ticker → our orders on it
+        self.seen: dict[str, tuple] = {}  # ticker → (best bid, best ask, time) last looked at
 
     def on_start(self) -> None:
         for inst in self.cache.instruments():
@@ -273,21 +288,23 @@ class MarketMaker(Strategy):
         return at
 
     def exposure_ok(self, ticker: str, side: int) -> bool:
-        """Would one more resting order of SIZE stay inside every cap if everything filled?"""
+        """Would one more resting order of SIZE stay inside every cap if every resting order
+        filled? An order that shrinks a position adds nothing, so a full book can still unwind."""
 
         def worst(tk: str) -> float:
             p = self.pos.get(tk, 0.0)
-            buys = sum(SIZE for (t, sd), _ in self.live.items() if t == tk and sd == 1)
-            sells = sum(SIZE for (t, sd), _ in self.live.items() if t == tk and sd == -1)
+            buys = sum(SIZE for (t, sd) in self.live if t == tk and sd == 1)
+            sells = sum(SIZE for (t, sd) in self.live if t == tk and sd == -1)
+            if tk == ticker:
+                buys, sells = buys + (SIZE if side == 1 else 0), sells + (SIZE if side == -1 else 0)
             return max(abs(p + buys), abs(p - sells))
 
-        p = self.pos.get(ticker, 0.0)
-        if abs(p + side * SIZE) > PER_CONTRACT:
+        if abs(self.pos.get(ticker, 0.0) + side * SIZE) > PER_CONTRACT:
             return False
         ev = event_of(ticker)
-        tickers = {t for t in self.pos} | {t for t, _ in self.live} | {ticker}
-        event = sum(worst(t) for t in tickers if event_of(t) == ev) + SIZE
-        total = sum(worst(t) for t in tickers) + SIZE
+        tickers = set(self.pos) | {t for t, _ in self.live} | {ticker}
+        event = sum(worst(t) for t in tickers if event_of(t) == ev)
+        total = sum(worst(t) for t in tickers)
         return event <= PER_EVENT and total <= TOTAL
 
     # -- events ------------------------------------------------------------------------------
@@ -298,6 +315,17 @@ class MarketMaker(Strategy):
         iid = deltas.instrument_id
         ticker = iid.symbol.value
         book = self.cache.order_book(iid)
+        if book is None:
+            return
+        if not self.n_live.get(ticker):
+            # Nothing of ours here: only a new best price (or a second passing) can change what
+            # we do. Most book changes are below the best price; skipping them keeps the replay
+            # affordable (880 s for 2 busy hours before this, 2026-11-25).
+            b, a = book.best_bid_price(), book.best_ask_price()
+            last = self.seen.get(ticker)
+            if last and last[0] == b and last[1] == a and now - last[2] < S:
+                return
+            self.seen[ticker] = (b, a, now)
         top = active_top(book)
         if top is not None:
             h = self.hist.setdefault(ticker, [])
@@ -306,7 +334,7 @@ class MarketMaker(Strategy):
                 h.append([now, m])
                 while len(h) > 1 and h[1][0] <= now - 2 * S:
                     h.pop(0)
-        if top is None and not any(t == ticker for t, _ in self.live):
+        if top is None and not self.n_live.get(ticker):
             return
         quoting = top is not None and now < self.closes.get(ticker, 0) - STOP_NS
         fair = self.fair_at(ticker, now)
@@ -356,6 +384,7 @@ class MarketMaker(Strategy):
                 "state": "pending",
             }
             self.by_id[order.client_order_id] = key
+            self.n_live[ticker] = self.n_live.get(ticker, 0) + 1
             self.submit_order(order)
             self.submitted += 1
 
@@ -368,6 +397,7 @@ class MarketMaker(Strategy):
         key = self.by_id.pop(event.client_order_id, None)
         if key in self.live and self.live[key]["id"] == event.client_order_id:
             del self.live[key]
+            self.n_live[key[0]] -= 1
 
     def on_order_canceled(self, event) -> None:
         self._gone(event)
@@ -411,7 +441,12 @@ class MarketMaker(Strategy):
 
     def settle_waiting(self, now: int) -> None:
         """Record the mid 60 s after each fill (None if the contract closed first: the report
-        then uses its settlement value)."""
+        then uses its settlement value). Once a second, positions in closed contracts leave the
+        caps: they settle to cash at the close."""
+        if now >= self.next_purge:
+            self.next_purge = now + S
+            for tk in [t for t in self.pos if self.closes.get(t, 2**62) <= now]:
+                self.settled[tk] = self.pos.pop(tk)
         while self.waiting and self.waiting[0][0] <= now:
             _, i = heapq.heappop(self.waiting)
             f = self.fills[i]
@@ -442,7 +477,7 @@ def backtest_main() -> None:
     ap = argparse.ArgumentParser(description="Sub-step 6: run the market maker on one day")
     ap.add_argument("--catalog", required=True, type=Path)
     ap.add_argument("--markets", required=True, type=Path, help="Kalshi listings (close times)")
-    ap.add_argument("--fair", required=True, type=Path, help="manta-fair-series output")
+    ap.add_argument("--fair", type=Path, help="manta-fair-series output (none for KXBTC15M)")
     ap.add_argument("--series", default="KXBTCD")
     ap.add_argument("--cancel-frac", type=float, required=True)
     ap.add_argument("--rejoin", type=float, required=True, help="seconds")
@@ -453,10 +488,73 @@ def backtest_main() -> None:
         a.cancel_frac,
         int(a.rejoin * S),
         closes(a.markets, set(a.series.split(","))),
-        load_fair(a.fair),
+        load_fair(a.fair) if a.fair else {},
     )
-    replay(a.catalog, mm, latency_ns=int(a.latency_ms * 1_000_000))
+    replay(a.catalog, mm, latency_ns=int(a.latency_ms * 1_000_000), series=set(a.series.split(",")))
     run = {k: getattr(a, k) for k in ("cancel_frac", "rejoin", "latency_ms", "series")}
     run |= {"submitted": mm.submitted, "rejected": mm.rejected, "peak": mm.peak}
     a.out.write_text(json.dumps({"run": run, "fills": mm.fills}))
     print(json.dumps(run | {"fills": len(mm.fills)}))
+
+
+KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
+
+
+def settlements(tickers: set[str], cache: Path) -> dict[str, float]:
+    """Each contract's settlement value ($1 YES, $0 NO) from Kalshi's public API, one request
+    per hourly event, kept in `cache` so a report can be rerun offline."""
+    known: dict[str, float] = json.loads(cache.read_text()) if cache.exists() else {}
+    for ev in sorted({event_of(t) for t in tickers if t not in known}):
+        url = f"{KALSHI_API}/markets?event_ticker={ev}&limit=1000"
+        with urllib.request.urlopen(url, timeout=30) as r:
+            for m in json.load(r)["markets"]:
+                if m.get("result") in ("yes", "no"):
+                    known[m["ticker"]] = 1.0 if m["result"] == "yes" else 0.0
+    cache.write_text(json.dumps(known))
+    return known
+
+
+def report_main() -> None:
+    ap = argparse.ArgumentParser(description="Profit and loss split of manta-mm-backtest runs")
+    ap.add_argument("runs", nargs="+", type=Path, help="LABEL=fills.json (e.g. tuning=...)")
+    ap.add_argument("--settle", required=True, type=Path, help="settlement cache (JSON)")
+    a = ap.parse_args()
+    loaded = []
+    for arg in a.runs:
+        label, path = str(arg).split("=", 1)
+        loaded.append((label, Path(path), json.loads(Path(path).read_text())))
+    settle = settlements({f["ticker"] for *_, d in loaded for f in d["fills"]}, a.settle)
+    print(
+        "| Set | Run | Fills | Contracts | Spread earned | Adverse selection | Inventory | Fees "
+        "| Total | Total per contract | Peak position |"
+    )
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    for label, path, d in loaded:
+        fills, missing = [], 0
+        for f in d["fills"]:
+            if f["ticker"] not in settle:
+                missing += 1
+                continue
+            v = settle[f["ticker"]]
+            fills.append(
+                Fill(
+                    f["ticker"],
+                    f["ts"],
+                    f["side"],
+                    f["price"],
+                    f["qty"],
+                    kalshi_fee(f["price"], f["qty"], 0.0),  # post-only: maker, no fee on KXBTCD
+                    f["mid_before"] if f["mid_before"] is not None else f["price"],
+                    f["mid_after"] if f["mid_after"] is not None else v,
+                    v,
+                )
+            )
+        p = split(fills)
+        qty = sum(f.qty for f in fills)
+        per = 100 * p["total"] / qty if qty else 0.0
+        cells = " | ".join(f"${p[k]:+,.2f}" for k in ("spread", "adverse", "inventory", "fees"))
+        print(
+            f"| {label} | {path.stem} | {len(fills):,} | {qty:,.0f} | {cells} | "
+            f"${p['total']:+,.2f} | {per:+.2f}¢ | {d['run']['peak']:.0f} |"
+            + (f" ({missing} fills unsettled)" if missing else "")
+        )

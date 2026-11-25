@@ -104,7 +104,7 @@ Each runs from the raw files through the existing normalizer (`recorder/cmd/norm
 2. **Measurement 2, adverse selection.** *Demo:* a table of mid moves after fills, by horizon and day type. Done 2026-11-25.
 3. **Measurement 3, fair value as a predictor.** *Demo:* the regression and hit-rate table by time to close. Done 2026-11-25.
 4. **Quoting rules** chosen from 1–3, written up for Carson's approval. Drafted below; waiting for approval.
-5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table.
+5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table. In progress 2026-11-25.
 6. **Strategy and backtest report.** *Demo:* one command over a recorded week prints the profit-and-loss split, per day and per contract.
 7. **Paper trading** on Kalshi demo (needs keys). *Demo:* the bot running, orders visible in the demo account.
 8. **Results page.** *Demo:* the public page with paper results and the backtest beside them.
@@ -208,6 +208,14 @@ Approved 2026-11-25 by the coordinating session (Carson delegated the market-mak
 The choice is the setting with the best total profit and loss over the tuning days, across a small grid written down before the first run; ties go to the simpler setting. 2026-11-19 lost 2 hours (08:00–10:00 UTC) in the measurement run and is re-streamed for the backtest.
 
 Expected result, stated before the backtest: a small loss per fill to adverse selection, partly offset by cancelling; the backtest's job is to measure how much.
+
+### Backtest setup, fixed before any tuning run (2026-11-25)
+
+- **Grid (rule 3 and the rejoin rule):** cancel when the size at our price falls below a fraction of what it was when we joined, fraction ∈ {0 (never on shrinking), 0.25, 0.5}; after such a cancel, wait ∈ {0 s, 5 s} before rejoining. Six settings, each run on the three tuning days.
+- **Choice:** the setting with the best total profit and loss summed over the three tuning days (KXBTCD); a tie goes to the simpler setting (lower fraction, then shorter wait). Written into this plan before the reported days run.
+- **Fixed, not tuned:** 5 contracts per quote; step back one cent at a position of 10 (half the per-contract cap); fair-value guard 2¢; no quotes in the last 15 minutes; caps 20 / 50 / 200; latency 56 ms per order (from series-1's measured round trip), with the chosen setting also run at 112 ms on the reported days.
+- **KXBTC15M comparison:** the chosen setting, same days, no fair-value guard (we have no model for it), reported beside KXBTCD; it is not used to choose anything.
+- **Development data, disclosed:** the strategy and the Nautilus check were debugged on 2026-11-23 13:00–15:00 UTC, part of a reported day, with one fixed setting; only fill counts and run time were looked at there, never profit and loss. Debugging from here on uses tuning days only.
 
 ## Measurement 1, first run (4 hours, 2026-11-23)
 
