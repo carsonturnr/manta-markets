@@ -17,8 +17,8 @@ export default function QualityPage() {
     <>
       <h1>Data quality</h1>
       <p className="muted">
-        Everything on Manta comes from our own recorder, which keeps every message the venues send.
-        This page shows what it has captured, what it missed, and how we check it. Updated every 15
+        Every number on Manta comes from our own recorder of the venues&apos; feeds. Before trusting
+        a chart or a backtest, check here what it captured and what it missed. Updated every 15
         minutes.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
@@ -86,40 +86,81 @@ async function Quality() {
         </p>
       )}
       <Summary venues={venues} />
-      <Venues venues={venues} at={at} />
+      <Missed venues={venues} at={at} />
       <Timeline venues={venues} at={at} />
+      <Venues venues={venues} at={at} />
       <Families report={report} />
       <RecentGaps venues={venues} gapS={report.gap_seconds} />
     </>
   );
 }
 
+/** The whole report in one sentence. */
 function Summary({ venues }: { venues: VenueReport[] }) {
   const since = Math.min(...venues.map((v) => ms(v.first)));
-  const gaps = venues.flatMap((v) => v.gaps.map((g) => ms(g.to) - ms(g.from)));
+  const gaps = venues
+    .flatMap((v) => v.gaps.map((g) => ({ venue: v.venue, from: ms(g.from), len: ms(g.to) - ms(g.from) })))
+    .sort((a, b) => a.len - b.len);
   const lowest = Math.min(...venues.map((v) => v.coverage));
   const records = venues.reduce((s, v) => s + v.records, 0);
+  const longest = gaps.at(-1);
+  const median = gaps.length ? gaps[Math.floor(gaps.length / 2)].len : 0;
   return (
-    <div className="stats">
-      <div>
-        <span>Recording since</span>
-        <b>{utc(since).replace(/, .*/, "")}</b>
+    <p className="q-says">
+      Since {utc(since).replace(/, .*/, "")} the recorder has kept{" "}
+      <b className="num">{count(records)}</b> messages from {venues.length} venues and captured at
+      least <b className="num">{pct(lowest)}</b> of the time on every one.
+      {longest ? (
+        <>
+          {" "}
+          Its {gaps.length} gaps were mostly brief (half under {duration(median)}); the longest was{" "}
+          <b className="num">{duration(longest.len)}</b> on{" "}
+          {VENUES[longest.venue]?.name ?? longest.venue}, {utc(longest.from).replace(/, .*/, "")}.
+        </>
+      ) : (
+        " No gaps."
+      )}
+    </p>
+  );
+}
+
+/** Each venue's coverage, with the time it missed as a bar (scaled to the venue that missed most). */
+function Missed({ venues, at }: { venues: VenueReport[]; at: number }) {
+  const rows = venues.map((v) => ({
+    v,
+    lost: v.gaps.reduce((s, g) => s + ms(g.to) - ms(g.from), 0),
+    late: at - ms(v.last) > LIVE_MS,
+  }));
+  const most = Math.max(1, ...rows.map((r) => r.lost));
+  return (
+    <section className="panel stack">
+      <header className="ph">
+        <h2>Captured, by venue</h2>
+        <span className="right m3">since each venue was added</span>
+      </header>
+      <div className="pad q-bars">
+        {rows.map(({ v, lost, late }) => (
+          <div key={v.venue} className="q-row">
+            <span>{VENUES[v.venue]?.name ?? v.venue}</span>
+            <b className="num">{pct(v.coverage)}</b>
+            <span className="q-track" title={`${duration(lost)} missed in ${v.gaps.length} gaps`}>
+              <span className="q-bar" style={{ width: `${(lost / most) * 100}%` }} />
+            </span>
+            <span className="num m3">
+              {duration(lost)} missed · {v.gaps.length} {v.gaps.length === 1 ? "gap" : "gaps"}
+            </span>
+            <span className={late ? "num status-bad" : "num m3"}>
+              {late ? "no recent data" : "recording"}
+            </span>
+          </div>
+        ))}
       </div>
-      <div>
-        <span>Coverage, lowest venue</span>
-        <b className="num">{pct(lowest)}</b>
-      </div>
-      <div>
-        <span>Gaps (longest)</span>
-        <b className="num">
-          {gaps.length} ({gaps.length ? duration(Math.max(...gaps)) : "–"})
-        </b>
-      </div>
-      <div>
-        <span>Messages recorded</span>
-        <b className="num">{count(records)}</b>
-      </div>
-    </div>
+      <p className="note">
+        Bars: time missed, scaled to the venue that missed most. A gap is a disconnect or restart
+        of the recorder (those are the ones of a few seconds), or any stretch of more than 30
+        seconds with no data from a venue.
+      </p>
+    </section>
   );
 }
 
@@ -138,9 +179,7 @@ function Venues({ venues, at }: { venues: VenueReport[]; at: number }) {
     <>
       <h2>Venues</h2>
       <p className="small">
-        A gap is any stretch of more than 30 seconds with no data from a venue, or a restart or
-        disconnect of the recorder. Coverage is the share of time since the venue was added that
-        isn&apos;t in a gap.
+        Coverage is the share of time since the venue was added that isn&apos;t in a gap.
       </p>
       <div className="table-wrap">
         <table>
@@ -188,7 +227,8 @@ function Venues({ venues, at }: { venues: VenueReport[]; at: number }) {
 const BLOCK_MS = 3 * 3600_000;
 const BLOCKS = 56; // 7 days of 3-hour blocks
 
-type Cell = { start: number; state: "none" | "ok" | "gap"; lost: number };
+type Cell = { start: number; state: "none" | "ok" | "blip" | "gap"; lost: number };
+const BLIP_MS = 60_000; // a block missing under a minute in all: a blip, drawn apart from real gaps
 
 /** Each venue's last 7 days in 3-hour blocks: not recorded, recorded, or containing a gap. */
 function cells(v: VenueReport, at: number): Cell[] {
@@ -203,7 +243,7 @@ function cells(v: VenueReport, at: number): Cell[] {
     for (const g of v.gaps) {
       lost += Math.max(0, Math.min(stop, ms(g.to)) - Math.max(start, ms(g.from)));
     }
-    return { start, state: lost > 0 ? "gap" : "ok", lost };
+    return { start, state: lost >= BLIP_MS ? "gap" : lost > 0 ? "blip" : "ok", lost };
   });
 }
 
@@ -212,15 +252,18 @@ function Timeline({ venues, at }: { venues: VenueReport[]; at: number }) {
   const days = rows[0].cells.filter((c) => new Date(c.start).getUTCHours() === 0);
   return (
     <>
-      <h2>Last 7 days</h2>
+      <h2>Last 7 days, where the gaps fell</h2>
       <div className="legend">
         <span>
-          <span className="key" style={{ background: "var(--ok)" }} />
+          <span className="key cell-ok" />
           recorded
         </span>
         <span>
-          <span className="key cell-gap" />
-          contains a gap (hover for its length)
+          <span className="key cell-blip" />
+          under a minute missing
+        </span>
+        <span>
+          <span className="key cell-gap" />a minute or more missing (hover for its length)
         </span>
         <span>
           <span className="key" style={{ background: "var(--grid)" }} />
@@ -240,7 +283,7 @@ function Timeline({ venues, at }: { venues: VenueReport[]; at: number }) {
                     title={`${utc(c.start)}, 3 h: ${
                       c.state === "none"
                         ? "not recorded"
-                        : c.state === "gap"
+                        : c.state !== "ok"
                           ? `${duration(c.lost)} missing`
                           : "complete"
                     }`}
