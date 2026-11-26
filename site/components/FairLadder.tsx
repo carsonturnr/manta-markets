@@ -1,7 +1,8 @@
 // One ladder of Kalshi Bitcoin contracts (one close, one kind), a row per strike: Kalshi's
 // bid–ask as a grey bar and our fair value as a mint tick on the same scale. Where fair value
 // falls outside the bar, the stretch between them is shaded: that gap is wider than Kalshi's
-// spread. Plain HTML and CSS, drawn on the server.
+// spread. Plain HTML and CSS, drawn on the server. A section of the Bitcoin Market pages
+// (terminal/Panels.tsx LadderPanel); each strike links to that outcome on the same page.
 import Link from "next/link";
 import { cents, cents1, describe } from "@/lib/format";
 import type { Quote } from "@/lib/queries";
@@ -29,7 +30,7 @@ export default function FairLadder({ title, quotes }: { title: string; quotes: Q
         const edge = by > 0 ? q.ask : q.bid;
         return (
           <div key={q.ticker} className="fl-row">
-            <Link href={`/c/${q.ticker}`} className="num">
+            <Link href={`?o=${encodeURIComponent(q.ticker)}`} scroll={false} className="num">
               {describe(q)}
             </Link>
             <span className="fl-track">

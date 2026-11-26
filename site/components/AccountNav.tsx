@@ -1,7 +1,7 @@
 "use client";
-// Sign in, or the account link and Clerk's user menu, at the end of the site's navigation. A
+// Log in and Sign up, or Account and Clerk's user menu, at the end of the site's navigation. A
 // client component so pages stay static: Clerk reads the session in the browser here.
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 export default function AccountNav() {
@@ -10,12 +10,19 @@ export default function AccountNav() {
       <Show when="signed-out">
         <SignInButton mode="modal">
           <button type="button" className="link-button">
-            Sign in
+            Log in
           </button>
         </SignInButton>
+        <SignUpButton mode="modal">
+          <button type="button" className="btn btn-sm">
+            Sign up
+          </button>
+        </SignUpButton>
       </Show>
       <Show when="signed-in">
-        <Link href="/account">Account</Link>
+        <Link href="/account" className="btn btn-sm btn-ghost">
+          Account
+        </Link>
         <UserButton />
       </Show>
     </span>

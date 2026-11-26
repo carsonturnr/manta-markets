@@ -1,40 +1,32 @@
-// Home, for someone who trades on Kalshi or Polymarket: what Manta gives them in one sentence, the
-// live terminal as the picture, then the busiest markets, an AI brief on the most-traded one, the
-// price gaps between the venues that survive fees, and the tools for advanced traders. Built from
-// the queries the pages already use (events, pairs, the brief); nothing new is stored.
+// Home: one line on what Manta is, the live terminal as the picture, the system's numbers, and
+// a link to each page. Built from the queries the pages already use (events, the recorder's
+// quality report); nothing new is stored.
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import EventCard, { eventHref } from "@/components/EventCard";
-import { Chart, MarketBrief } from "@/components/ContractSections";
+import { Chart } from "@/components/ContractSections";
 import Mark from "@/components/Mark";
 import { SnapshotLive } from "@/components/terminal/Live";
 import { BookPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePanels";
 import Monitor from "@/components/terminal/Monitor";
 import { ArbPanel, BoardPanel, CalendarPanel, DistPanel, FairPanel } from "@/components/terminal/Panels";
 import TerminalDemo from "@/components/terminal/TerminalDemo";
-import WaitlistForm from "@/components/WaitlistForm";
-import { getBrief } from "@/lib/brief-api";
-import { arbitrage, crossed, getPairs } from "@/lib/compare";
 import { type Event, getEvents } from "@/lib/events";
-import { FILTERS, pick } from "@/lib/markets";
 import { monitorRows } from "@/lib/monitor";
 import { mid, outcomeLabel, usableFair, whenET } from "@/lib/outcomes";
+import { getReport } from "@/lib/quality";
 import { getMarket } from "@/lib/screener";
 import { kalshiBook, kalshiTrades } from "@/lib/venues";
 
-type Params = Record<string, string | string[] | undefined>;
-
-export default function Home({ searchParams }: { searchParams: Promise<Params> }) {
+export default function Home() {
   return (
     <>
       <section className="hero hero-split">
         <div className="hero-copy">
           <h1>A terminal for prediction markets.</h1>
           <p>
-            See what&apos;s moving and why with an AI summary, spot price gaps between the two venues
-            after fees, and get an email when a price hits your level. Crypto, economics and
-            finance; no sports.
+            Live order books, prices and costs for every crypto, economics and financial contract on
+            Kalshi and Polymarket, from Manta&apos;s own recordings of both venues. No sports.
           </p>
           <div className="hero-btns">
             <Link href="/markets" className="btn">
@@ -50,25 +42,27 @@ export default function Home({ searchParams }: { searchParams: Promise<Params> }
         </Suspense>
       </section>
 
-      <Suspense fallback={<p className="muted">Loading…</p>}>
-        <Markets searchParams={searchParams} />
+      <Suspense fallback={<section className="stats-row home-figures" />}>
+        <Figures />
       </Suspense>
 
-      <Suspense fallback={<section className="split-sec" />}>
-        <Brief />
-      </Suspense>
-
-      <Suspense fallback={<section className="split-sec" />}>
-        <Arbitrage />
-      </Suspense>
-
-      <Advanced />
+      <Pages />
 
       <section className="cta-box">
-        <span className="tag">Coming next</span>
+        <span className="tag">API</span>
         <h2>Manta&apos;s numbers in your own code</h2>
-        <p className="muted">An API is on the way. One email when it opens.</p>
-        <WaitlistForm />
+        <p className="muted">
+          Fair values, implied distributions, the cost of a trade, cross-venue gaps and liquidity, as
+          JSON. Free with an account.
+        </p>
+        <div className="cta-actions">
+          <Link href="/account" className="btn">
+            Get an API key
+          </Link>
+          <Link href="/docs/api" className="btn btn-ghost">
+            Read the docs
+          </Link>
+        </div>
       </section>
     </>
   );
@@ -179,95 +173,72 @@ async function Preview() {
 /** A probability as a percent with one decimal, as the terminal shows it. */
 const pct1 = (p: number | null) => (p === null ? "–" : `${(Math.round(p * 1000) / 10).toFixed(1)}%`);
 
-/** The AI brief on the most-traded market: what moved and how busy it is, in plain bullets. The
- * section is hidden when the brief is (no key, or the call failed). */
-async function Brief() {
-  await connection();
-  const { events } = await getEvents();
-  const top = topKalshi(events);
-  if (!top || !(await getBrief(top.o.venue, top.o.id))) return null; // cached: MarketBrief reuses it
-  const { o, e } = top;
-  return (
-    <section className="split-sec">
-      <div>
-        <span className="tag">What&apos;s moving</span>
-        <h2>The most-traded market, explained</h2>
-        <p className="muted">
-          {e.question} <b>{outcomeLabel(o)}</b>
-        </p>
-        <Link href={eventHref(e)} className="text-link">
-          Open this market →
-        </Link>
-      </div>
-      <MarketBrief c={o} />
-    </section>
-  );
-}
-
-/** Price gaps between the venues that are still there after both venues' fees, in plain words. */
-async function Arbitrage() {
-  await connection();
-  const { pairs } = await getPairs();
-  const arbs = arbitrage(pairs).slice(0, 4);
-  const before = pairs.filter((p) => crossed(p) !== null).length;
-  const c = (v: number | null) => (v === null ? "–" : `${Math.round(v * 1000) / 10}¢`);
-  return (
-    <section className="split-sec">
-      <div>
-        <span className="tag">Arbitrage</span>
-        <h2>Same question, two prices</h2>
-        <p className="muted">
-          When Kalshi and Polymarket price the same question differently, you can buy on one, sell
-          on the other and keep the difference. These gaps are still there after both venues&apos;
-          fees.
-        </p>
-        <Link href="/compare" className="text-link">
-          All {pairs.length} matched questions →
-        </Link>
-      </div>
-      {arbs.length === 0 ? (
-        <p className="muted">
-          None right now: {before === 0 ? "the prices agree." : `${before} differ, but fees would eat the profit.`}{" "}
-          Checked every minute.
-        </p>
-      ) : (
-        <ul className="watching arb-home">
-          {arbs.map(({ p, x, buy, sell, size }) => (
-            <li key={`${p.topic}/${p.question}`}>
-              <Link href="/compare" className="row-link">
-                <span className="mono">{p.topic}</span>
-                <b className="num up">{x.net.toFixed(1)}¢</b>
-                <span>
-                  <span className="arb-home-q">{p.question}</span>
-                  Buy yes on {x.buy} at {c(buy.ask)}, sell yes on {x.sell} at {c(sell.bid)}:{" "}
-                  {x.net.toFixed(1)}¢ left per contract after fees
-                  {size !== null && <>, on up to {size.toLocaleString("en-US")} contracts</>}.
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-/** The detailed tools, one level deeper, for traders who want the raw view. */
-function Advanced() {
-  const tools = [
-    ["/terminal", "Terminal", "Live order book, trades, depth and the price chart on one screen."],
-    ["/screener", "Screener table", "Every contract in one sortable table: price, spread, volume, closing time."],
-    ["/distributions", "Distributions", "What a range of price levels says the market expects, as one chart."],
-    ["/liquidity", "Liquidity", "What a trade really costs, and when spreads are narrowest."],
-    ["/replay", "Replay", "Any recorded close, minute by minute: the book, the trades, the price."],
+/** The system in five numbers: what the site covers now and what the recorder has kept. */
+async function Figures() {
+  await connection(); // request time only: the build never queries the database
+  const [{ events }, q] = await Promise.all([getEvents(), getReport()]);
+  const contracts = events.reduce((n, e) => n + e.outcomes.length, 0);
+  const venues = q?.report.venues ?? [];
+  const records = venues.reduce((n, v) => n + v.records, 0);
+  const since = venues.length ? Math.min(...venues.map((v) => Date.parse(v.first))) : null;
+  const lowest = venues.length ? Math.min(...venues.map((v) => v.coverage)) : null;
+  const day = (ms: number) =>
+    new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  const figs: [string, string, string][] = [
+    [
+      contracts.toLocaleString("en-US"),
+      "contracts quoted now",
+      "Open contracts with both a bid and an ask, on Kalshi and Polymarket together.",
+    ],
+    [
+      String(venues.length || "–"),
+      "venues recorded",
+      "Every feed the recorder keeps: the two prediction markets, plus options and spot prices used for fair values.",
+    ],
+    [
+      records ? `${(records / 1e9).toFixed(2)}B` : "–",
+      since === null ? "messages recorded" : `messages recorded since ${day(since)}`,
+      "Raw messages from the venues, saved as they arrived and archived every hour.",
+    ],
+    [
+      lowest === null ? "–" : `${(lowest * 100).toFixed(2)}%`,
+      "of the time captured",
+      "The share of time the recorder was receiving data, on the venue with the most gaps.",
+    ],
+    [
+      "93 ms",
+      "live book delay",
+      "Median time from the recorder receiving a Kalshi book change to a browser showing it (measured Nov 23).",
+    ],
   ];
   return (
-    <section className="band tools-band">
-      <span className="tag">For advanced traders</span>
-      <h2>The detailed tools</h2>
-      <p className="band-sub">Always one click away, under Tools in the menu.</p>
+    <section className="stats-row home-figures" aria-label="Manta in numbers">
+      <div className="figures-row">
+        {figs.map(([n, label, help]) => (
+          <div key={label}>
+            <b className="num">{n}</b>
+            <span>{label}</span>
+            <small>{help}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Where to go next: one line per page. */
+function Pages() {
+  const pages = [
+    ["/markets", "Markets", "Every open contract in one sortable table: price, spread, size, volume, gap to fair value."],
+    ["/insights", "Insights", "What the recordings say: when spreads are tightest, how accurate prices are, what crossing venues costs."],
+    ["/how-its-built", "How it's built", "From the venues' feeds to this page: the recorder, the archive, the pricing and the site."],
+    ["/terminal", "Terminal", "Chart, order book, depth and trades for one contract, live, on one screen."],
+  ];
+  return (
+    <section className="home-pages">
+      <span className="tag">Explore</span>
       <ol className="ranked">
-        {tools.map(([href, name, text]) => (
+        {pages.map(([href, name, text]) => (
           <li key={href}>
             <Link href={href} className="row-link">
               <span className="ranked-q">
@@ -279,55 +250,6 @@ function Advanced() {
           </li>
         ))}
       </ol>
-    </section>
-  );
-}
-
-async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
-  await connection();
-  const p = await searchParams;
-  const raw = Array.isArray(p.cat) ? p.cat[0] : p.cat;
-  const f = FILTERS.find((c) => c === raw) ?? "All";
-  const { events, at } = await getEvents();
-  const now = at ?? 0;
-  // 15-minute contracts expire before a reader gets to them; they stay on the Markets page.
-  const shown = pick(events, f, now)
-    .filter((e) => !e.family.endsWith("15M"))
-    .slice(0, 9);
-  return (
-    <section className="markets-home">
-      <span className="tag">Markets</span>
-      <div className="section-h">
-        <h2>Busiest markets today</h2>
-        <nav className="chip-row" aria-label="Filter markets">
-          {FILTERS.map((c) => (
-            <Link
-              key={c}
-              href={c === "All" ? "/" : `/?cat=${encodeURIComponent(c)}`}
-              className={c === f ? "chip-link on" : "chip-link"}
-              scroll={false}
-            >
-              {c}
-            </Link>
-          ))}
-        </nav>
-        <Link href={f === "All" ? "/markets" : `/markets?cat=${encodeURIComponent(f)}`} className="right text-link">
-          All markets →
-        </Link>
-      </div>
-      <p className="muted small">
-        Prices read as chances: a contract at 37¢ pays $1 if it happens, so traders put it at about
-        37%.
-      </p>
-      {shown.length === 0 ? (
-        <p className="muted">Nothing here right now.</p>
-      ) : (
-        <div className="event-grid">
-          {shown.map((e) => (
-            <EventCard key={`${e.venue}/${e.event}`} e={e} now={now} />
-          ))}
-        </div>
-      )}
     </section>
   );
 }

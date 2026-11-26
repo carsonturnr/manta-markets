@@ -1,9 +1,14 @@
 // The terminal's server-rendered panels (fair value, every outcome, arbitrage, distribution,
-// catalysts, alerts): used by /terminal and by the home page's demo of it.
+// catalysts, alerts, the other venue, the Bitcoin fair-value ladder) and the frame every panel
+// sits in: used by /terminal, the Market page (/m/...) and the home page's demo of the terminal.
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
-import { Watch } from "@/components/ContractSections";
+import AlertForm from "@/components/AlertForm";
 import DistChart from "@/components/DistChart";
+import FairLadder from "@/components/FairLadder";
+import { getAlerts, isPaired, isWatched } from "@/lib/account";
+import { deleteAlert, toggleWatch } from "@/lib/accountActions";
+import { describe } from "@/lib/alerts";
 import { arbitrage } from "@/lib/arb";
 import { getBrief } from "@/lib/brief-api";
 import { crossed, getPairs, type Pair } from "@/lib/compare";
@@ -12,6 +17,7 @@ import { fmtValue, getDistributions } from "@/lib/distributions";
 import { type Event } from "@/lib/events";
 import { utc } from "@/lib/format";
 import { featured, mid, outcomeLabel, usableFair } from "@/lib/outcomes";
+import { getBoard } from "@/lib/queries";
 import { score } from "@/lib/scoring";
 import { type Row } from "@/lib/screener";
 import { METHODS } from "@/lib/settlement";
@@ -29,15 +35,65 @@ export const HELP: Record<string, string> = {
   book: "Orders waiting to buy (bids) and sell (asks); the gap between the best of each is the spread you pay to trade now.",
   depth: "How many contracts wait near the best prices on each side, so how large a trade the market can take without moving.",
   tape: "Every trade as it prints, newest first: a buy took someone's ask, a sell hit someone's bid.",
-  ticket: "What a dollar amount would buy on the live book, after fees; Manta places no orders.",
+  cost: "What buying or selling a number of contracts costs on the live book, after slippage and fees; Manta places no orders.",
   fair: "Manta's own estimate of the chance, from options prices or the other venue, beside the market's price and its track record.",
   board: "Every outcome of this event in one table: each strike or range is its own contract, priced from 0 to 100¢.",
   arb: "The same question on Kalshi and Polymarket; when one's bid is above the other's ask, buying one and selling the other locks in the difference.",
   dist: "The spread of final values the strike prices imply, like reading a probability curve from an option chain.",
   cal: "Scheduled economic releases (jobs, inflation, the Fed) whose contracts close soonest, with the market's favourite outcome.",
   alerts: "Watch this contract, or get an email when its price, spread or depth crosses a level you set.",
+  pair: "The same question on the other venue, and its price there.",
+  ladder: "Each Bitcoin strike's bid-to-ask range on Kalshi beside Manta's fair value; shading marks a gap wider than the spread.",
   brief: "A short AI summary of Manta's data on this contract: recent moves, the book, trades and fair value.",
 };
+
+// The short code and title shown on each panel's header.
+export const TITLES: Record<string, [string, string]> = {
+  mon: ["MON", "Markets"],
+  chart: ["GP", "Price"],
+  book: ["BOOK", "Order book"],
+  depth: ["DPTH", "Depth and liquidity"],
+  tape: ["TAPE", "Trades"],
+  cost: ["COST", "Cost to trade"],
+  fair: ["FV", "Fair value"],
+  board: ["EVT", "Every outcome"],
+  arb: ["ARB", "Cross-venue arbitrage"],
+  dist: ["DIST", "Implied distribution"],
+  cal: ["CAL", "Catalysts"],
+  alerts: ["ALRT", "Alerts"],
+  pair: ["XV", "Other venue"],
+  ladder: ["LADR", "Fair value, every strike"],
+  brief: ["AI", "Brief"],
+};
+
+/** The frame of one panel: code, title and a "?" with its one-line help, then the body. The
+ * terminal places it in its grid (`style`); the Market page stacks it in a column. */
+export function Panel({
+  k,
+  title,
+  style,
+  children,
+}: {
+  k: string;
+  title?: string; // overrides the standard title where the page names it differently
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const [code, name] = TITLES[k];
+  const t = title ?? name;
+  return (
+    <section className="t-panel" data-panel={k} style={style}>
+      <header>
+        <span className="t-code">{code}</span>
+        <h2>{t}</h2>
+        <button type="button" className="t-help" aria-label={`About ${t}: ${HELP[k]}`} data-tip={HELP[k]}>
+          ?
+        </button>
+      </header>
+      <div className="t-body">{children}</div>
+    </section>
+  );
+}
 
 /** The market brief (lib/brief-api.ts) for the contract in focus, as the market page shows it. */
 export async function BriefPanel({ venue, id }: { venue: string; id: string }) {
@@ -70,7 +126,37 @@ export async function AlertsPanel({ venue, id }: { venue: string; id: string }) 
       </p>
     );
   }
-  return <Watch venue={venue} id={id} />;
+  const [watched, alerts, paired] = await Promise.all([
+    isWatched(userId, venue, id),
+    getAlerts(userId, venue, id),
+    isPaired(venue, id),
+  ]);
+  return (
+    <section className="watch">
+      <form action={toggleWatch.bind(null, venue, id)}>
+        <button type="submit">{watched ? "★ Watching" : "☆ Watch"}</button>{" "}
+        <Link href="/account" className="small">
+          Your watchlist and alerts
+        </Link>
+      </form>
+      {alerts.length > 0 && (
+        <ul className="alert-list small">
+          {alerts.map((a) => (
+            <li key={a.alertId}>
+              {describe(a.kind, a.threshold)}
+              {a.met && <b> · met now</b>}
+              <form action={deleteAlert.bind(null, a.alertId)}>
+                <button type="submit" className="link-button" aria-label="Delete this alert">
+                  Delete
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      <AlertForm venue={venue} id={id} paired={paired} />
+    </section>
+  );
 }
 
 /** Our fair value beside the midpoint, and how accurate it has been: Brier scores on the
@@ -128,8 +214,9 @@ export async function FairPanel({ o, close, now }: { o: Row; close: number; now:
           Accuracy, {label} before the close, this family on {o.venue === "kalshi" ? "Kalshi" : "Polymarket"}
         </span>
         <div>
-          Brier: market <b>{s.venueF?.toFixed(4) ?? "–"}</b> · fair <b className="t-mint">{s.fair?.toFixed(4) ?? "–"}</b>{" "}
-          <span className="t-dim">({s.fairEvents} closes; lower is better)</span>
+          Error score, lower is better: market <b>{s.venueF?.toFixed(3) ?? "–"}</b> · fair{" "}
+          <b className="t-mint">{s.fair?.toFixed(3) ?? "–"}</b>{" "}
+          <span className="t-dim">(Brier score, the average squared miss, over {s.fairEvents} settled closes)</span>
         </div>
         <p>{verdict}</p>
       </div>
@@ -137,9 +224,26 @@ export async function FairPanel({ o, close, now }: { o: Row; close: number; now:
   );
 }
 
-/** Every outcome of the event in focus, with its price, spread and fair-value gap. */
-export function BoardPanel({ e, focus, layout }: { e: Event; focus: string; layout: string }) {
+/** Every outcome of the event in focus, with its price, spread and fair-value gap. On a long
+ * ladder, strikes priced under 2% or over 98% say little: the ones in play are listed (and the one
+ * in focus), the rest counted. A row links to the terminal on that outcome, or to `href`'s target. */
+export function BoardPanel({
+  e,
+  focus,
+  layout = "market",
+  href,
+}: {
+  e: Event;
+  focus: string;
+  layout?: string;
+  href?: (x: Row) => string;
+}) {
+  const to = href ?? ((x: Row) => `/terminal?m=${encodeURIComponent(`${x.venue}:${x.id}`)}&layout=${layout}`);
+  const inPlay = (x: Row) =>
+    x.id === focus || e.outcomes.length <= 8 || ((mid(x) ?? 0) > 0.02 && (mid(x) ?? 1) < 0.98);
+  const listed = e.outcomes.filter(inPlay);
   return (
+    <>
     <table className="t-table num">
       <thead>
         <tr>
@@ -153,14 +257,14 @@ export function BoardPanel({ e, focus, layout }: { e: Event; focus: string; layo
         </tr>
       </thead>
       <tbody>
-        {e.outcomes.map((x) => {
+        {listed.map((x) => {
           const m = mid(x);
           const f = usableFair(x);
           const g = f !== null && m !== null ? Math.round((f - m) * 1000) / 10 : null;
           return (
             <tr key={x.id} className={x.id === focus ? "on" : undefined}>
               <td>
-                <Link href={`/terminal?m=${encodeURIComponent(`${x.venue}:${x.id}`)}&layout=${layout}`} scroll={false}>
+                <Link href={to(x)} scroll={false}>
                   {outcomeLabel(x)}
                 </Link>
               </td>
@@ -177,6 +281,12 @@ export function BoardPanel({ e, focus, layout }: { e: Event; focus: string; layo
         })}
       </tbody>
     </table>
+    {listed.length < e.outcomes.length && (
+      <p className="t-note">
+        {e.outcomes.length - listed.length} more priced under 2% or over 98% are hidden.
+      </p>
+    )}
+    </>
   );
 }
 
@@ -288,7 +398,7 @@ export function CalendarPanel({ events, now, layout }: { events: Event[]; now: n
   // Past releases: how contracts reacted, measured from our recordings (event response).
   const past = (
     <p className="t-dim small">
-      <Link href="/events">Past releases: how markets reacted →</Link>
+      <Link href="/insights#release">Past releases: how markets reacted →</Link>
     </p>
   );
   if (!upcoming.length)
@@ -328,5 +438,68 @@ export function CalendarPanel({ events, now, layout }: { events: Event[]; now: n
       </ul>
       {past}
     </>
+  );
+}
+
+/** The same question on the other venue, when the contract in focus is one side of a pair
+ * (lib/compare.ts): its bid and ask there, beside this venue's. Nothing when it isn't paired. */
+export async function PairPanel({ o }: { o: Row }) {
+  const { pairs } = await getPairs();
+  const p = pairs.find((x) => (o.venue === "kalshi" ? x.kalshi.ids : x.poly.ids).includes(o.id));
+  if (!p) return null;
+  const here = o.venue === "kalshi" ? p.kalshi : p.poly;
+  const there = o.venue === "kalshi" ? p.poly : p.kalshi;
+  const name = o.venue === "kalshi" ? "Polymarket" : "Kalshi";
+  const m = (s: { bid: number | null; ask: number | null }) =>
+    s.bid !== null && s.ask !== null ? (s.bid + s.ask) / 2 : null;
+  return (
+    <div className="t-fair">
+      <div className="t-fair-figs num">
+        <div>
+          <span>Here, bid / ask</span>
+          <b>
+            {cents(here.bid)} / {cents(here.ask)}
+          </b>
+        </div>
+        <div>
+          <span>{name}, bid / ask</span>
+          <b>
+            {cents(there.bid)} / {cents(there.ask)}
+          </b>
+        </div>
+        <div>
+          <span>{name} mid</span>
+          <b>{pct(m(there))}</b>
+        </div>
+      </div>
+      <p className="t-note">
+        {p.question}
+        {p.kind === "bundle" && `: on ${name}, the sum of ${there.ids.length} range contracts`}
+        {p.kind === "near" && ". Close, not identical: the two venues settle on slightly different numbers"}
+        . <Link href="/insights#crossing">Every pair</Link>
+      </p>
+    </div>
+  );
+}
+
+/** Kalshi's Bitcoin ladder for the event in focus, strike by strike, against Manta's fair value
+ * from Deribit's options (the snapshotter's once-a-minute readings, lib/queries.ts getBoard).
+ * Nothing for other markets. */
+export async function LadderPanel({ e }: { e: Event }) {
+  if (e.venue !== "kalshi" || (e.family !== "KXBTCD" && e.family !== "KXBTC")) return null;
+  const board = await getBoard();
+  const quotes = board?.quotes.filter((q) => q.series === e.family && q.close === e.close) ?? [];
+  if (!quotes.length) return null;
+  return (
+    <div className="pad">
+      <FairLadder
+        title={e.family === "KXBTCD" ? "Pays $1 if BTC is above" : "Pays $1 if BTC is between"}
+        quotes={quotes}
+      />
+      <p className="t-note">
+        Grey bar: Kalshi&apos;s bid to ask. Mint tick: Manta&apos;s fair value. Shaded: fair value
+        outside the bar, a gap wider than the spread.
+      </p>
+    </div>
   );
 }

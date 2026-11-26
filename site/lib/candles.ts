@@ -93,3 +93,41 @@ export function group(bars: Bar[], minutes: number): Bar[] {
   }
   return out;
 }
+
+/** Fills the periods `bars` skip with flat, zero-volume bars at the last close, from the first bar
+ * to `until` (unix seconds; the contract's close, or now). Kalshi leaves a minute out when its
+ * quote did not change (checked 2026-11-25: 100 of 100 skipped minutes on Fed contracts had the same
+ * bid and ask on both sides of the gap), so carrying the close forward draws what happened, and
+ * charts on thin contracts stay continuous. Bars must be grouped into `minutes` already. */
+export function fill(bars: Bar[], minutes: number, until: number): Bar[] {
+  const step = minutes * 60;
+  const out: Bar[] = [];
+  for (const b of bars) {
+    const last = out.at(-1);
+    for (let t = last ? last.time + step : b.time; last && t < b.time; t += step) {
+      out.push({ time: t, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 });
+    }
+    out.push(b);
+  }
+  const end = Math.floor(until / step) * step;
+  for (let last = out.at(-1); last && last.time + step <= end; last = out.at(-1)) {
+    const t = last.time + step;
+    out.push({ time: t, open: last.close, high: last.close, low: last.close, close: last.close, volume: 0 });
+  }
+  return out;
+}
+
+/** The bar length to open a chart on, from how long the contract has data for: 1-minute bars for
+ * hourly contracts, 15-minute for daily ones, 1-hour beyond that. */
+export function defaultMinutes(spanSeconds: number): 1 | 15 | 60 {
+  return spanSeconds <= 3 * 3600 ? 1 : spanSeconds <= 48 * 3600 ? 15 : 60;
+}
+
+/** Manta's own recorded 1-minute candles, with Kalshi's API filling the minutes the recording
+ * doesn't have (the hour not yet replayed, the days before recording began). Where both have a
+ * minute, the recording wins: it is built from the full book Manta captured. In time order. */
+export function mergeCandles(recorded: KalshiCandle[], api: KalshiCandle[]): KalshiCandle[] {
+  const byTime = new Map(api.map((c) => [c.time, c]));
+  for (const c of recorded) byTime.set(c.time, c);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}

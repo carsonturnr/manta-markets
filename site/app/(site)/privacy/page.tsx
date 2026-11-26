@@ -1,6 +1,7 @@
 // The privacy policy (steps 10 and 11): what the waitlist and accounts collect and what happens
-// to it, in plain English. It must stay true to the code: lib/waitlist.ts, lib/account.ts,
-// pricing/alerts.py, db/schema.sql (manta.waitlist, manta.watchlist, manta.alerts).
+// to it, in plain English. It must stay true to the code: lib/account.ts, pricing/alerts.py,
+// db/schema.sql (manta.waitlist, manta.watchlist, manta.alerts). The waitlist form was removed
+// 2026-11-26 (accounts and the API are open); addresses already on it stay until deleted as below.
 export const metadata = { title: "Manta: privacy" };
 
 const CONTACT = "privacy@mantamarkets.com";

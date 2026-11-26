@@ -1,7 +1,8 @@
 "use client";
 // The terminal's live panels, all drawn from one feed (Live.tsx: streamed, or polled every 2 s): the order book with
-// its depth chart and liquidity figures, the trade tape with large trades flagged, and the ticket.
-import BuyBox from "@/components/BuyBox";
+// its depth chart and liquidity figures, the trade tape with large trades flagged, and the cost to
+// trade. The Market page (/m/...) shows the same panels inside its own <Live>.
+import CostCalc from "@/components/CostCalc";
 import { bookMid, cumulative, depthNear, imbalance } from "@/lib/book";
 import type { Level } from "@/lib/cost";
 import { useEffect, useRef } from "react";
@@ -172,15 +173,17 @@ export function TapePanel() {
   );
 }
 
-/** The ticket: what a dollar amount buys on the live book, fees included. Nothing is ordered. */
-export function TicketPanel({
+/** Cost to buy or sell N contracts on the live book, fees and slippage included. Nothing is ordered. */
+export function CostPanel({
   venue,
   rate,
+  fair,
 }: {
   venue: "kalshi" | "polymarket";
   rate: number | null;
+  fair: number | null;
 }) {
   const { book } = useLive();
   if (!book) return <p className="t-empty">Loading the book…</p>;
-  return <BuyBox venue={venue} book={book} rate={rate} />;
+  return <CostCalc venue={venue} book={book} rate={rate} fair={fair} />;
 }
