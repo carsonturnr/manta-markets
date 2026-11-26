@@ -3900,7 +3900,38 @@ details.more[open] > summary {
   padding-bottom: 48px;
 }
 .site-foot .foot-cols {
-  grid-template-columns: repeat(2, minmax(0, 220px));
+  grid-template-columns: repeat(2, minmax(0, 220px)) minmax(0, 1fr);
+}
+/* The mark and name on the right, level with the column headings. */
+.foot-brand {
+  justify-self: end;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0.22em;
+  font-family: var(--serif);
+  font-size: 40px;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: #ededed;
+}
+.foot-brand:hover {
+  text-decoration: none;
+}
+.nav-account .btn {
+  color: #000;
+}
+.nav-account .btn-ghost {
+  color: var(--text);
+}
+@media (max-width: 960px) {
+  .site-foot .foot-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .foot-brand {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 .home-pages .ranked-q span {
   white-space: normal;

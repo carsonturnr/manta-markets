@@ -19,10 +19,6 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
             <Suspense fallback={<NavFallback />}>
               <NavLinks />
             </Suspense>
-            {/* Search is the Markets page's text filter: a plain GET form, no JavaScript. */}
-            <form action="/markets" className="search" role="search">
-              <input type="text" name="q" placeholder="Search" aria-label="Search markets" />
-            </form>
             <AccountNav />
           </HeaderMenu>
         </div>
@@ -46,6 +42,10 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
               <Link href="/privacy">Privacy</Link>
               <a href="https://github.com/carsonturnr/manta-markets">Source code</a>
             </nav>
+            <Link href="/" className="foot-brand" aria-label="Manta, home">
+              <Mark />
+              Manta
+            </Link>
           </div>
           <p>
             Prices from Kalshi&apos;s and Polymarket&apos;s public APIs; fair values from
