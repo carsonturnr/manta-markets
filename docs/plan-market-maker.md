@@ -108,7 +108,7 @@ What the tuning days already say, for reading the reported days:
 
 - **Every setting loses to adverse selection.** Spread earned is $112–$480 a day; adverse selection (the mid's move in the 60 s after each fill) takes $269–$1,072. Inventory (the rest of the move until settlement) is small; maker fees are 0.
 - **Less trading loses less in dollars but more per contract**: the chosen setting trades about a quarter as many contracts as never cancelling (20,000–24,000 a day against 77,000–98,000) and loses 0.88–1.10¢ a contract against 0.63–0.73¢. Cancelling when the level thins avoids some bad fills but also gives up the queue position that the better fills need.
-- **Kalshi's order rate binds**: with no rejoin wait, more than half of the orders sent are refused at 10 a second (e.g. 119,479 of 195,101); the 5 s wait cuts that to about one in five.
+- **Kalshi's order rate binds**: with no rejoin wait, 43–61% of the orders sent are refused at 10 a second (e.g. 119,479 of 195,101); the 5 s wait cuts that to 11–26%.
 - Positions reach about 150 contracts (three hourly events at the 50 cap) on every day; the 200 total cap never binds.
 - Some fills are in contracts that close after 2026-11-26 (38–67 a day on 11-21); they are valued at their mid 60 s after the fill until Kalshi settles them.
 
