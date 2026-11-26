@@ -43,7 +43,6 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
               <a href="https://github.com/carsonturnr/manta-markets">Source code</a>
             </nav>
             <Link href="/" className="foot-brand" aria-label="Manta, home">
-              <Mark />
               Manta
             </Link>
           </div>

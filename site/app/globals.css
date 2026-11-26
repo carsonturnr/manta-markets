@@ -3910,9 +3910,15 @@ details.more[open] > summary {
   align-items: center;
   gap: 0.22em;
   font-family: var(--serif);
-  font-size: 40px;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  /* The wordmark alone, its letters as tall as the link columns beside it (180 px; letters are
+     0.69 of the font size in Newsreader, measured 2026-11-26). */
+  font-size: clamp(96px, 18.2vw, 262px);
+  letter-spacing: -0.045em;
+  line-height: 0.69;
+  /* The line box sits ~0.09em above the letters and the last "a" overhangs its advance: move
+     the ink onto the columns' top edge and inside the page's right edge. */
+  margin-top: 0.092em;
+  margin-right: 0.05em;
   color: #ededed;
   text-transform: none;
 }
