@@ -113,59 +113,61 @@ Each runs from the raw files through the existing normalizer (`recorder/cmd/norm
 
 Commands (backtest/): `manta-queue --series KXBTCD,KXBTC15M [--volatile START/END] --out DAY.json --mids MIDS.parquet <one day's Kalshi files>` per day, `manta-queue-report DAY.json...` to pool them, `manta-fair-series` per day, then `manta-fair-predict --day DIR...`. Tests: backtest/tests/test_queue.py, test_predict.py (17, hand-worked). The six days, streamed in parallel, took about 4.5 hours of running on the Mac (spread over a day: the Mac slept part way).
 
-**Data lost:** the Mac slept during the run and the download in progress was cut off, so 4.4 of 144 hours are missing (2026-11-19 08:00–10:00, 2026-11-21 16:00–17:00, 2026-11-23 07:20–09:00 UTC), found by counting the seconds of each hour that have a mid. A hole closes every order and markout spanning it (they are left out, not counted as unfilled), so the loss shrinks the sample without biasing it.
+**Data:** measurements 1–2 were re-run 2026-11-25 on the same six days with the corrected fill rule (pick-offs, sub-step 5 below), this time with the Mac kept awake: 142 of 144 hours. The missing 2 hours (2026-11-19 08:00–10:00 UTC) are a gap in the recording itself (the archived files hold 3–4 MB instead of 140–270 MB; the recorder restarted at 09:31), not a download problem. Measurement 3 used the first run (4.4 hours lost then to the Mac sleeping: 2026-11-19 08:00–10:00, 2026-11-21 16:00–17:00, 2026-11-23 07:20–09:00 UTC). A hole closes every order and markout spanning it (left out, not counted as unfilled), so it shrinks the sample without biasing it.
+
+**Correction (2026-11-25):** the first version of measurements 1–2 counted a fill only when a trade reached our order. It missed **pick-offs**: the queue ahead of a resting order empties (the fast makers cancel) and a seller then arrives at the order's price, which a real exchange matches with our stale order but which prints no trade at our price. Counting them roughly doubles fill likelihood; the tables below are the corrected ones, with the first version's pooled figures in brackets.
 
 ### 1. Queue size and fill likelihood (KXBTCD; KXBTC15M below)
 
-Queue at the best price = the smaller of the two sides' sizes, every 10 s, on active contracts. Fill likelihood = share of hypothetical orders filled in full, pessimistic–optimistic (cancellations all behind us / all ahead of us).
+Queue at the best price = the smaller of the two sides' sizes, every 10 s, on active contracts. Fill likelihood = share of hypothetical 1-contract orders filled in full, pessimistic–optimistic (cancellations all behind us / all ahead of us).
 
-| Day type | Queue samples | Queue quartiles (contracts) | 1¢ spread | Orders | 1 contract, 10 s | 1 contract, 60 s | 1 contract, 5 min | 100 contracts, 60 s |
+| Day type | Queue samples | Queue quartiles (contracts) | 1¢ spread | Orders | 10 s | 60 s | 5 min | 100 contracts, 60 s |
 |---|---|---|---|---|---|---|---|---|
-| weekday US hours | 263,645 | 349 / 1,039 / 2,055 | 95.0% | 87,836 | 6.8–10.0% | 20.0–25.0% | 36.7–42.4% | 13.5–15.9% |
-| weekday off-hours | 797,504 | 524 / 1,481 / 2,557 | 96.9% | 265,216 | 3.2–4.9% | 8.7–11.3% | 17.1–22.4% | 6.6–8.0% |
-| weekend | 1,023,389 | 315 / 808 / 1,732 | 94.4% | 340,911 | 3.2–4.6% | 9.4–11.7% | 17.9–21.9% | 6.7–7.9% |
-| volatile (11-23) | 443,022 | 618 / 1,636 / 2,869 | 95.8% | 147,360 | 3.6–5.3% | 10.5–13.1% | 19.5–23.7% | 7.3–8.7% |
-| **pooled** | 2,527,560 | 400 / 1,132 / 2,230 | 95.5% | 841,323 | 3.6–5.4% | 10.5–13.2% | 19.9–24.5% | 7.5–8.9% |
+| weekday US hours | 263,645 | 349 / 1,039 / 2,055 | 95.0% | 87,836 | 16.1–19.1% | 35.8–39.6% | 57.0–61.0% | 35.5–37.1% |
+| weekday off-hours | 797,504 | 524 / 1,481 / 2,557 | 96.9% | 265,216 | 6.4–7.9% | 17.9–20.1% | 38.2–42.0% | 17.7–18.7% |
+| weekend | 1,049,225 | 314 / 807 / 1,719 | 94.3% | 349,628 | 7.2–8.5% | 17.1–18.9% | 32.2–35.1% | 16.9–17.8% |
+| volatile (11-23) | 470,638 | 628 / 1,656 / 2,906 | 95.9% | 156,497 | 8.8–10.4% | 21.0–22.9% | 39.4–42.3% | 20.8–21.8% |
+| **pooled** | 2,581,012 | 399 / 1,129 / 2,234 | 95.4% | 859,177 | 8.1–9.7% (3.6–5.4%) | 20.0–22.1% (10.5–13.2%) | 37.9–41.2% (19.9–24.5%) | 19.8–20.8% (7.5–8.9%) |
 
-By queue ahead when placed (pooled), 1 contract within 60 s: under 100: 28.4–30.1% (44,224 orders); 100–1,000: 17.5–20.0% (179,978); 1,000–10,000: 7.7–10.8% (558,043); 10,000 and more: 2.2–3.3% (59,078).
+By queue ahead when placed (pooled), 1 contract within 60 s: under 100: 41.8–42.9% (45,134 orders); 100–1,000: 28.5–30.5% (184,292); 1,000–10,000: 16.8–19.2% (569,544); 10,000 and more: 7.8–8.7% (60,207).
 
-KXBTC15M (pooled, 8,701 orders): median queue 2,399, 1¢ spread 99.8%, and 74.8–81.6% filled within 10 s, 85.8–88.7% within 60 s (off-hours 77–80%, the other types 91–95%).
+**Opposite side reaching an order's price** (first episode per order): picked off (filled) 298,311 / locked book with size still ahead (not filled) 21,951, a locked share of **6.9%** in the pessimistic model (2.5% optimistic); by day type 4.1–8.3% (pessimistic).
 
-The first run (4 hours of 11-23, in the first version of this plan) gave 17.8–21.8% within 60 s. Those hours turned out to include the volatile day's busiest US-hours stretch; over six days the pooled figure is about half that.
+KXBTC15M (pooled, 8,867 orders): median queue 2,399, 1¢ spread 99.8%, and 74.9–81.8% filled within 10 s, 85.8–88.9% within 60 s (off-hours 77–80%, the other types 91–96%).
 
 ### 2. Adverse selection (markouts)
 
 A **markout** is what a maker's trade was worth some time later, in cents per contract: bought at p, worth (mid later − p); sold, (p − mid later). It splits into **spread earned** (mid just before the trade − p; the mid 1 s earlier, since Kalshi's book change can arrive before its trade) and **adverse selection** (mid later − that mid). ± is two standard errors. Mids are read on the recorded book; a horizon past the contract's close uses the last mid before the close.
 
-**Every recorded KXBTCD trade, from the side of the resting order it hit** (no queue model; mostly the professional makers):
+**Every recorded KXBTCD trade, from the side of the resting order it hit** (no queue model; mostly the professional makers; unchanged by the correction):
 
-| Day type | Trades (60 s) | Spread earned | Adverse selection, 60 s | Total, 10 s | Total, 60 s | Total, 5 min |
-|---|---|---|---|---|---|---|
-| weekday US hours | 596,585 | +0.70 | −0.85 | −0.08 ± 0.04 | −0.15 ± 0.10 | +0.28 ± 0.17 |
-| weekday off-hours | 968,220 | +0.77 | −0.91 | −0.12 ± 0.03 | −0.14 ± 0.06 | −0.19 ± 0.10 |
-| weekend | 1,040,337 | +0.85 | −0.97 | −0.08 ± 0.03 | −0.12 ± 0.06 | −0.16 ± 0.10 |
-| volatile | 506,323 | +0.90 | −0.87 | +0.03 ± 0.06 | +0.02 ± 0.10 | +0.34 ± 0.15 |
-| **pooled** | 3,111,465 | +0.80 | −0.91 | −0.07 ± 0.02 | −0.11 ± 0.04 | −0.00 ± 0.06 |
+| Day type | Trades (60 s) | Spread earned | Adverse selection, 60 s | Total, 10 s | Total, 60 s |
+|---|---|---|---|---|---|
+| weekday US hours | 596,585 | +0.70 | −0.85 | −0.08 ± 0.04 | −0.15 ± 0.10 |
+| weekday off-hours | 968,220 | +0.77 | −0.91 | −0.12 ± 0.03 | −0.14 ± 0.06 |
+| weekend | 1,066,126 | +0.85 | −0.96 | −0.07 ± 0.03 | −0.11 ± 0.05 |
+| volatile | 524,263 | +0.89 | −0.87 | +0.02 ± 0.05 | +0.02 ± 0.10 |
+| **pooled** | 3,155,194 | +0.80 | −0.91 | −0.07 ± 0.02 | −0.10 ± 0.04 |
 
-**Our hypothetical orders that joined the back of the queue and never cancelled**, first fill, total markout (pessimistic queue / optimistic queue):
+**Our hypothetical orders that joined the back of the queue and never cancelled**, first fill, total markout in cents (pessimistic queue model; pooled also optimistic):
 
-| | Fills (pessimistic, 60 s) | 10 s | 60 s | 5 min |
+| | Fills (60 s) | 10 s | 60 s | 5 min |
 |---|---|---|---|---|
-| KXBTCD, pooled | 167,353 | −1.16 / −0.61 | −1.29 / −0.73 | −1.33 / −0.77 |
-| KXBTCD, weekday US hours | 32,665 | −1.28 | −1.32 | −1.56 |
-| KXBTCD, weekday off-hours | 45,164 | −0.97 | −1.07 | −1.00 |
-| KXBTCD, weekend | 60,902 | −1.17 | −1.36 | −1.36 |
-| KXBTCD, volatile | 28,622 | −1.32 | −1.48 | −1.50 |
-| KXBTC15M, pooled | 7,552 | −0.72 / −0.32 | −0.81 / −0.37 | −0.83 / −0.33 |
+| KXBTCD, pooled (pessimistic / optimistic) | 326,135 | −0.64 / −0.39 | −0.74 / −0.48 | −0.77 / −0.52 |
+| KXBTCD, weekday US hours | 50,745 | −0.68 | −0.75 | |
+| KXBTCD, weekday off-hours | 100,997 | −0.61 | −0.65 | |
+| KXBTCD, weekend | 112,430 | −0.65 | −0.78 | |
+| KXBTCD, volatile | 61,963 | −0.65 | −0.78 | |
+| KXBTC15M, pooled (pessimistic / optimistic) | 7,707 | −0.73 / −0.31 | −0.81 / −0.37 | −0.84 / −0.35 |
 
-(Standard errors: ± 0.01–0.14¢ for KXBTCD, ± 0.15–0.80¢ for KXBTC15M. KXBTC15M's recorded trades: −0.05 ± 0.01 at 10 s, +0.03 ± 0.03 at 60 s.)
+(Standard errors ± 0.01–0.04¢ for KXBTCD, ± 0.15–0.80¢ for KXBTC15M. First version, KXBTCD pooled at 60 s: −1.29 / −0.73.)
 
 What this says:
 
-- **The makers already there roughly break even on the average trade** at 10 s to 5 min: they earn about 0.8¢ of spread and give back about 0.9¢ when the price moves on. Whatever they earn comes from choosing which trades they keep (cancelling fast), not from the average fill.
-- **A slow order at the back of the queue loses about 1¢ per contract filled on KXBTCD** (0.6–1.3¢ between the queue bounds), at every horizon and every day type. It gets filled mostly when the market has moved through its price, which is why its "spread earned" split comes out negative: by the time the last contract ahead of it trades, the mid has already moved. The total is the number to design from.
-- **KXBTC15M loses less per fill** (0.3–0.8¢) and fills far more often, but it is a single contract that tracks Bitcoin second by second and has no fair value of ours.
-- These orders never cancel, which a real maker would do. With our latency (data 57 ms late, orders 56 ms more to arrive) against about 1 ms for the firms next to Kalshi, our cancels would usually arrive after theirs, so the backtest has to show how much cancelling saves rather than assume it.
+- **The makers already there roughly break even on the average trade** at 10 s to 5 min: about 0.8¢ of spread earned and about 0.9¢ given back as the price moves on. Whatever they earn comes from choosing which trades to keep (cancelling fast), not from the average fill.
+- **A slow order at the back of the queue loses about 0.5–0.8¢ per contract filled on KXBTCD**, in every day type. Its "spread earned" comes out slightly negative because it is mostly filled after the price has started moving through it; the total is the number to design from.
+- **KXBTC15M fills far more often** (86–89% within 60 s) and loses a similar 0.4–0.8¢ per fill, with much wider errors; it has no fair value of ours.
+- These orders never cancel, which a real maker would. With our latency (data 57 ms late, orders 56 ms more to arrive) against about 1 ms for the firms next to Kalshi, our cancels usually arrive after theirs; the backtest measures how much cancelling saves.
 
 ### 3. Does our fair value predict the next move? (KXBTCD)
 
@@ -191,7 +193,7 @@ From `manta.markets` (fee rates per series), checked against Kalshi's live API f
 
 Approved 2026-11-25 by the coordinating session (Carson delegated the market-maker decisions to it), with two changes, written in below: parameters are tuned on three days and reported on the other three, and a total exposure cap is back.
 
-1. **Family:** KXBTCD stays the main backtest (validated catalog, 47 active contracts, fair value as a guard). KXBTC15M is run as a comparison with the same strategy (`--series`), because it fills seven to eight times as often and loses less per fill; the backtest report shows both.
+1. **Family:** KXBTCD stays the main backtest (validated catalog, 47 active contracts, fair value as a guard). KXBTC15M is run as a comparison with the same strategy (`--series`), because it fills far more often; the backtest report shows both. (The approved draft also said it loses less per fill; after the 2026-11-25 correction to measurement 2 it loses about the same, 0.4–0.8¢.)
 2. **Join, never improve:** quote at the best bid and best ask only, 1–10 contracts (the measured queues are hundreds to thousands, so our size never matters to the book). At a 1¢ spread, improving would cross.
 3. **Cancel on signs the level is going:** cancel and rejoin when the mid moves, or when the queue ahead of us falls below a threshold while trades eat it (measurement 2: back-of-queue fills come as the level is consumed). The threshold is chosen in the backtest, at 56 ms and 112 ms latency.
 4. **Fair value only as a guard:** do not post a bid above fair value or an ask below it by more than 2¢ (measurement 3: no predictive value to lean on).
