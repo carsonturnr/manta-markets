@@ -63,7 +63,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
   });
   const [source, setSource] = useState<"mid" | "trades">("mid");
   const [kind, setKind] = useState<"candles" | "line">("candles");
-  const [show, setShow] = useState({ fair: true, quotes: true, volume: true });
+  const [show, setShow] = useState({ fair: true, quotes: false, volume: true });
   const [hover, setHover] = useState<Bar | null>(null);
   // Where the pointer is over the chart, for the hover card; null when it's off the chart.
   const [at, setAt] = useState<{ x: number; y: number; w: number } | null>(null);
@@ -179,7 +179,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
         lineWidth: 2,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
-        title: "Manta",
+        lastValueVisible: false,
         priceFormat,
       }),
     };
@@ -291,7 +291,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
         </span>
         <span className="hint">Times UTC · drag to pan</span>
       </div>
-      <div className="candle-box">
+      <div className="candle-meta">
         {b && (
           <div className="ohlc num" aria-live="off">
             <span>
@@ -328,6 +328,8 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
           )}
           {!kalshi && <span>Polymarket&apos;s price (midpoint or last trade)</span>}
         </div>
+      </div>
+      <div className="candle-box">
         <div ref={box} className="candle-canvas" />
         {hover && at && (
           // Flips to the pointer's left past the middle, so it never runs off the chart's edge.
