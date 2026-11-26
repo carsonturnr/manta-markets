@@ -559,17 +559,17 @@ def report_main() -> None:
         loaded.append((label, Path(path), json.loads(Path(path).read_text())))
     settle = settlements({f["ticker"] for *_, d in loaded for f in d["fills"]}, a.settle)
     print(
-        "| Set | Run | Fills | Contracts | Spread earned | Adverse selection | Inventory | Fees "
-        "| Total | Total per contract | Peak position |"
+        "| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts | Spread earned "
+        "| Adverse selection | Inventory | Fees | Total | Total per contract | Peak position |"
     )
-    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for label, path, d in loaded:
-        fills, missing = [], 0
+        fills, unsettled = [], 0
         for f in d["fills"]:
-            if f["ticker"] not in settle:
-                missing += 1
-                continue
-            v = settle[f["ticker"]]
+            v = settle.get(f["ticker"])
+            if v is None:  # closes after today: valued at its mid 60 s after the fill
+                unsettled += 1
+                v = f["mid_after"] if f["mid_after"] is not None else f["price"]
             fills.append(
                 Fill(
                     f["ticker"],
@@ -587,8 +587,10 @@ def report_main() -> None:
         qty = sum(f.qty for f in fills)
         per = 100 * p["total"] / qty if qty else 0.0
         cells = " | ".join(f"${p[k]:+,.2f}" for k in ("spread", "adverse", "inventory", "fees"))
+        r = d["run"]
         print(
-            f"| {label} | {path.stem} | {len(fills):,} | {qty:,.0f} | {cells} | "
-            f"${p['total']:+,.2f} | {per:+.2f}¢ | {d['run']['peak']:.0f} |"
-            + (f" ({missing} fills unsettled)" if missing else "")
+            f"| {label} | {path.stem} | {r['submitted']:,} | {r.get('denied', 0):,} | "
+            f"{len(fills):,} | {qty:,.0f} | {cells} | "
+            f"${p['total']:+,.2f} | {per:+.2f}¢ | {r['peak']:.0f} |"
+            + (f" ({unsettled} fills not yet settled, valued at their mid)" if unsettled else "")
         )

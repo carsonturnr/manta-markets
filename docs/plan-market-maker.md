@@ -90,6 +90,51 @@ Each runs from the raw files through the existing normalizer (`recorder/cmd/norm
   - **fees** = Kalshi's formula per fill.
   These add up to the total profit and loss exactly; a test checks it on a hand-worked sequence of fills.
 
+### Tuning result and choice (2026-11-26, before any reported-day run)
+
+The six pre-registered settings, KXBTCD, 56 ms latency, on the three tuning days (`manta-mm-backtest`, then `manta-mm-report`; settlement values from Kalshi's public API). Every setting loses money on every tuning day.
+
+| Setting (cancel below this fraction of the size we joined; rejoin wait) | 2026-11-17 | 2026-11-19 | 2026-11-21 | **Total** |
+|---|---|---|---|---|
+| 0 (never on shrinking); 0 s, and 0; 5 s (identical: the wait only follows such a cancel) | −$563.43 | −$636.85 | −$526.38 | −$1,726.66 |
+| 0.25; 0 s | −$443.80 | −$480.80 | −$516.03 | −$1,440.63 |
+| 0.25; 5 s | −$243.83 | −$216.97 | −$196.67 | −$657.47 |
+| 0.5; 0 s | −$490.30 | −$467.19 | −$463.54 | −$1,421.03 |
+| **0.5; 5 s (chosen)** | −$222.90 | −$211.43 | −$193.56 | **−$627.89** |
+
+**Chosen: cancel when the size at our price falls below half of what it was when we joined, then wait 5 s before rejoining.** By the rule fixed beforehand (best total over the tuning days); the next best, 0.25 with 5 s, is $29.58 behind.
+
+What the tuning days already say, for reading the reported days:
+
+- **Every setting loses to adverse selection.** Spread earned is $112–$480 a day; adverse selection (the mid's move in the 60 s after each fill) takes $269–$1,072. Inventory (the rest of the move until settlement) is small; maker fees are 0.
+- **Less trading loses less in dollars but more per contract**: the chosen setting trades about a quarter as many contracts as never cancelling (20,000–24,000 a day against 77,000–98,000) and loses 0.88–1.10¢ a contract against 0.63–0.73¢. Cancelling when the level thins avoids some bad fills but also gives up the queue position that the better fills need.
+- **Kalshi's order rate binds**: with no rejoin wait, more than half of the orders sent are refused at 10 a second (e.g. 119,479 of 195,101); the 5 s wait cuts that to about one in five.
+- Positions reach about 150 contracts (three hourly events at the 50 cap) on every day; the 200 total cap never binds.
+- Some fills are in contracts that close after 2026-11-26 (38–67 a day on 11-21); they are valued at their mid 60 s after the fill until Kalshi settles them.
+
+Full report of the 18 runs:
+
+| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts | Spread earned | Adverse selection | Inventory | Fees | Total | Total per contract | Peak position |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-17 | mm-tune-f0-r0 | 89,035 | 38,030 | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | $-563.43 | -0.73¢ | 149 |
+| 2026-11-17 | mm-tune-f0-r5 | 89,035 | 38,030 | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | $-563.43 | -0.73¢ | 149 |
+| 2026-11-17 | mm-tune-f0.25-r0 | 111,757 | 57,627 | 12,215 | 55,070 | $+319.20 | $-722.45 | $-40.56 | $+0.00 | $-443.80 | -0.81¢ | 150 |
+| 2026-11-17 | mm-tune-f0.25-r5 | 39,190 | 6,033 | 5,364 | 23,769 | $+131.67 | $-319.17 | $-56.33 | $+0.00 | $-243.83 | -1.03¢ | 150 |
+| 2026-11-17 | mm-tune-f0.5-r0 | 146,929 | 78,647 | 13,198 | 58,921 | $+340.07 | $-814.90 | $-15.47 | $+0.00 | $-490.30 | -0.83¢ | 149 |
+| 2026-11-17 | mm-tune-f0.5-r5 | 38,506 | 4,377 | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | $-222.90 | -1.10¢ | 150 |
+| 2026-11-19 | mm-tune-f0-r0 | 126,134 | 68,656 | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | $-636.85 | -0.65¢ | 150 |
+| 2026-11-19 | mm-tune-f0-r5 | 126,134 | 68,656 | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | $-636.85 | -0.65¢ | 150 |
+| 2026-11-19 | mm-tune-f0.25-r0 | 162,715 | 96,893 | 15,726 | 73,317 | $+394.11 | $-841.89 | $-33.02 | $+0.00 | $-480.80 | -0.66¢ | 150 |
+| 2026-11-19 | mm-tune-f0.25-r5 | 42,054 | 7,651 | 5,566 | 25,928 | $+129.95 | $-291.39 | $-55.53 | $+0.00 | $-216.97 | -0.84¢ | 149 |
+| 2026-11-19 | mm-tune-f0.5-r0 | 195,101 | 119,479 | 14,902 | 69,609 | $+373.97 | $-775.67 | $-65.49 | $+0.00 | $-467.19 | -0.67¢ | 150 |
+| 2026-11-19 | mm-tune-f0.5-r5 | 49,538 | 8,726 | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | $-211.43 | -0.90¢ | 149 |
+| 2026-11-21 | mm-tune-f0-r0 | 123,832 | 65,167 | 18,119 | 84,144 | $+370.95 | $-895.92 | $-1.41 | $+0.00 | $-526.38 | -0.63¢ | 149 | (56 fills not yet settled, valued at their mid)
+| 2026-11-21 | mm-tune-f0-r5 | 123,832 | 65,167 | 18,119 | 84,144 | $+370.95 | $-895.92 | $-1.41 | $+0.00 | $-526.38 | -0.63¢ | 149 | (56 fills not yet settled, valued at their mid)
+| 2026-11-21 | mm-tune-f0.25-r0 | 156,173 | 88,652 | 15,669 | 73,273 | $+348.94 | $-812.31 | $-52.65 | $+0.00 | $-516.03 | -0.70¢ | 150 | (67 fills not yet settled, valued at their mid)
+| 2026-11-21 | mm-tune-f0.25-r5 | 42,416 | 10,985 | 5,268 | 24,391 | $+118.32 | $-314.53 | $-0.46 | $+0.00 | $-196.67 | -0.81¢ | 148 | (38 fills not yet settled, valued at their mid)
+| 2026-11-21 | mm-tune-f0.5-r0 | 159,710 | 88,981 | 14,257 | 66,400 | $+323.82 | $-752.98 | $-34.38 | $+0.00 | $-463.54 | -0.70¢ | 149 | (67 fills not yet settled, valued at their mid)
+| 2026-11-21 | mm-tune-f0.5-r5 | 44,660 | 10,340 | 4,699 | 21,994 | $+112.29 | $-269.42 | $-36.44 | $+0.00 | $-193.56 | -0.88¢ | 150 | (43 fills not yet settled, valued at their mid)
+
 ## Paper trading on Kalshi demo
 
 - **Needs:** Kalshi demo API keys (none yet; Carson to create them at the demo site), stored in `.env` / `/etc/manta/env` only. Nautilus's Kalshi adapter, demo environment, limit and post-only orders only.
