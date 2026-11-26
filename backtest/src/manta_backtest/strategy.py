@@ -510,6 +510,11 @@ def backtest_main() -> None:
     ap.add_argument("--rejoin", type=float, required=True, help="seconds")
     ap.add_argument("--latency-ms", type=float, default=56)
     ap.add_argument("--out", required=True, type=Path, help="fills as JSON")
+    ap.add_argument(
+        "--no-rate-limit",
+        action="store_true",
+        help="hypothetical: lift Kalshi's order rate (a higher tier is not available to us)",
+    )
     a = ap.parse_args()
     mm = MarketMaker(
         a.cancel_frac,
@@ -522,9 +527,13 @@ def backtest_main() -> None:
         mm,
         latency_ns=int(a.latency_ms * 1_000_000),
         series=set(a.series.split(",")),
-        risk=RiskEngineConfig(max_order_submit_rate=KALSHI_RATE),
+        risk=RiskEngineConfig(bypass=True)
+        if a.no_rate_limit
+        else RiskEngineConfig(max_order_submit_rate=KALSHI_RATE),
     )
-    run = {k: getattr(a, k) for k in ("cancel_frac", "rejoin", "latency_ms", "series")}
+    run = {
+        k: getattr(a, k) for k in ("cancel_frac", "rejoin", "latency_ms", "series", "no_rate_limit")
+    }
     run |= {"submitted": mm.submitted, "rejected": mm.rejected, "denied": mm.denied}
     run |= {"peak": mm.peak}
     a.out.write_text(json.dumps({"run": run, "fills": mm.fills}))
@@ -559,10 +568,12 @@ def report_main() -> None:
         loaded.append((label, Path(path), json.loads(Path(path).read_text())))
     settle = settlements({f["ticker"] for *_, d in loaded for f in d["fills"]}, a.settle)
     print(
-        "| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts | Spread earned "
-        "| Adverse selection | Inventory | Fees | Total | Total per contract | Peak position |"
+        "| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts traded "
+        "| Spread earned | Adverse selection (60 s) | Inventory | Fees | **Total** "
+        "| Per contract | Don't quote | Peak position |"
     )
-    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    pooled: dict[str, list] = {}  # label → [sent, refused, fills list, peak]
     for label, path, d in loaded:
         fills, unsettled = [], 0
         for f in d["fills"]:
@@ -583,14 +594,40 @@ def report_main() -> None:
                     v,
                 )
             )
-        p = split(fills)
-        qty = sum(f.qty for f in fills)
-        per = 100 * p["total"] / qty if qty else 0.0
-        cells = " | ".join(f"${p[k]:+,.2f}" for k in ("spread", "adverse", "inventory", "fees"))
         r = d["run"]
-        print(
-            f"| {label} | {path.stem} | {r['submitted']:,} | {r.get('denied', 0):,} | "
-            f"{len(fills):,} | {qty:,.0f} | {cells} | "
-            f"${p['total']:+,.2f} | {per:+.2f}¢ | {r['peak']:.0f} |"
-            + (f" ({unsettled} fills not yet settled, valued at their mid)" if unsettled else "")
+        acc = pooled.setdefault(label, [0, 0, [], 0.0])
+        acc[0] += r["submitted"]
+        acc[1] += r.get("denied", 0)
+        acc[2] += fills
+        acc[3] = max(acc[3], r["peak"])
+        note = f" {unsettled} fills not yet settled, valued at their mid." if unsettled else ""
+        _row(
+            label,
+            f"{path.parent.name} {path.stem}",
+            r["submitted"],
+            r.get("denied", 0),
+            fills,
+            r["peak"],
+            note,
         )
+    if len(loaded) > len(pooled):
+        for label, (sent, refused, fills, peak) in pooled.items():
+            _row(f"**{label}**", "**all days**", sent, refused, fills, peak, "")
+    print(
+        "\nSpread earned + adverse selection + inventory + fees = total in every row (checked in "
+        "code). Don't quote = the profit and loss of sending no orders: $0."
+    )
+
+
+def _row(label, run, sent, refused, fills, peak, note) -> None:
+    p = split(fills)
+    parts = p["spread"] + p["adverse"] + p["inventory"] + p["fees"]
+    assert abs(parts - p["total"]) < 1e-6, f"{run}: parts {parts} != total {p['total']}"
+    qty = sum(f.qty for f in fills)
+    per = 100 * p["total"] / qty if qty else 0.0
+    cells = " | ".join(f"${p[k]:+,.2f}" for k in ("spread", "adverse", "inventory", "fees"))
+    share = f"{refused:,} ({refused / sent:.0%})" if sent else "0"
+    print(
+        f"| {label} | {run} | {sent:,} | {share} | {len(fills):,} | {qty:,.0f} | {cells} | "
+        f"**${p['total']:+,.2f}** | {per:+.2f}¢ | $0.00 | {peak:.0f} |{note}"
+    )
