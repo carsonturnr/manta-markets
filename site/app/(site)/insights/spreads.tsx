@@ -33,10 +33,22 @@ export default async function Spreads() {
     `${NAME.get(`${r.venue}/${r.family}`) ?? r.family} (${venueName(r.venue)})`;
   const quoted = rows.filter((r) => r.spread !== null);
   const profile = hourProfile(hours);
+  // The cheapest and dearest markets to cross right now, by spread.
+  const bySpread = [...quoted].sort((a, b) => a.spread! - b.spread!);
+  const cheap = bySpread[0];
+  const dear = bySpread.at(-1);
   return (
     <>
       <p className="insight-says">
         <BestHours profile={profile} />
+        {cheap && dear && cheap !== dear && (
+          <>
+            {" "}
+            Which market matters more than the hour: crossing the spread costs{" "}
+            <b className="num">{cents(cheap.spread)}</b> a contract on {label(cheap)} right now, but{" "}
+            <b className="num down">{cents(dear.spread)}</b> on {label(dear)}.
+          </>
+        )}
       </p>
       <section className="panel stack">
         <Heatmap rows={rows.map((r) => `${r.venue}/${r.family}`)} hours={hours} />

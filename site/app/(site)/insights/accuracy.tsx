@@ -16,7 +16,7 @@ import {
   gapsByHour,
   type GapRow,
 } from "@/lib/stats";
-import { calibrationMiss, headline, type Line, verdict } from "@/lib/stats-view";
+import { calibrationMiss, headline, type Line, verdict, worstBand } from "@/lib/stats-view";
 
 const HORIZONS: [number, string][] = [
   [5, "5 min"],
@@ -55,14 +55,34 @@ export default async function Accuracy() {
     );
   const lead = headline(lines);
   const miss = calibrationMiss(cal.points, ["kalshi", "polymarket"]);
+  const worst = worstBand(cal.points, ["kalshi", "polymarket"]);
   if (cal.events === 0 || !miss) return <p className="muted">Not enough settled closes yet.</p>;
   return (
     <>
       <p className="insight-says">
-        {miss.miss < 0.05 ? "Market prices work as honest odds" : "Market prices are rough odds"}: across{" "}
-        <b className="num">{n0(miss.n)}</b> predictions from <b className="num">{n0(cal.events)}</b>{" "}
-        settled closes, the share that paid out was on average{" "}
-        <b className="num">{(miss.miss * 100).toFixed(1)} points</b> from what the price said.
+        {/* The band the market got most wrong leads: the average alone says only "prices are
+            roughly right", which nobody needs a chart for. */}
+        {worst && (
+          <>
+            Contracts priced{" "}
+            <b className="num">
+              {worst.bucket * 10}–{worst.bucket * 10 + 10}¢
+            </b>{" "}
+            paid out <b className="num">{(worst.hit * 100).toFixed(1)}%</b> of the time against the{" "}
+            <b className="num">{(worst.pred * 100).toFixed(1)}%</b> their price said (
+            {n0(worst.n)} predictions):{" "}
+            {worst.hit < worst.pred ? "overpriced, so buying them lost" : "underpriced, so buying them earned"}{" "}
+            about{" "}
+            <b className={worst.hit < worst.pred ? "num down" : "num up"}>
+              {(Math.abs(worst.hit - worst.pred) * 100).toFixed(1)}¢
+            </b>{" "}
+            per contract before fees. Treat it as a lead, not a rule: those contracts come from far
+            fewer closes, and contracts of one close win or lose together.{" "}
+          </>
+        )}
+        Elsewhere prices were close: across {n0(miss.n)} predictions from {n0(cal.events)} settled
+        closes, the share that paid out was on average {(miss.miss * 100).toFixed(1)} points from the
+        price.
       </p>
       <section className="panel stack">
         <header className="ph">

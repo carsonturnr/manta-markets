@@ -1,25 +1,28 @@
-// Markets: every open contract Manta covers in one sortable table (lib/screener.ts screen()),
-// with a category and a search, and a one-line explanation under each column heading on hover or
-// focus. Each row opens its Market page. Server-rendered: sorting and filtering are links and a
-// GET form, so the view is a shareable URL.
+// Markets: every open question Manta covers on one page, one row per event (lib/events.ts
+// getEvents()), busiest first. A row shows the event's most likely outcome, its volume and its
+// close; opening it lists every outcome with price, spread, size, volume and the gap to fair
+// value, each linking to its Market page. Server-rendered: the category, the search and the order
+// are links and a GET form, so a view is a shareable URL. No pages to click through: a few hundred
+// events fit on one page, where ~1,300 contracts did not.
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProbBar } from "@/components/EventCard";
 import LiveForm from "@/components/LiveForm";
-import { type Category, FAMILIES } from "@/lib/families";
+import { type Event, getEvents } from "@/lib/events";
+import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
-import { mid, outcomeLabel } from "@/lib/outcomes";
-import { type Filters, PAGE, type Row, screen, type Sort } from "@/lib/screener";
+import { featured, mid, outcomeLabel } from "@/lib/outcomes";
+import type { Row } from "@/lib/screener";
 
 export const metadata = { title: "Manta: markets" };
 
 type Params = Record<string, string | string[] | undefined>;
 
-const CATEGORIES: Category[] = ["Crypto", "Economics", "Financials"];
+const CATEGORIES = ["Crypto", "Economics", "Financials"] as const;
 const FAMILY_NAME = new Map(FAMILIES.map((f) => [f.family, f.name]));
-// The columns this page sorts by; the first is the default (most traded first).
-const SORTABLE: Sort[] = ["dollars", "mid", "spread", "depth", "edge", "close"];
+const ORDERS = { volume: "Most traded", close: "Closing soonest" } as const;
+type Order = keyof typeof ORDERS;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
 
@@ -28,9 +31,9 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<Pa
     <>
       <h1>Markets</h1>
       <p className="lede markets-lede">
-        Every open crypto, economics and financial contract on Kalshi and Polymarket. A contract
-        pays $1 if its outcome happens and nothing if not, so its price reads as a chance: 37¢ means
-        traders put it at about 37%. Hover or tab to a column heading to see what it means.
+        Every open crypto, economics and financial question on Kalshi and Polymarket. Each contract
+        pays $1 if its outcome happens, so its price reads as a chance: 37¢ means about 37%. Open a
+        question to see all its outcomes.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Markets searchParams={searchParams} />
@@ -39,45 +42,43 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<Pa
   );
 }
 
-/** The URL's filters, each checked against what it may be; everything the page doesn't offer is
- * left at the screener's default. */
-function parse(p: Params): Filters {
-  const page = Number.parseInt(one(p.page), 10);
-  const sort = SORTABLE.find((s) => s === one(p.sort)) ?? "dollars";
-  return {
-    venue: "",
-    category: CATEGORIES.find((c) => c === one(p.cat)) ?? "",
-    family: "",
-    closes: "",
-    traded: false,
-    oneSided: false,
-    spread: 0,
-    q: one(p.q).trim().slice(0, 60),
-    sort,
-    // Most traded first by default; a URL can flip it.
-    desc: p.dir === undefined ? sort === "dollars" : one(p.dir) === "desc",
-    page: Number.isFinite(page) && page > 0 && page < 1000 ? page : 0,
-  };
-}
+type View = { cat: string; q: string; order: Order };
 
-/** The URL for these filters with some changed; defaults are left out to keep links short. */
-function href(f: Filters, change: Partial<Filters>): string {
-  const g = { ...f, ...change };
+function href(v: View, change: Partial<View>): string {
+  const g = { ...v, ...change };
   const u = new URLSearchParams();
-  if (g.category) u.set("cat", g.category);
+  if (g.cat) u.set("cat", g.cat);
   if (g.q) u.set("q", g.q);
-  if (g.sort !== "dollars") u.set("sort", g.sort);
-  if (g.desc !== (g.sort === "dollars")) u.set("dir", g.desc ? "desc" : "asc");
-  if (g.page) u.set("page", String(g.page));
+  if (g.order !== "volume") u.set("order", g.order);
   const s = u.toString();
   return s ? `/markets?${s}` : "/markets";
 }
 
+/** Dollars traded in 24 hours, so the two venues sort together: Polymarket reports dollars,
+ * Kalshi contracts (each worth about its price). */
+const dollars = (r: Row) => (r.volumeUnit === "usd" ? r.volume : r.volume * (mid(r) ?? 0));
+
 async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
   await connection(); // request time only: the build never queries the database
-  const f = parse(await searchParams);
-  const { rows, total, at, ageS } = await screen(f);
-  const pages = Math.ceil(total / PAGE);
+  const p = await searchParams;
+  const v: View = {
+    cat: CATEGORIES.find((c) => c === one(p.cat)) ?? "",
+    q: one(p.q).trim().slice(0, 60),
+    order: one(p.order) === "close" ? "close" : "volume",
+  };
+  const { events, at } = await getEvents();
+  const q = v.q.toLowerCase();
+  const shown = events
+    .filter((e) => !v.cat || e.category === v.cat)
+    .filter(
+      (e) =>
+        !q ||
+        e.question.toLowerCase().includes(q) ||
+        e.event.toLowerCase().includes(q) ||
+        e.outcomes.some((o) => outcomeLabel(o).toLowerCase().includes(q)),
+    )
+    .map((e) => ({ e, usd: e.outcomes.reduce((s, o) => s + dollars(o), 0) }))
+    .sort((a, b) => (v.order === "close" ? a.e.close - b.e.close : b.usd - a.usd));
   return (
     <>
       <div className="markets-bar">
@@ -85,24 +86,37 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
           {(["", ...CATEGORIES] as const).map((c) => (
             <Link
               key={c}
-              href={href(f, { category: c, page: 0 })}
-              className={c === f.category ? "chip-link on" : "chip-link"}
-              aria-current={c === f.category ? "true" : undefined}
+              href={href(v, { cat: c })}
+              className={c === v.cat ? "chip-link on" : "chip-link"}
+              aria-current={c === v.cat ? "true" : undefined}
               scroll={false}
             >
               {c || "All"}
             </Link>
           ))}
         </nav>
+        <nav className="chip-row" aria-label="Order">
+          {(Object.keys(ORDERS) as Order[]).map((o) => (
+            <Link
+              key={o}
+              href={href(v, { order: o })}
+              className={o === v.order ? "chip-link on" : "chip-link"}
+              aria-current={o === v.order ? "true" : undefined}
+              scroll={false}
+            >
+              {ORDERS[o]}
+            </Link>
+          ))}
+        </nav>
         <LiveForm className="markets-form" action="/markets">
-          {f.category && <input type="hidden" name="cat" value={f.category} />}
-          {f.sort !== "dollars" && <input type="hidden" name="sort" value={f.sort} />}
+          {v.cat && <input type="hidden" name="cat" value={v.cat} />}
+          {v.order !== "volume" && <input type="hidden" name="order" value={v.order} />}
           <input
             type="text"
             enterKeyHint="search"
             name="q"
-            defaultValue={f.q}
-            placeholder="Search: bitcoin, CPI, KXFED…"
+            defaultValue={v.q}
+            placeholder="Search: bitcoin, CPI, Fed…"
             aria-label="Search markets"
           />
           <noscript>
@@ -113,40 +127,26 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
         </LiveForm>
       </div>
       <p className="markets-count muted">
-        {total.toLocaleString("en-US")} {total === 1 ? "contract" : "contracts"}
-        {f.q && <> matching “{f.q}”</>}
-        {at !== null && (
-          <>
-            {" "}
-            · prices read {utc(at)}
-            {ageS !== null && ageS > 180 && (
-              <span className="status-bad"> ({Math.round(ageS / 60)} min old)</span>
-            )}
-          </>
-        )}
+        {shown.length.toLocaleString("en-US")} {shown.length === 1 ? "question" : "questions"},{" "}
+        {shown.reduce((n, s) => n + s.e.outcomes.length, 0).toLocaleString("en-US")} contracts
+        {v.q && <> matching “{v.q}”</>}
+        {at !== null && <> · prices read {utc(at)}</>}
       </p>
-      {rows.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="muted">
-          No contracts match. Try fewer words, or <Link href="/markets">see them all</Link>.
+          Nothing matches. Try fewer words, or <Link href="/markets">see every market</Link>.
         </p>
       ) : (
-        <Table rows={rows} f={f} at={at ?? 0} />
-      )}
-      {pages > 1 && (
-        <p className="pager">
-          {f.page > 0 && <Link href={href(f, { page: f.page - 1 })}>← previous</Link>}
-          <span className="small">
-            page {f.page + 1} of {pages}
-          </span>
-          {f.page + 1 < pages && <Link href={href(f, { page: f.page + 1 })}>next →</Link>}
-        </p>
+        <div className="mkt-list">
+          {shown.map(({ e, usd }) => (
+            <EventRow key={`${e.venue}/${e.event}`} e={e} usd={usd} at={at ?? 0} />
+          ))}
+        </div>
       )}
       <p className="note">
         Prices come from each venue&apos;s market list, refreshed every minute; it can trail the
         live order book by up to a minute, which each Market page shows. Contracts quoted on one
-        side only (mostly strikes far from the price) are left out. There is no 24-hour change
-        column: Manta stores each contract&apos;s current price, not yesterday&apos;s. Not
-        investment advice.
+        side only (mostly strikes far from the price) are left out. Not investment advice.
       </p>
     </>
   );
@@ -158,11 +158,6 @@ const cents = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000
 /** 1,234 → "1.2k", 2,500,000 → "2.5M". */
 const short = (n: number) =>
   n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n));
-
-function volume(r: Row): string {
-  if (r.volume === 0) return "–";
-  return r.volumeUnit === "usd" ? `$${short(r.volume)}` : short(r.volume);
-}
 
 /** Fair value minus the midpoint, in cents: positive when fair value is above it. None for
  * one-venue consensus, which is fitted to the very quotes it would be compared with. */
@@ -188,99 +183,94 @@ function until(close: number, at: number): string {
   return `${Math.round(m / 1440)} d`;
 }
 
-// Each column's one-line explanation, shown under its heading on hover or keyboard focus and read
-// by screen readers as the heading's description.
-const HELP: Record<string, string> = {
-  market: "The question and the outcome this contract pays on, with its venue and family.",
-  mid: "Halfway between the best bid and ask: the market's price, read as a chance.",
-  spread: "Best ask minus best bid: what buying and selling at once would cost you. Smaller is cheaper.",
-  depth: "Contracts on offer at the best bid / best ask: how much trades at the shown price.",
-  dollars: "Traded in the last 24 hours: contracts on Kalshi, dollars on Polymarket. Sorted by dollars.",
-  edge: "Manta's fair value minus the price, in cents. Green: our estimate is higher. Sorted by size.",
-  close: "Time until the contract stops trading.",
+// Each column's one-line explanation, on hover or keyboard focus.
+const HELP = {
+  price: "Halfway between the best bid and ask: the market's price, read as a chance.",
+  spread: "Best ask minus best bid: what buying and selling at once would cost. Smaller is cheaper.",
+  size: "Contracts on offer at the best bid / best ask: how much trades at the shown price.",
+  volume: "Traded in the last 24 hours: contracts on Kalshi, dollars on Polymarket.",
+  gap: "Manta's fair value minus the price, in cents. Green: Manta's estimate is higher.",
 };
 
-// A column heading: sorts by it (clicking the current sort flips its direction) and carries its
-// help. Numbers start high-to-low, the close soonest-first.
-function Th({ f, s, name }: { f: Filters; s: Sort | "market"; name: string }) {
-  const on = f.sort === s;
-  const tip = `help-${s}`;
+function Th({ k, name }: { k: keyof typeof HELP; name: string }) {
+  const tip = `help-${k}`;
   return (
-    <th className="has-tip" aria-sort={on ? (f.desc ? "descending" : "ascending") : undefined}>
-      {s === "market" ? (
-        <span tabIndex={0} aria-describedby={tip}>
-          {name}
-        </span>
-      ) : (
-        <Link
-          href={href(f, { sort: s, desc: on ? !f.desc : s !== "close", page: 0 })}
-          aria-describedby={tip}
-          scroll={false}
-        >
-          {name}
-          {on ? (f.desc ? " ↓" : " ↑") : ""}
-        </Link>
-      )}
+    <th className="has-tip">
+      <span tabIndex={0} aria-describedby={tip}>
+        {name}
+      </span>
       <span role="tooltip" id={tip} className="th-tip">
-        {HELP[s]}
+        {HELP[k]}
       </span>
     </th>
   );
 }
 
-function Table({ rows, f, at }: { rows: Row[]; f: Filters; at: number }) {
+/** One question: a summary line that opens to every outcome. */
+function EventRow({ e, usd, at }: { e: Event; usd: number; at: number }) {
+  const top = featured(e.outcomes, 1)[0];
+  const link = (o: Row) => `/m/${o.venue}/${encodeURIComponent(o.event)}?o=${encodeURIComponent(o.id)}`;
   return (
-    <div className="table-wrap screener-table markets-table">
-      <table className="screener num">
-        <thead>
-          <tr>
-            <Th f={f} s="market" name="Market" />
-            <Th f={f} s="mid" name="Price" />
-            <Th f={f} s="spread" name="Spread" />
-            <Th f={f} s="depth" name="Size at best" />
-            <Th f={f} s="dollars" name="Volume 24 h" />
-            <Th f={f} s="edge" name="Gap to fair value" />
-            <Th f={f} s="close" name="Closes" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={`${r.venue}/${r.id}`}>
-              <td className="contract" title={r.title}>
-                <Link
-                  href={`/m/${r.venue}/${encodeURIComponent(r.event)}?o=${encodeURIComponent(r.id)}`}
-                >
-                  {outcomeLabel(r)}
-                </Link>
-                <span className="sub">
-                  <span className={`venue ${r.venue}`}>
-                    {r.venue === "kalshi" ? "Kalshi" : "Polymarket"}
-                  </span>{" "}
-                  · {FAMILY_NAME.get(r.family) ?? r.family}
-                </span>
-              </td>
-              <td>
-                <span className="chance">
-                  <ProbBar o={r} />
-                  <b>{cents(mid(r))}</b>
-                </span>
-              </td>
-              <td>{r.bid !== null && r.ask !== null ? cents(r.ask - r.bid) : "–"}</td>
-              <td className="m2">
-                {r.bidSize === null ? "–" : short(r.bidSize)} /{" "}
-                {r.askSize === null ? "–" : short(r.askSize)}
-              </td>
-              <td>{volume(r)}</td>
-              <td>
-                <Gap g={gap(r)} />
-              </td>
-              <td className="m2" title={utc(r.close)}>
-                {until(r.close, at)}
-              </td>
+    <details className="mkt-row">
+      <summary>
+        <span className="mkt-q">
+          <b>{e.question}</b>
+          <span className="sub">
+            <span className={`venue ${e.venue}`}>{e.venue === "kalshi" ? "Kalshi" : "Polymarket"}</span>{" "}
+            · {FAMILY_NAME.get(e.family) ?? e.family} · {e.outcomes.length}{" "}
+            {e.outcomes.length === 1 ? "outcome" : "outcomes"}
+          </span>
+        </span>
+        {top && (
+          <span className="mkt-top">
+            <span className="sub">{outcomeLabel(top)}</span>
+            <span className="chance">
+              <ProbBar o={top} />
+              <b>{cents(mid(top))}</b>
+            </span>
+          </span>
+        )}
+        <span className="mkt-fig num">
+          <b>${short(usd)}</b>
+          <span className="sub">traded 24 h</span>
+        </span>
+        <span className="mkt-fig num" title={utc(e.close)}>
+          <b>{until(e.close, at)}</b>
+          <span className="sub">to close</span>
+        </span>
+      </summary>
+      <div className="table-wrap markets-table">
+        <table className="screener num">
+          <thead>
+            <tr>
+              <th>Outcome</th>
+              <Th k="price" name="Price" />
+              <Th k="spread" name="Spread" />
+              <Th k="size" name="Size at best" />
+              <Th k="volume" name="Volume 24 h" />
+              <Th k="gap" name="Gap to fair value" />
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {e.outcomes.map((o) => (
+              <tr key={o.id}>
+                <td className="contract">
+                  <Link href={link(o)}>{outcomeLabel(o)}</Link>
+                </td>
+                <td>{cents(mid(o))}</td>
+                <td>{o.bid !== null && o.ask !== null ? cents(o.ask - o.bid) : "–"}</td>
+                <td className="m2">
+                  {o.bidSize === null ? "–" : short(o.bidSize)} / {o.askSize === null ? "–" : short(o.askSize)}
+                </td>
+                <td>{o.volume === 0 ? "–" : o.volumeUnit === "usd" ? `$${short(o.volume)}` : short(o.volume)}</td>
+                <td>
+                  <Gap g={gap(o)} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }

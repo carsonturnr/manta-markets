@@ -24,7 +24,15 @@ export default function BuiltPage() {
 
       <section id="diagram" className="built-section">
         <h2>From venue to screen</h2>
-        <Diagram />
+        <ArchSvg />
+        <details className="more arch-more">
+          <summary>What each part does</summary>
+          <Diagram />
+        </details>
+        {/* Phones: the stacked boxes in place of the drawing (its text would be too small). */}
+        <div className="arch-phone">
+          <Diagram />
+        </div>
       </section>
 
       <section id="numbers" className="built-section">
@@ -131,6 +139,102 @@ function Diagram() {
           </Node>
         </div>
       </div>
+    </figure>
+  );
+}
+
+// The diagram as a drawing: nodes on a 1100 × 380 grid, joined by curves. Mint is the live path
+// (a book change reaches the terminal in ~93 ms), grey the batch path (minutes). Drawn at the
+// panel's own width, so its 14 px text stays 14 px on a laptop; phones get the stacked boxes.
+const NODES = {
+  recorder: { x: 240, y: 158, name: "Recorder", tech: "Go" },
+  archive: { x: 460, y: 28, name: "Archive", tech: "hourly gzip files" },
+  pricing: { x: 460, y: 158, name: "Pricing jobs", tech: "Python" },
+  relay: { x: 460, y: 288, name: "Live relay", tech: "Go, streaming" },
+  replay: { x: 690, y: 28, name: "Replay, backtests", tech: "Go, NautilusTrader" },
+  db: { x: 690, y: 158, name: "Postgres", tech: "Supabase" },
+  site: { x: 920, y: 158, name: "Site", tech: "Next.js, Vercel" },
+  terminal: { x: 920, y: 288, name: "Terminal", tech: "live books" },
+} as const;
+const VENUES = ["Kalshi", "Polymarket", "Deribit", "Coinbase", "Kraken", "Binance"];
+const NW = 170; // node width
+const NH = 64; // node height
+type Key = keyof typeof NODES;
+const EDGES: [Key, Key, boolean][] = [
+  ["recorder", "archive", false],
+  ["recorder", "pricing", false],
+  ["recorder", "relay", true],
+  ["archive", "replay", false],
+  ["pricing", "db", false],
+  ["db", "site", false],
+  ["relay", "terminal", true],
+];
+/** A curve from the right edge of one box to the left edge of the next. */
+const curve = (x1: number, y1: number, x2: number, y2: number) => {
+  const m = (x1 + x2) / 2;
+  return `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`;
+};
+
+function ArchSvg() {
+  const mid = (k: Key) => NODES[k].y + NH / 2;
+  return (
+    <figure className="panel arch-svg">
+      <svg
+        viewBox="0 0 1100 380"
+        role="img"
+        aria-label="Architecture: six venues feed a Go recorder; it writes an archive used for replays and backtests, feeds Python pricing jobs that write Postgres for the site, and streams live books through a relay to the terminal"
+      >
+        <defs>
+          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#7a7a7a" />
+          </marker>
+          <marker id="arr-live" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#00ff77" />
+          </marker>
+        </defs>
+        {VENUES.map((v, i) => {
+          const y = 22 + i * 58;
+          return (
+            <g key={v}>
+              <path
+                d={curve(150, y + 18, NODES.recorder.x, mid("recorder"))}
+                className="arch-edge"
+                markerEnd={i === VENUES.length - 1 ? "url(#arr)" : undefined}
+              />
+              <rect x="20" y={y} width="130" height="36" rx="3" className="arch-venue" />
+              <text x="85" y={y + 23} textAnchor="middle" className="arch-venue-t">
+                {v}
+              </text>
+            </g>
+          );
+        })}
+        {EDGES.map(([a, b, live]) => (
+          <path
+            key={`${a}-${b}`}
+            d={curve(NODES[a].x + NW, mid(a), NODES[b].x, mid(b))}
+            className={live ? "arch-edge live" : "arch-edge"}
+            markerEnd={live ? "url(#arr-live)" : "url(#arr)"}
+          />
+        ))}
+        {(Object.keys(NODES) as Key[]).map((k) => {
+          const n = NODES[k];
+          const live = k === "relay" || k === "terminal";
+          return (
+            <g key={k}>
+              <rect x={n.x} y={n.y} width={NW} height={NH} rx="3" className={live ? "arch-box live" : "arch-box"} />
+              <text x={n.x + 14} y={n.y + 27} className="arch-name">
+                {n.name}
+              </text>
+              <text x={n.x + 14} y={n.y + 47} className="arch-tech">
+                {n.tech}
+              </text>
+            </g>
+          );
+        })}
+        <text x="20" y="372" className="arch-tech">
+          Grey: every 1 to 15 minutes. Mint: live, a book change reaches the terminal in about 93 ms.
+        </text>
+      </svg>
     </figure>
   );
 }

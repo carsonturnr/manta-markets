@@ -35,3 +35,25 @@ export function calibrationMiss(
   if (n === 0) return null;
   return { n, miss: ps.reduce((a, p) => a + p.n * Math.abs(p.hit - p.pred), 0) / n };
 }
+
+/** The 10¢ price band the market got most wrong: the one whose share that paid out sits furthest
+ * from the price paid, among bands with at least `minN` predictions (so one odd close can't lead
+ * the page). `hit < pred` means contracts there were overpriced. Null if no band has enough. */
+export function worstBand(
+  points: { who: string; bucket: number; n: number; pred: number; hit: number }[],
+  who: string[],
+  minN = 100,
+): { bucket: number; n: number; pred: number; hit: number } | null {
+  const by = new Map<number, { n: number; pred: number; hit: number }>();
+  for (const p of points.filter((p) => who.includes(p.who))) {
+    const b = by.get(p.bucket) ?? { n: 0, pred: 0, hit: 0 };
+    by.set(p.bucket, { n: b.n + p.n, pred: b.pred + p.n * p.pred, hit: b.hit + p.n * p.hit });
+  }
+  let best: { bucket: number; n: number; pred: number; hit: number } | null = null;
+  for (const [bucket, b] of by) {
+    if (b.n < minN) continue;
+    const band = { bucket, n: b.n, pred: b.pred / b.n, hit: b.hit / b.n };
+    if (!best || Math.abs(band.hit - band.pred) > Math.abs(best.hit - best.pred)) best = band;
+  }
+  return best;
+}

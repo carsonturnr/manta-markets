@@ -31,6 +31,8 @@ export default async function Crossing() {
   });
   const topics = [...new Set(pairs.map((p) => p.topic))];
   const arbs = arbitrage(pairs);
+  // Dollars on the table: each crossing's after-fee cents times the contracts at its best prices.
+  const total = arbs.reduce((s, a) => s + (a.size === null ? 0 : (a.x.net * a.size) / 100), 0);
   const feesTakeIt = crossings.filter(({ x }) => !(x.net !== null && x.net > 1e-9)).map(({ p }) => p);
   const priced = crossings.filter(({ x }) => x.net !== null);
   const gross = median(crossings.map(({ x }) => x.cents));
@@ -40,7 +42,8 @@ export default async function Crossing() {
   return (
     <>
       <p className="insight-says">
-        Of <b className="num">{pairs.length}</b> questions listed on both Kalshi and Polymarket,{" "}
+        {arbs.length === 0 ? "Not right now" : total < 25 ? "Barely" : "Sometimes"}: of{" "}
+        <b className="num">{pairs.length}</b> questions listed on both Kalshi and Polymarket,{" "}
         <b className="num">{crossings.length}</b> {crossings.length === 1 ? "has" : "have"} prices
         that cross before fees, and <b className={arbs.length > 0 ? "num up" : "num"}>{arbs.length}</b>{" "}
         still {arbs.length === 1 ? "pays" : "pay"} after both venues&apos; fees.
@@ -49,6 +52,13 @@ export default async function Crossing() {
             {" "}
             A typical crossing is <b className="num">{gross.toFixed(1)}¢</b> per contract before
             fees{net !== null && <> and <b className="num">{net.toFixed(2)}¢</b> after</>}.
+          </>
+        )}
+        {arbs.length > 0 && (
+          <>
+            {" "}
+            All of them together are worth about <b className="num">${total.toFixed(2)}</b> at the
+            sizes the best prices offer, before the gaps close.
           </>
         )}
       </p>

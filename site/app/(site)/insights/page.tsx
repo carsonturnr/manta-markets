@@ -10,9 +10,9 @@ import Spreads from "./spreads";
 export const metadata = { title: "Manta: insights" };
 
 const SECTIONS = [
-  { id: "spreads", q: "When are spreads tightest?", body: <Spreads /> },
-  { id: "accuracy", q: "How accurate are market prices?", body: <Accuracy /> },
-  { id: "crossing", q: "What does crossing between venues cost after fees?", body: <Crossing /> },
+  { id: "spreads", q: "When and where is trading cheapest?", body: <Spreads /> },
+  { id: "accuracy", q: "Which prices are off?", body: <Accuracy /> },
+  { id: "crossing", q: "Is arbitrage between venues worth it?", body: <Crossing /> },
   { id: "release", q: "How does the book behave around a data release?", body: <ReleaseResponse /> },
 ];
 

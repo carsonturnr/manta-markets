@@ -3902,8 +3902,8 @@ details.more[open] > summary {
 .site-foot .foot-cols {
   grid-template-columns: repeat(2, minmax(0, 220px)) minmax(0, 1fr);
 }
-/* The mark and name on the right, level with the column headings. */
-.foot-brand {
+/* The mark and name on the right, level with the column headings (beats .foot-cols a). */
+.foot-cols .foot-brand {
   justify-self: end;
   align-self: start;
   display: flex;
@@ -3914,8 +3914,9 @@ details.more[open] > summary {
   letter-spacing: -0.03em;
   line-height: 1;
   color: #ededed;
+  text-transform: none;
 }
-.foot-brand:hover {
+.foot-cols .foot-brand:hover {
   text-decoration: none;
 }
 .nav-account .btn {
@@ -3928,7 +3929,7 @@ details.more[open] > summary {
   .site-foot .foot-cols {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .foot-brand {
+  .foot-cols .foot-brand {
     grid-column: 1 / -1;
     justify-self: start;
   }
@@ -4077,5 +4078,145 @@ details.more[open] > summary {
   }
   .cross-row > :first-child {
     grid-column: 1 / -1;
+  }
+}
+
+/* ---- Markets: one row per question, opening to its outcomes ------------------------------ */
+.mkt-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.mkt-row {
+  border-bottom: 1px solid var(--line);
+}
+.mkt-row > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 260px) 110px 100px;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.mkt-row > summary::-webkit-details-marker {
+  display: none;
+}
+.mkt-row > summary:hover,
+.mkt-row[open] > summary {
+  background: var(--panel);
+}
+.mkt-q,
+.mkt-top,
+.mkt-fig {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mkt-q b {
+  font-weight: 500;
+}
+.mkt-q b::before {
+  content: "+";
+  display: inline-block;
+  width: 16px;
+  color: var(--text-3);
+}
+.mkt-row[open] .mkt-q b::before {
+  content: "−";
+}
+.mkt-q .sub,
+.mkt-top .sub,
+.mkt-fig .sub {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.mkt-q .sub {
+  padding-left: 16px;
+}
+.mkt-top .sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mkt-fig {
+  align-items: flex-end;
+  text-align: right;
+}
+.mkt-row .table-wrap {
+  padding: 4px 0 16px 24px;
+}
+@media (max-width: 760px) {
+  .mkt-row > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+  .mkt-top {
+    grid-column: 1 / -1;
+    padding-left: 16px;
+  }
+  .mkt-fig:last-child {
+    display: none;
+  }
+  .mkt-row .table-wrap {
+    padding-left: 0;
+  }
+}
+
+/* ---- How it's built: the architecture drawing --------------------------------------------- */
+.arch-svg {
+  padding: 16px;
+}
+.arch-svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.arch-edge {
+  fill: none;
+  stroke: #4a4a4a;
+  stroke-width: 1.5;
+}
+.arch-edge.live {
+  stroke: var(--mint);
+  stroke-width: 2;
+}
+.arch-box {
+  fill: var(--panel-2);
+  stroke: var(--line-2);
+}
+.arch-box.live {
+  stroke: var(--mint);
+}
+.arch-venue {
+  fill: none;
+  stroke: var(--line-2);
+}
+.arch-venue-t,
+.arch-name {
+  fill: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.arch-tech {
+  fill: var(--text-3);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.arch-more {
+  margin-top: 12px;
+}
+/* Phones: the drawing's text would shrink below reading size; show the stacked boxes instead. */
+.arch-phone {
+  display: none;
+}
+@media (max-width: 760px) {
+  .arch-svg,
+  .arch-more {
+    display: none;
+  }
+  .arch-phone {
+    display: block;
   }
 }
