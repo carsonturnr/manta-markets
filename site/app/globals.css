@@ -354,15 +354,6 @@ main {
 .site-foot p a {
   color: #a0a0a0;
 }
-.foot-mark {
-  margin: 32px 0 -0.22em;
-  font-family: var(--serif);
-  font-size: clamp(120px, 22vw, 300px);
-  line-height: 1;
-  letter-spacing: -0.05em;
-  color: rgba(255, 255, 255, 0.06);
-  user-select: none;
-}
 @media (max-width: 960px) {
   .site-header .in {
     justify-content: space-between;
@@ -488,7 +479,6 @@ input {
 /* Segmented controls: a row of square cells, the chosen one filled black. */
 .chips,
 .seg,
-.pills,
 .chip-row {
   display: inline-flex;
   flex-wrap: wrap;
@@ -497,8 +487,6 @@ input {
 }
 .chip,
 .seg button,
-.pills a,
-.pills b,
 .chip-link {
   border: 0;
   background: none;
@@ -516,14 +504,12 @@ input {
 }
 .chip:hover,
 .seg button:hover,
-.pills a:hover,
 .chip-link:hover {
   color: var(--text);
   text-decoration: none;
 }
 .chip.on,
 .seg button.on,
-.pills b,
 .chip-link.on {
   background: var(--text);
   color: var(--bg);
@@ -709,9 +695,6 @@ tbody tr:last-child td {
 tbody tr:hover td {
   background: var(--panel-2);
 }
-tr.selected td {
-  background: var(--panel-2);
-}
 td a {
   font-weight: 500;
   text-decoration: none;
@@ -724,17 +707,6 @@ td a {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12.5px;
   font-variant-numeric: tabular-nums;
-}
-/* The midpoint as a bar behind the number: a probability, so 0–100% of the cell. */
-td.prob {
-  background: linear-gradient(
-    to right,
-    color-mix(in srgb, var(--kalshi) 12%, transparent) var(--p),
-    transparent var(--p)
-  );
-  background-size: 100% 56%;
-  background-position: left center;
-  background-repeat: no-repeat;
 }
 
 /* ---- Stat strips -------------------------------------------------------------------------- */
@@ -986,22 +958,6 @@ td.prob {
   margin: 0;
 }
 
-/* ---- Screener (/screener): filters in a side card, the table beside them ----------------- */
-.screener-layout {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-@media (max-width: 900px) {
-  .screener-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-.screener-layout > aside {
-  position: sticky;
-  top: 80px;
-}
 .filters {
   display: flex;
   flex-direction: column;
@@ -1028,15 +984,6 @@ td.prob {
 }
 /* The table scrolls with the page (no box of its own, so no second scrollbar and no row cut in
    half); on a wide screen its headings stick under the site header. */
-@media (min-width: 1100px) {
-  .screener-table,
-  .panel:has(> .screener-table) {
-    overflow: visible;
-  }
-  .screener-table th {
-    top: 64px;
-  }
-}
 .screener td.contract,
 .compare td.contract {
   white-space: normal;
@@ -1074,14 +1021,6 @@ h1.h2 {
 }
 .kinds li {
   margin-bottom: 4px;
-}
-.pager {
-  display: flex;
-  gap: 16px;
-  align-items: baseline;
-  padding: 12px 20px;
-  margin: 0;
-  border-top: 1px solid var(--line);
 }
 .columns {
   display: flex;
@@ -1151,30 +1090,6 @@ h1.h2 {
     font-size: 44px;
   }
 }
-.callout-q {
-  font-family: var(--serif);
-  font-size: 22px;
-  letter-spacing: -0.02em;
-  text-align: center;
-  padding-bottom: 6px;
-}
-.key-line {
-  display: inline-block;
-  width: 12px;
-  height: 2px;
-  margin-right: 4px;
-  vertical-align: 2px;
-  background: var(--ink);
-}
-.key-buoy {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
-  vertical-align: 0;
-  border-radius: 50%;
-  background: var(--fair);
-}
 
 /* The stats row: a strip of today's events by volume, then three figures between hairlines. */
 .stats-row {
@@ -1238,16 +1153,6 @@ h1.h2 {
   font-size: 44px;
   color: #fff;
 }
-.band-sub,
-.band-note {
-  margin: 0 0 32px;
-  color: rgba(242, 245, 251, 0.7);
-  font-size: 14.5px;
-}
-.band-note {
-  margin: 24px 0 0;
-  font-size: 12.5px;
-}
 .ranked {
   list-style: none;
   margin: 0;
@@ -1290,25 +1195,8 @@ h1.h2 {
 .band .m3 {
   color: rgba(242, 245, 251, 0.55);
 }
-.ranked-fig {
-  text-align: right;
-  font-size: 15px;
-}
-.ranked-fig .m3 {
-  display: block;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
 .band .fair {
   color: var(--fair);
-}
-.ranked-gap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
 }
 /* On the band, gaps use the same green and red, lifted toward white so they read on deep blue. */
 .band .gap-pts.up {
@@ -1324,10 +1212,6 @@ h1.h2 {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* Tool descriptions are the point of the row: let them wrap instead of truncating. */
-.tools-band .ranked-q span {
-  white-space: normal;
-}
 .ranked .gap-pts {
   text-align: right;
   font-size: 13px;
@@ -1337,110 +1221,7 @@ h1.h2 {
     grid-template-columns: minmax(0, 1fr) 80px;
   }
 }
-.band-legend {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  margin: -16px 0 24px;
-  font-size: 13px;
-  color: rgba(242, 245, 251, 0.8);
-}
 
-/* A split section: serif headline on the left, the content on the right. */
-.split-sec {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: 48px;
-  margin-bottom: 96px;
-}
-.split-sec h2 {
-  margin: 16px 0 0;
-  font-size: 44px;
-}
-@media (max-width: 900px) {
-  .split-sec {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-.watching {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--line-2);
-}
-.watching li {
-  border-bottom: 1px solid var(--line-2);
-}
-.watching a {
-  display: grid;
-  grid-template-columns: 200px 160px minmax(0, 1fr);
-  align-items: baseline;
-  gap: 16px;
-  padding: 20px 0;
-  color: var(--text);
-}
-.watching a:hover {
-  text-decoration: none;
-  background: var(--panel);
-}
-.watching .mono {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.watching b {
-  font-family: var(--serif);
-  font-size: 32px;
-  font-weight: 400;
-  letter-spacing: -0.03em;
-}
-@media (max-width: 700px) {
-  .watching a {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px;
-  }
-}
-
-.markets-home {
-  margin-bottom: 96px;
-}
-.section-h {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 16px 24px;
-  margin: 12px 0 24px;
-}
-.section-h h2 {
-  margin: 0;
-  font-size: 44px;
-}
-.section-h .right {
-  margin-left: auto;
-}
-.text-link {
-  color: var(--text-2);
-}
-.text-link:hover {
-  color: var(--text);
-  text-decoration: none;
-}
-.event-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--line-2);
-  border-left: 1px solid var(--line-2);
-}
-@media (max-width: 1100px) {
-  .event-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 700px) {
-  .event-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 /* Cards share their borders, like cells of one table. */
 .event-card {
   display: flex;
@@ -1800,12 +1581,6 @@ h1.h2 {
   font-size: 34px;
   letter-spacing: -0.03em;
 }
-/* The paragraph under a section heading: grey, a little smaller than a page's lede. */
-.section-lede {
-  font-size: 14.5px;
-  max-width: 90ch;
-  margin-bottom: 16px;
-}
 /* Cards stacked down a page, one per group (an event, a venue). */
 .panel.stack {
   margin-bottom: 16px;
@@ -1831,58 +1606,12 @@ h1.h2 {
   white-space: nowrap;
   min-width: 0;
 }
-/* Filters as one row above the table, so all twelve columns fit the page's width. */
-.screener-layout {
-  grid-template-columns: minmax(0, 1fr);
-}
-.screener-layout > aside {
-  position: static;
-  flex-direction: row;
-  align-items: center;
-}
-.screener-layout > aside .ph {
-  align-self: stretch;
-  padding-right: 4px;
-}
-.screener-layout > aside .ph .right {
-  display: none;
-}
-.screener-layout .filters {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: end;
-  padding: 14px 20px 16px 4px;
-  flex: 1;
-}
-.screener-layout .filters label:not(.check) {
-  width: 150px;
-}
-.screener-layout .filters label.check {
-  height: 38px;
-}
 .filters .reset {
   height: 38px;
   display: inline-flex;
   align-items: center;
   margin-left: auto;
   color: var(--text-2);
-}
-.screener-layout > aside .ph {
-  display: none;
-}
-.screener-layout .filters {
-  padding: 14px 20px 16px;
-  gap: 10px 12px;
-}
-.screener-layout .filters label:not(.check) {
-  width: 138px;
-}
-.topbar .search input[type="text"] {
-  height: 36px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
 }
 
 /* ---- Event page (/m/...): one question, one outcome in focus ----------------------------- */
@@ -1954,11 +1683,6 @@ h1.h2 {
 .line.total b {
   font-size: 17px;
   font-weight: 600;
-}
-.note-sm {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--text-3);
 }
 /* Markets: the contract, with its venue and family under it; the chance as a bar. */
 .screener td.contract {
@@ -2840,122 +2564,7 @@ details.how[open] > summary {
   color: #000;
 }
 
-/* ---- Task B (nav-markets): header "Tools" menu and the Markets page (/markets) ---------- */
-.pro-tools {
-  position: relative;
-}
-.pro-tools > button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text-2);
-  font: inherit;
-  cursor: pointer;
-}
-.pro-tools > button:hover,
-.pro-tools > button[data-current],
-.pro-tools[data-open="true"] > button {
-  color: var(--text);
-}
-.pro-tools[data-open="true"] > button svg {
-  transform: rotate(180deg);
-}
-/* Wide screens: a square panel under the button, closed until opened. Two columns of tools,
-   each a small drawing, its name and one sentence. */
-.pro-tools-list {
-  display: none;
-  position: absolute;
-  top: calc(100% + 14px);
-  right: -160px;
-  z-index: 30;
-  width: 640px;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
-  padding: 8px;
-  background: var(--bg);
-  border: 1px solid var(--line-2);
-}
-.pro-tools[data-open="true"] .pro-tools-list {
-  display: grid;
-}
-.site-header .tool-item {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 10px;
-  color: var(--text-2);
-}
-.site-header .tool-item:hover,
-.site-header .tool-item:focus-visible,
-.site-header .tool-item[aria-current="page"] {
-  background: var(--panel-2);
-  text-decoration: none;
-}
-.tool-thumb {
-  flex: none;
-  width: 64px;
-  height: 40px;
-  padding: 3px;
-  box-sizing: content-box;
-  border: 1px solid var(--line-2);
-  background: var(--panel);
-  color: var(--text-3);
-}
-.tool-item b {
-  display: block;
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--text);
-}
-.tool-item b + span {
-  display: block;
-  margin-top: 2px;
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--text-2);
-}
-.pro-tools-h {
-  display: none;
-}
 /* Phones: inside the Menu panel the tools are always listed, one per row, under a small heading. */
-@media (max-width: 960px) {
-  .pro-tools > button {
-    display: none;
-  }
-  .pro-tools-list,
-  .pro-tools[data-open="true"] .pro-tools-list {
-    display: flex;
-    flex-direction: column;
-    position: static;
-    width: auto;
-    padding: 0;
-    gap: 0;
-    border: 0;
-  }
-  .header-menu nav .tool-item {
-    padding: 12px 0;
-    font-size: 15px;
-  }
-  .site-header .tool-item:hover {
-    background: none;
-  }
-  .tool-thumb {
-    width: 48px;
-    height: 30px;
-  }
-  .pro-tools-h {
-    display: block;
-    padding: 24px 0 4px;
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--text-3);
-  }
-}
 
 .markets-lede {
   margin-bottom: 32px;
@@ -2977,10 +2586,6 @@ details.how[open] > summary {
 .markets-count {
   margin: 16px 0;
   font-size: 14px;
-}
-.markets-more {
-  margin: 24px 0 0;
-  text-align: center;
 }
 @media (max-width: 700px) {
   .markets-bar,
@@ -3079,42 +2684,6 @@ details.more[open] > summary {
   margin-bottom: 12px;
 }
 
-/* Liquidity: plain answers first, then bars; the full table and heat map behind a disclosure. */
-.liq-terms {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 32px;
-  max-width: 900px;
-  margin: 0 0 32px;
-}
-.liq-terms dt {
-  font-weight: 500;
-}
-.liq-terms dd {
-  margin: 2px 0 0;
-  color: var(--text-2);
-}
-.liq-answers {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.liq-answers h2 {
-  margin: 0 0 12px;
-  font-size: 18px;
-}
-.liq-answers p,
-.liq-answers ol {
-  margin: 0;
-  color: var(--text-2);
-}
-.liq-answers ol {
-  padding-left: 1.2em;
-}
-.liq-answers li + li {
-  margin-top: 6px;
-}
 .spread-bars .row {
   display: grid;
   grid-template-columns: minmax(0, 260px) minmax(0, 1fr) 56px 80px;
@@ -3193,10 +2762,6 @@ details.more[open] > summary {
   margin-top: 16px;
 }
 @media (max-width: 900px) {
-  .liq-answers,
-  .liq-terms {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .spread-bars .row {
     grid-template-columns: minmax(0, 1fr) 48px;
   }
@@ -3349,50 +2914,6 @@ details.more[open] > summary {
   }
 }
 
-/* Accuracy: the answer in words and three big numbers, then every comparison as a range. */
-.acc-answer {
-  margin: 24px 0 16px;
-}
-.acc-says {
-  font-family: var(--serif);
-  font-size: 26px;
-  line-height: 1.3;
-  max-width: 34em;
-  margin: 0;
-  padding: 28px 32px 8px;
-}
-.acc-says b {
-  font-weight: 400;
-}
-.acc-figures {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--line);
-  margin-top: 24px;
-}
-.acc-figures > div {
-  padding: 20px 32px;
-}
-.acc-figures > div + div {
-  border-left: 1px solid var(--line);
-}
-.acc-figures span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--text-3);
-}
-.acc-figures b {
-  display: block;
-  font-family: var(--serif);
-  font-size: 44px;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  margin: 4px 0;
-}
-.acc-answer .note {
-  border-top: 1px solid var(--line);
-  padding-top: 14px;
-}
 .forest-row {
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr) 64px;
@@ -3443,23 +2964,7 @@ details.more[open] > summary {
 .forest-row.worse .forest-dot {
   background: var(--down);
 }
-.cal-pair {
-  display: grid;
-  grid-template-columns: minmax(0, 412px) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
 @media (max-width: 900px) {
-  .acc-says {
-    font-size: 21px;
-    padding: 20px 20px 4px;
-  }
-  .acc-figures > div {
-    padding: 14px 12px;
-  }
-  .acc-figures b {
-    font-size: 24px;
-  }
   .forest-row {
     grid-template-columns: minmax(0, 1fr) 48px;
     gap: 4px 12px;
@@ -3470,9 +2975,6 @@ details.more[open] > summary {
   }
   .forest-axis .forest-track span:nth-child(2) {
     display: none;
-  }
-  .cal-pair {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3537,29 +3039,6 @@ details.more[open] > summary {
   box-shadow: inset 0 -3px 0 var(--bad);
 }
 
-/* Events: one card per release with its biggest mover's chart. */
-.ev-cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-.ev-card {
-  color: var(--text);
-  text-decoration: none;
-}
-.ev-card:hover {
-  box-shadow: 0 0 0 1px var(--line-2);
-  text-decoration: none;
-}
-.ev-card .chart {
-  padding: 16px 24px 0;
-}
-@media (max-width: 900px) {
-  .ev-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 /* ---- Task D (home-arbitrage): plain-language home and arbitrage pages ---------------------- */
 .hero-btns {
   display: flex;
@@ -3567,33 +3046,8 @@ details.more[open] > summary {
   justify-content: center;
   gap: 12px;
 }
-.split-sec .text-link {
-  display: inline-block;
-  margin-top: 16px;
-}
-/* Home arbitrage rows: the question on its own line, then the trade in one sentence. */
-.arb-home a {
-  grid-template-columns: 160px 96px minmax(0, 1fr);
-}
-.arb-home-q {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--text);
-}
-.arb-home .up {
-  color: var(--up);
-}
-@media (max-width: 700px) {
-  .arb-home a {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 .terms {
   margin-top: -4px;
-}
-/* The tools band has no figure column: the tool, then "Open". */
-.tools-band .ranked li a {
-  grid-template-columns: minmax(0, 1fr) 80px;
 }
 
 /* ---- Terminal (task E): resizable panels, panel help, the brief panel ---- */
