@@ -155,9 +155,11 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
 /** Cents with at most one decimal: 0.42 → "42¢", 0.918 → "91.8¢". */
 const cents = (p: number | null) => (p === null ? "–" : `${Math.round(p * 1000) / 10}¢`);
 
-/** 1,234 → "1.2k", 2,500,000 → "2.5M". */
-const short = (n: number) =>
-  n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(Math.round(n));
+/** 1,234 → "1.2k", 25,000 → "25k", 397,040 → "397k", 2,500,000 → "2.5M". */
+const short = (n: number) => {
+  const [v, unit] = n >= 999_500 ? [n / 1e6, "M"] : n >= 999.5 ? [n / 1e3, "k"] : [n, ""];
+  return `${v >= 100 || unit === "" ? Math.round(v) : Number(v.toFixed(1))}${unit}`;
+};
 
 /** Fair value minus the midpoint, in cents: positive when fair value is above it. None for
  * one-venue consensus, which is fitted to the very quotes it would be compared with. */
