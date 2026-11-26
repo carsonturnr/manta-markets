@@ -24,15 +24,12 @@ export default function BuiltPage() {
 
       <section id="diagram" className="built-section">
         <h2>From venue to screen</h2>
-        <ArchSvg />
+        <Steps />
         <details className="more arch-more">
           <summary>What each part does</summary>
           <Diagram />
         </details>
-        {/* Phones: the stacked boxes in place of the drawing (its text would be too small). */}
-        <div className="arch-phone">
-          <Diagram />
-        </div>
+
       </section>
 
       <section id="numbers" className="built-section">
@@ -143,99 +140,149 @@ function Diagram() {
   );
 }
 
-// The diagram as a drawing: nodes on a 1100 × 380 grid, joined by curves. Mint is the live path
-// (a book change reaches the terminal in ~93 ms), grey the batch path (minutes). Drawn at the
-// panel's own width, so its 14 px text stays 14 px on a laptop; phones get the stacked boxes.
-const NODES = {
-  recorder: { x: 240, y: 158, name: "Recorder", tech: "Go" },
-  archive: { x: 460, y: 28, name: "Archive", tech: "hourly gzip files" },
-  pricing: { x: 460, y: 158, name: "Pricing jobs", tech: "Python" },
-  relay: { x: 460, y: 288, name: "Live relay", tech: "Go, streaming" },
-  replay: { x: 690, y: 28, name: "Replay, backtests", tech: "Go, NautilusTrader" },
-  db: { x: 690, y: 158, name: "Postgres", tech: "Supabase" },
-  site: { x: 920, y: 158, name: "Site", tech: "Next.js, Vercel" },
-  terminal: { x: 920, y: 288, name: "Terminal", tech: "live books" },
-} as const;
-const VENUES = ["Kalshi", "Polymarket", "Deribit", "Coinbase", "Kraken", "Binance"];
-const NW = 170; // node width
-const NH = 64; // node height
-type Key = keyof typeof NODES;
-const EDGES: [Key, Key, boolean][] = [
-  ["recorder", "archive", false],
-  ["recorder", "pricing", false],
-  ["recorder", "relay", true],
-  ["archive", "replay", false],
-  ["pricing", "db", false],
-  ["db", "site", false],
-  ["relay", "terminal", true],
+// The system as four small drawings, one per job, each with a one-line caption: thin grey lines,
+// one mint mark for the point of each, tiny mono labels. Drawn at about the size they show, so
+// labels stay readable down to a phone.
+const STEPS = [
+  {
+    title: "Record every message",
+    text: "Six venues' raw feeds, kept unchanged in hourly files.",
+    tech: "Go recorder",
+    art: <RecordArt />,
+  },
+  {
+    title: "Rebuild any past minute",
+    text: "Every order book of a past hour, rebuilt from the recording.",
+    tech: "Go replay, NautilusTrader",
+    art: <ReplayArt />,
+  },
+  {
+    title: "Price each contract",
+    text: "Fair values from options and both venues, every minute.",
+    tech: "Python, Postgres",
+    art: <PriceArt />,
+  },
+  {
+    title: "Stream books live",
+    text: "A Kalshi book change reaches the terminal in about 93 ms.",
+    tech: "Go relay, Next.js",
+    art: <StreamArt />,
+  },
 ];
-/** A curve from the right edge of one box to the left edge of the next. */
-const curve = (x1: number, y1: number, x2: number, y2: number) => {
-  const m = (x1 + x2) / 2;
-  return `M${x1},${y1} C${m},${y1} ${m},${y2} ${x2},${y2}`;
-};
 
-function ArchSvg() {
-  const mid = (k: Key) => NODES[k].y + NH / 2;
+function Steps() {
   return (
-    <figure className="panel arch-svg">
-      <svg
-        viewBox="0 0 1100 380"
-        role="img"
-        aria-label="Architecture: six venues feed a Go recorder; it writes an archive used for replays and backtests, feeds Python pricing jobs that write Postgres for the site, and streams live books through a relay to the terminal"
-      >
-        <defs>
-          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="#7a7a7a" />
-          </marker>
-          <marker id="arr-live" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0,0 L8,4 L0,8 z" fill="#00ff77" />
-          </marker>
-        </defs>
-        {VENUES.map((v, i) => {
-          const y = 22 + i * 58;
-          return (
-            <g key={v}>
-              <path
-                d={curve(150, y + 18, NODES.recorder.x, mid("recorder"))}
-                className="arch-edge"
-                markerEnd={i === VENUES.length - 1 ? "url(#arr)" : undefined}
-              />
-              <rect x="20" y={y} width="130" height="36" rx="3" className="arch-venue" />
-              <text x="85" y={y + 23} textAnchor="middle" className="arch-venue-t">
-                {v}
-              </text>
-            </g>
-          );
-        })}
-        {EDGES.map(([a, b, live]) => (
-          <path
-            key={`${a}-${b}`}
-            d={curve(NODES[a].x + NW, mid(a), NODES[b].x, mid(b))}
-            className={live ? "arch-edge live" : "arch-edge"}
-            markerEnd={live ? "url(#arr-live)" : "url(#arr)"}
-          />
-        ))}
-        {(Object.keys(NODES) as Key[]).map((k) => {
-          const n = NODES[k];
-          const live = k === "relay" || k === "terminal";
-          return (
-            <g key={k}>
-              <rect x={n.x} y={n.y} width={NW} height={NH} rx="3" className={live ? "arch-box live" : "arch-box"} />
-              <text x={n.x + 14} y={n.y + 27} className="arch-name">
-                {n.name}
-              </text>
-              <text x={n.x + 14} y={n.y + 47} className="arch-tech">
-                {n.tech}
-              </text>
-            </g>
-          );
-        })}
-        <text x="20" y="372" className="arch-tech">
-          Grey: every 1 to 15 minutes. Mint: live, a book change reaches the terminal in about 93 ms.
-        </text>
-      </svg>
-    </figure>
+    <div className="steps">
+      {STEPS.map((st, i) => (
+        <article key={st.title} className="panel step">
+          <div className="step-art" aria-hidden="true">
+            {st.art}
+          </div>
+          <span className="m3 num small">{String(i + 1).padStart(2, "0")}</span>
+          <h3>{st.title}</h3>
+          <p className="small">{st.text}</p>
+          <span className="step-tech">{st.tech}</span>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+// Shared drawing sizes: a 260 × 130 box for each card.
+const W = 260;
+const H = 130;
+
+function RecordArt() {
+  const ys = [15, 35, 55, 75, 95, 115];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`}>
+      {ys.map((y) => (
+        <g key={y}>
+          <circle cx="18" cy={y} r="3" className="art-dot" />
+          <path d={`M21,${y} C70,${y} 70,65 112,65`} className="art-line" />
+        </g>
+      ))}
+      <circle cx="118" cy="65" r="7" className="art-mint" />
+      <path d="M125,65 L168,65" className="art-line" />
+      {[0, 1, 2].map((k) => (
+        <rect key={k} x={176 + k * 6} y={40 - k * 6} width="52" height="62" rx="2" className="art-box" />
+      ))}
+      <text x="18" y="128" className="art-t">6 venues</text>
+      <text x="188" y="122" className="art-t">hourly files</text>
+    </svg>
+  );
+}
+
+function ReplayArt() {
+  const bids = [34, 26, 40, 18, 22];
+  const asks = [20, 30, 16, 38, 24];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`}>
+      {bids.map((w, i) => (
+        <rect key={`b${i}`} x={128 - w} y={14 + i * 12} width={w} height="8" className="art-bar" />
+      ))}
+      {asks.map((w, i) => (
+        <rect key={`a${i}`} x="132" y={14 + i * 12} width={w} height="8" className="art-bar" />
+      ))}
+      <path d="M130,10 L130,76" className="art-line" />
+      <path d="M14,100 L246,100" className="art-line" />
+      {Array.from({ length: 12 }, (_, i) => (
+        <path key={i} d={`M${14 + i * 21},96 L${14 + i * 21},104`} className="art-line" />
+      ))}
+      <path d="M130,82 L130,100" className="art-dash" />
+      <circle cx="130" cy="100" r="5" className="art-mint" />
+      <text x="14" y="122" className="art-t">14:00</text>
+      <text x="112" y="122" className="art-t">14:37</text>
+      <text x="218" y="122" className="art-t">15:00</text>
+    </svg>
+  );
+}
+
+function PriceArt() {
+  // A ladder of strikes: the market's bid-ask as a short bar, fair value as a mint dot.
+  const rows = [
+    [0.92, 0.94, 0.95],
+    [0.71, 0.74, 0.7],
+    [0.45, 0.48, 0.44],
+    [0.2, 0.23, 0.18],
+    [0.06, 0.09, 0.03],
+  ];
+  const x = (p: number) => 70 + p * 170;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`}>
+      {rows.map(([b, a, f], i) => {
+        const y = 16 + i * 22;
+        return (
+          <g key={i}>
+            <text x="14" y={y + 4} className="art-t">{`$${59 + i}k`}</text>
+            <path d={`M70,${y} L240,${y}`} className="art-faint" />
+            <rect x={x(b) - 6} y={y - 4} width={x(a) - x(b) + 12} height="8" rx="1" className="art-bar light" />
+            <circle cx={x(f)} cy={y} r="3.5" className="art-mint" />
+          </g>
+        );
+      })}
+      <text x="70" y="128" className="art-t">market bar · fair dot</text>
+    </svg>
+  );
+}
+
+function StreamArt() {
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`}>
+      <rect x="14" y="44" width="56" height="40" rx="2" className="art-box" />
+      <text x="24" y="68" className="art-t">relay</text>
+      <path d="M70,64 L170,64" className="art-mint-line" />
+      {[92, 116, 140].map((cx) => (
+        <circle key={cx} cx={cx} cy="64" r="2.5" className="art-mint" />
+      ))}
+      <rect x="174" y="30" width="72" height="54" rx="2" className="art-box" />
+      {[0, 1, 2, 3].map((k) => (
+        <path key={k} d={`M182,${42 + k * 10} L${200 + ((k * 13) % 36)},${42 + k * 10}`} className="art-line" />
+      ))}
+      <path d="M196,84 L224,84 M210,84 L210,94" className="art-line" />
+      <text x="104" y="54" className="art-t">93 ms</text>
+      <text x="184" y="112" className="art-t">terminal</text>
+    </svg>
   );
 }
 

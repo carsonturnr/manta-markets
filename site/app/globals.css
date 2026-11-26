@@ -4170,59 +4170,92 @@ details.more[open] > summary {
   }
 }
 
-/* ---- How it's built: the architecture drawing --------------------------------------------- */
-.arch-svg {
-  padding: 16px;
+/* ---- How it's built: four small drawings, one per job --------------------------------------- */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
-.arch-svg svg {
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px;
+}
+.step-art svg {
   display: block;
   width: 100%;
   height: auto;
+  margin-bottom: 14px;
 }
-.arch-edge {
-  fill: none;
-  stroke: #4a4a4a;
-  stroke-width: 1.5;
+.step h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
 }
-.arch-edge.live {
-  stroke: var(--mint);
-  stroke-width: 2;
+.step p {
+  margin: 0;
+  color: var(--text-2);
 }
-.arch-box {
-  fill: var(--panel-2);
-  stroke: var(--line-2);
-}
-.arch-box.live {
-  stroke: var(--mint);
-}
-.arch-venue {
-  fill: none;
-  stroke: var(--line-2);
-}
-.arch-venue-t,
-.arch-name {
-  fill: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-}
-.arch-tech {
-  fill: var(--text-3);
+.step-tech {
+  margin-top: auto;
+  padding-top: 10px;
   font-family: var(--mono);
   font-size: 11.5px;
+  color: var(--text-3);
+}
+.art-line,
+.art-dash,
+.art-faint,
+.art-mint-line {
+  fill: none;
+  stroke-width: 1.25;
+}
+.art-line {
+  stroke: #6b6b6b;
+}
+.art-faint {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+.art-dash {
+  stroke: var(--mint);
+  stroke-dasharray: 3 3;
+}
+.art-mint-line {
+  stroke: var(--mint);
+  stroke-width: 1.75;
+}
+.art-dot {
+  fill: #9a9a9a;
+}
+.art-mint {
+  fill: var(--mint);
+}
+.art-box {
+  fill: var(--panel);
+  stroke: #6b6b6b;
+}
+.art-bar {
+  fill: #4a4a4a;
+}
+.art-bar.light {
+  fill: #8a8a8a;
+}
+.art-t {
+  fill: var(--text-3);
+  font-family: var(--mono);
+  font-size: 10.5px;
 }
 .arch-more {
   margin-top: 12px;
 }
-/* Phones: the drawing's text would shrink below reading size; show the stacked boxes instead. */
-.arch-phone {
-  display: none;
-}
-@media (max-width: 760px) {
-  .arch-svg,
-  .arch-more {
-    display: none;
-  }
-  .arch-phone {
-    display: block;
+@media (max-width: 1000px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+@media (max-width: 560px) {
+  .steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
