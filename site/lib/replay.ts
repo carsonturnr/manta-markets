@@ -47,18 +47,27 @@ export async function getPastEvents(): Promise<Past[]> {
     from manta.predictions where venue = 'kalshi' and event = any(${events}) group by event`;
   const known = new Map(rows.map((r) => [r.event as string, Number(r.close)]));
   const now = Date.now();
-  const closes = await Promise.all(
-    events.map(async (event) => {
-      const close = known.get(event);
-      if (close !== undefined) return close;
-      try {
-        const ms = (await kalshiEvent(event)).map((m) => Date.parse(m.close_time));
-        return ms.length ? Math.max(...ms) : NaN;
-      } catch {
-        return NaN; // left out this time; the list is rebuilt every 2 minutes
-      }
-    }),
-  );
+  const closeOf = async (event: string) => {
+    const close = known.get(event);
+    if (close !== undefined) return close;
+    try {
+      const ms = (await kalshiEvent(event)).map((m) => Date.parse(m.close_time));
+      return ms.length ? Math.max(...ms) : NaN;
+    } catch {
+      return NaN; // left out this time; the list is rebuilt every 2 minutes
+    }
+  };
+  // About 10 lookups a second (5 every half second), under Kalshi's 20 reads a second: all at
+  // once, the 22 recorded series' ~100 unknown events drew 429 (too many requests) on 2026-11-26
+  // and dropped from the list. Only the first load pays: each answer is cached a day.
+  const closes: number[] = [];
+  for (let i = 0; i < events.length; i += 5) {
+    const [batch] = await Promise.all([
+      Promise.all(events.slice(i, i + 5).map(closeOf)),
+      events.slice(i, i + 5).some((e) => !known.has(e)) ? new Promise((r) => setTimeout(r, 500)) : null,
+    ]);
+    closes.push(...batch);
+  }
   return events
     .map((event, k) => ({
       event,
@@ -85,10 +94,16 @@ type KalshiMarket = {
 async function kalshiEvent(event: string): Promise<KalshiMarket[]> {
   "use cache";
   cacheLife({ stale: 3600, revalidate: 3600, expire: 86_400 });
-  const r = await fetch(`${KALSHI}/markets?event_ticker=${encodeURIComponent(event)}&limit=1000`, {
-    headers: { "User-Agent": "manta-markets" },
-    signal: AbortSignal.timeout(20_000),
-  });
+  let r: Response;
+  for (let attempt = 1; ; attempt++) {
+    r = await fetch(`${KALSHI}/markets?event_ticker=${encodeURIComponent(event)}&limit=1000`, {
+      headers: { "User-Agent": "manta-markets" },
+      signal: AbortSignal.timeout(20_000),
+    });
+    // 429: too many requests (the site shares Kalshi's limit with its book and candle reads).
+    if (r.status !== 429 || attempt === 3) break;
+    await new Promise((done) => setTimeout(done, 1000 * attempt));
+  }
   if (!r.ok) throw new Error(`kalshi markets ${event}: ${r.status}`);
   return ((await r.json()) as { markets: KalshiMarket[] }).markets;
 }

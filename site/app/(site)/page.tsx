@@ -11,7 +11,6 @@ import { BookPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePane
 import Monitor from "@/components/terminal/Monitor";
 import { ArbPanel, BoardPanel, CalendarPanel, DistPanel, FairPanel } from "@/components/terminal/Panels";
 import TerminalDemo from "@/components/terminal/TerminalDemo";
-import WaitlistForm from "@/components/WaitlistForm";
 import { type Event, getEvents } from "@/lib/events";
 import { monitorRows } from "@/lib/monitor";
 import { mid, outcomeLabel, usableFair, whenET } from "@/lib/outcomes";
@@ -50,10 +49,20 @@ export default function Home() {
       <Pages />
 
       <section className="cta-box">
-        <span className="tag">Coming next</span>
+        <span className="tag">API</span>
         <h2>Manta&apos;s numbers in your own code</h2>
-        <p className="muted">An API is on the way. One email when it opens.</p>
-        <WaitlistForm />
+        <p className="muted">
+          Fair values, implied distributions, the cost of a trade, cross-venue gaps and liquidity, as
+          JSON. Free with an account.
+        </p>
+        <div className="cta-actions">
+          <Link href="/account" className="btn">
+            Get an API key
+          </Link>
+          <Link href="/docs/api" className="btn btn-ghost">
+            Read the docs
+          </Link>
+        </div>
       </section>
     </>
   );
