@@ -17,12 +17,18 @@ import {
   polyTrades,
 } from "./venues";
 
-// The model the claude-api skill recommends (2026-11-25). Thinking is always on for it; low effort
-// keeps a summary of a dozen numbers quick and cheap.
-const MODEL = "claude-opus-5-5";
+// Carson's budget is about $1 a day (2026-11-26). Opus 5.5 with thinking cost $22 in a day: every
+// market page anyone opened called it every 5 minutes. Haiku 5.5 is 40× cheaper ($0.10 / $0.50
+// per million tokens), and with thinking off a brief (~1,500 tokens in, ~300 out) costs about
+// $0.0003, so the cap below holds a server instance to roughly 30 cents a day at worst.
+const MODEL = "claude-haiku-5-5";
+const MAX_CALLS_PER_DAY = 1000;
+let callDay = "";
+let calls = 0;
 
-/** One contract's brief, cached about 5 minutes per contract and shared by every viewer, so the
- * model is called at most once per contract every 5 minutes (per server instance). */
+/** One contract's brief, cached about 30 minutes per contract and shared by every viewer, so the
+ * model is called at most once per contract every 30 minutes (per server instance), and never
+ * more than MAX_CALLS_PER_DAY times a day per instance. */
 export async function getBrief(venue: string, id: string): Promise<string[] | null> {
   "use cache";
   const key = process.env.ANTHROPIC_API_KEY;
@@ -32,8 +38,8 @@ export async function getBrief(venue: string, id: string): Promise<string[] | nu
     return null;
   }
   const bullets = await ask(key, await prompt(got.row));
-  // A failure is retried after a minute rather than kept for five.
-  if (bullets) cacheLife({ stale: 300, revalidate: 300, expire: 600 });
+  // A failure (or the day's cap) is retried after a minute rather than kept for half an hour.
+  if (bullets) cacheLife({ stale: 1800, revalidate: 1800, expire: 3600 });
   else cacheLife({ stale: 60, revalidate: 60, expire: 300 });
   return bullets;
 }
@@ -77,9 +83,16 @@ async function prompt(c: Row) {
   });
 }
 
-/** One Messages API call, raw fetch (no SDK dependency). Cost guard: at most 2,000 output tokens
- * (thinking included) and 20 seconds. */
+/** One Messages API call, raw fetch (no SDK dependency). Cost guards: the daily cap, thinking
+ * off, at most 600 output tokens and 20 seconds. */
 async function ask(key: string, facts: string): Promise<string[] | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== callDay) {
+    callDay = today;
+    calls = 0;
+  }
+  if (calls >= MAX_CALLS_PER_DAY) return null; // the page hides the brief until tomorrow (UTC)
+  calls++;
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -87,14 +100,14 @@ async function ask(key: string, facts: string): Promise<string[] | null> {
         "content-type": "application/json",
         "x-api-key": key,
         "anthropic-version": "2026-10-21",
-        // If a safety classifier declines, the API retries on a fallback model in the same call.
-        "anthropic-beta": "server-side-fallback-2026-07-01",
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 2000,
+        max_tokens: 600,
+        // Haiku 5.5 thinks by default; a few bullets from a dozen numbers don't need it. Thinking
+        // can be off only at effort "high" or below, so pair it with "low".
+        thinking: { type: "disabled" },
         output_config: { effort: "low" },
-        fallbacks: "default",
         system: SYSTEM,
         messages: [{ role: "user", content: facts }],
       }),
