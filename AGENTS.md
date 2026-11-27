@@ -76,7 +76,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Recorder has run for at least four weeks with gaps logged, and the data-quality page shows it.
 - Every tool in docs/product.md is live on the public site, each with its method explained in plain English.
 - Fair values are tested and labelled by method; accuracy statistics are published with honest sample sizes.
-- The waitlist is live, after the data-terms checks.
+- Sign-up is live: accounts with watchlists, alerts and API keys (the waitlist was retired 2026-11-26), after the data-terms checks.
 - The market maker's backtest report and paper-trading results show the profit-and-loss breakdown.
 - README explains the project in plain English, credits NautilusTrader, states what worked and what did not, and includes the real numbers, including unflattering ones.
 
