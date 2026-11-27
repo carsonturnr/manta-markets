@@ -10,11 +10,12 @@
 // The form actions are in lib/accountActions.ts and check the session before calling these.
 import postgres from "postgres";
 import type { Kind } from "./alerts";
-import { sql } from "./db";
+import { sql, ssl } from "./db";
 
 const url = process.env.ACCOUNT_DATABASE_URL;
-// The same session-pooler rule as lib/db.ts.
-const db = url && !url.includes(":6543/") ? postgres(url, { max: 2, idle_timeout: 20 }) : null;
+// The same PgBouncer and certificate as lib/db.ts. set_config(…, true) lasts one transaction, so
+// PgBouncer's transaction mode can't carry one user's id to another's query.
+const db = url ? postgres(url, { max: 2, idle_timeout: 20, ssl }) : null;
 
 export const MAX_WATCHED = 200;
 export const MAX_ALERTS = 50;

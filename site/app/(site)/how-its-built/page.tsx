@@ -116,7 +116,7 @@ function Diagram() {
             Snapshots, fair values, costs to trade, cross-venue pairs and data quality.
           </Node>
           <Arrow />
-          <Node name="Postgres" tech="Supabase · read-only login for the site">
+          <Node name="Postgres" tech="on the VM · read-only login for the site">
             One schema of tables; the site can read but never write it.
           </Node>
           <Arrow />
