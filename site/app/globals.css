@@ -3794,3 +3794,75 @@ details.more[open] > summary {
     font-size: 28px;
   }
 }
+
+/* Market page: the live quote under the big chance figure, from the same feed as the book. */
+.quote-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 32px;
+  margin: 4px 0 0;
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
+}
+.quote-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.quote-strip > div span {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.quote-strip b {
+  font-size: 18px;
+  font-weight: 600;
+}
+.quote-strip small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+.quote-strip small.up {
+  color: var(--up);
+}
+.quote-strip small.down {
+  color: var(--down);
+}
+.quote-strip > .t-live,
+.quote-strip > .t-stale {
+  margin-left: auto;
+  font-size: 12px;
+}
+@media (max-width: 560px) {
+  .quote-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quote-strip > .t-live,
+  .quote-strip > .t-stale {
+    margin-left: 0;
+  }
+}
+
+/* Markets on phones: the filters stay pinned under the site header while the long list scrolls,
+   in a tighter form so they take about a seventh of the screen. */
+@media (max-width: 700px) {
+  .markets-bar {
+    position: sticky;
+    top: 65px; /* the site header: 64 px and its border */
+    z-index: 10; /* under the header's open menu (20) */
+    gap: 6px;
+    margin-inline: -16px;
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .markets-bar .chip-link {
+    padding: 6px 10px;
+  }
+  .markets-form input {
+    padding-block: 6px;
+  }
+}
