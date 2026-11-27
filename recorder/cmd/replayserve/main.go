@@ -5,6 +5,8 @@
 //	GET /events                       ["2026-12-04-payrolls", …]: the event-response releases
 //	GET /events/<release>.json        one release's event response (cmd/eventresponse)
 //	GET /candles/<ticker>             one Kalshi market's 1-minute candles over its last 24 recorded hours
+//	GET /news                         {"items", "moves", "status"}: the last 30 days of news (cmd/news)
+//	GET /news/moves/<key>.json        one news item's move around it (news -moves)
 //
 // Every request must carry "Authorization: Bearer <REPLAY_TOKEN>"; only the site's server knows
 // it. Paths are opened through os.Root, which refuses anything outside the replay directory.
@@ -43,6 +45,9 @@ var tickerName = regexp.MustCompile(`^/candles/([A-Z0-9][A-Z0-9.-]*)$`)
 // A release id: its date and kind, e.g. 2026-12-04-payrolls.
 var releaseName = regexp.MustCompile(`^/events/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)\.json$`)
 
+// A news item's key: its day, source and a short hash, e.g. 2026-11-25-fed-press-ebcc18ee.
+var newsMoveName = regexp.MustCompile(`^/news/moves/(\d{4}-\d{2}-\d{2}-[a-z0-9-]+)\.json$`)
+
 func main() {
 	dir := flag.String("dir", "/var/lib/manta/replay", "replay directory")
 	addr := flag.String("addr", ":8790", "listen address")
@@ -79,15 +84,16 @@ func main() {
 			serveCandles(w, root, m[1])
 			return
 		}
+		if r.URL.Path == "/news" {
+			serveNews(w, root, time.Now())
+			return
+		}
 		if m := releaseName.FindStringSubmatch(r.URL.Path); m != nil {
-			f, err := root.Open("events/" + m[1] + ".json")
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			defer f.Close()
-			w.Header().Set("Content-Type", "application/json")
-			io.Copy(w, f)
+			serveJSON(w, r, root, "events/"+m[1]+".json")
+			return
+		}
+		if m := newsMoveName.FindStringSubmatch(r.URL.Path); m != nil {
+			serveJSON(w, r, root, "news/moves/"+m[1]+".json")
 			return
 		}
 		m := fileName.FindStringSubmatch(r.URL.Path)
@@ -152,6 +158,53 @@ func serveReleases(w http.ResponseWriter, root *os.Root) {
 		if name, ok := strings.CutSuffix(f.Name(), ".json"); ok && !strings.HasPrefix(name, ".") {
 			out = append(out, name)
 		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(out)
+}
+
+// serveJSON sends one JSON file as written, or 404.
+func serveJSON(w http.ResponseWriter, r *http.Request, root *os.Root, path string) {
+	f, err := root.Open(path)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	w.Header().Set("Content-Type", "application/json")
+	io.Copy(w, f)
+}
+
+// newsDays is how many daily news files /news returns.
+const newsDays = 30
+
+// serveNews answers the news page's data in one response: every item of the last newsDays days
+// (news/<day>.jsonl), every move summary (news/moves.jsonl) and the collector's poll counts
+// (news/status.json, null if absent). Lines are passed through as written; a damaged one (a
+// crash mid-write) is skipped. Nothing recorded yet is empty lists.
+func serveNews(w http.ResponseWriter, root *os.Root, now time.Time) {
+	out := struct {
+		Items  []json.RawMessage `json:"items"`
+		Moves  []json.RawMessage `json:"moves"`
+		Status json.RawMessage   `json:"status"`
+	}{Items: []json.RawMessage{}, Moves: []json.RawMessage{}, Status: json.RawMessage("null")}
+	lines := func(path string, into *[]json.RawMessage) {
+		body, err := fs.ReadFile(root.FS(), path)
+		if err != nil {
+			return // missing: nothing recorded that day
+		}
+		for line := range strings.Lines(string(body)) {
+			if b := []byte(strings.TrimSpace(line)); json.Valid(b) {
+				*into = append(*into, b)
+			}
+		}
+	}
+	for d := newsDays - 1; d >= 0; d-- { // oldest first, as the files were written
+		lines("news/"+now.UTC().AddDate(0, 0, -d).Format(time.DateOnly)+".jsonl", &out.Items)
+	}
+	lines("news/moves.jsonl", &out.Moves)
+	if b, err := fs.ReadFile(root.FS(), "news/status.json"); err == nil && json.Valid(b) {
+		out.Status = b
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(out)

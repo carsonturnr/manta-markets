@@ -1,13 +1,13 @@
-// One contract's midpoint around a release, from 15 minutes before to 30 minutes after, with the
-// release time (t0) marked. Drawn as steps: each mid holds until the next change. Plain SVG on the
-// server, in GapChart's style.
+// One contract's midpoint around a release (15 minutes before to 30 after) or a news item
+// (`before` = 30, the baseline window), with t0 marked. Drawn as steps: each mid holds until the
+// next change. Plain SVG on the server, in GapChart's style.
 const W = 420;
 const H = 180;
 const PAD = { left: 36, right: 10, top: 10, bottom: 24 };
 const MIN = 60_000;
 
-export default function MoveChart({ mids, t0, label }: { mids: [number, number][]; t0: number; label: string }) {
-  const from = t0 - 15 * MIN;
+export default function MoveChart({ mids, t0, label, before = 15, what = "the release" }: { mids: [number, number][]; t0: number; label: string; before?: number; what?: string }) {
+  const from = t0 - before * MIN;
   const to = t0 + 30 * MIN;
   if (mids.length === 0) return <p className="small">No midpoint recorded in the window.</p>;
   const ys = mids.map(([, m]) => m);
@@ -23,7 +23,7 @@ export default function MoveChart({ mids, t0, label }: { mids: [number, number][
   for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) yTicks.push(v);
   return (
     <div className="chart">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label}: midpoint in cents, 15 minutes before to 30 after the release`}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${label}: midpoint in cents, ${before} minutes before to 30 after ${what}`}>
         {yTicks.map((v) => (
           <g key={v}>
             <line x1={PAD.left} x2={W - PAD.right} y1={y(v)} y2={y(v)} stroke="var(--grid)" />
@@ -32,7 +32,7 @@ export default function MoveChart({ mids, t0, label }: { mids: [number, number][
             </text>
           </g>
         ))}
-        {[-15, 0, 15, 30].map((m) => (
+        {[-before, ...(before > 15 ? [-15] : []), 0, 15, 30].map((m) => (
           <text key={m} x={x(t0 + m * MIN)} y={H - 6} textAnchor={m === 30 ? "end" : "middle"} fontSize="11" fill={m === 0 ? "var(--mint)" : "var(--text-3)"}>
             {m === 0 ? "t0" : `${m > 0 ? "+" : "−"}${Math.abs(m)} min`}
           </text>

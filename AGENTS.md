@@ -31,7 +31,7 @@ CI (.github/workflows/ci.yml) runs the recorder, pricing and site checks (site: 
 ## Layout
 
 ```
-recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve
+recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve, eventresponse, news
 recorder/internal/     tap (venue clients), rawlog, book, contracts, crossvenue, normalize, replay, md, fixed
 pricing/src/manta_pricing/   fair-value model and analytics; tests in pricing/tests/
 backtest/src/manta_backtest/ catalog, check, fairseries
@@ -107,3 +107,5 @@ docs/                  product.md, milestone plans, decisions.md
 - Site CSS: globals.css is one flat file shared by every page and merged often. Parallel worktrees all append to its end, so merges conflict there: after resolving, count `{` against `}` (comments stripped) before committing; deleting the conflict markers alone once left a phone `@media` block open and every later rule applied on phones only (2026-11-25). Grep a class name before using it.
 - Site CSS: a terminal panel outside the terminal's grid (the Market page) needs `.t-body { flex: none }`: the terminal's `flex: 1` gives the body a zero flex-basis, which overrides a set `height` and drew the chart at 0 px (globals.css `.mkt .t-body`).
 - Vercel previews need their own settings (Preview environment): without Clerk's keys every page answers "Internal Server Error" (middleware throws). Previews use Clerk's development keys; the production keys work only on mantamarkets.com. Check a protected preview with `vercel curl <path> --deployment <url>` from a linked folder.
+- Go: an RSS date with a US zone abbreviation (BEA's "08:30:00 EST") parses as UTC+0 unless read with `time.ParseInLocation(…, America/New_York)`: Go gives an abbreviation it doesn't know for the location a zero offset (recorder/internal/news `parseRSSDate`).
+- infra: a systemd unit with `ReadWritePaths=DIR` fails to start (status 226/NAMESPACE) if DIR is missing, so cleanups must never delete it: replay.sh's empty-folder sweep skips `$OUT/news` for manta-news.service.
