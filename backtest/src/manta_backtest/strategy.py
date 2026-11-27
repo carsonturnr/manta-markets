@@ -549,11 +549,18 @@ def settlements(tickers: set[str], cache: Path) -> dict[str, float]:
     known: dict[str, float] = json.loads(cache.read_text()) if cache.exists() else {}
     for ev in sorted({event_of(t) for t in tickers if t not in known}):
         url = f"{KALSHI_API}/markets?event_ticker={ev}&limit=1000"
-        with urllib.request.urlopen(url, timeout=30) as r:
-            for m in json.load(r)["markets"]:
-                if m.get("result") in ("yes", "no"):
-                    known[m["ticker"]] = 1.0 if m["result"] == "yes" else 0.0
-    cache.write_text(json.dumps(known))
+        for attempt in range(3):  # the public API sometimes times out; retry, then give up
+            try:
+                with urllib.request.urlopen(url, timeout=30) as r:
+                    markets_ = json.load(r)["markets"]
+                break
+            except (TimeoutError, OSError):
+                if attempt == 2:
+                    raise
+        for m in markets_:
+            if m.get("result") in ("yes", "no"):
+                known[m["ticker"]] = 1.0 if m["result"] == "yes" else 0.0
+        cache.write_text(json.dumps(known))  # saved per event, so a rerun resumes
     return known
 
 
