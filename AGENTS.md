@@ -31,7 +31,7 @@ CI (.github/workflows/ci.yml) runs the recorder, pricing and site checks (site: 
 ## Layout
 
 ```
-recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve
+recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve, eventresponse, news
 recorder/internal/     tap (venue clients), rawlog, book, contracts, crossvenue, normalize, replay, md, fixed
 pricing/src/manta_pricing/   fair-value model and analytics; tests in pricing/tests/
 backtest/src/manta_backtest/ catalog, check, fairseries, queue (market-maker measurements), predict
@@ -76,7 +76,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Recorder has run for at least four weeks with gaps logged, and the data-quality page shows it.
 - Every tool in docs/product.md is live on the public site, each with its method explained in plain English.
 - Fair values are tested and labelled by method; accuracy statistics are published with honest sample sizes.
-- The waitlist is live, after the data-terms checks.
+- Sign-up is live: accounts with watchlists, alerts and API keys (the waitlist was retired 2026-11-26), after the data-terms checks.
 - The market maker's backtest report and paper-trading results show the profit-and-loss breakdown.
 - README explains the project in plain English, credits NautilusTrader, states what worked and what did not, and includes the real numbers, including unflattering ones.
 
@@ -105,3 +105,10 @@ docs/                  product.md, milestone plans, decisions.md
 - Kalshi trades and the book changes they cause arrive in either order (book first for 58% of KXBTCD trades): anything that combines them (queue position, fills) matches each trade to its size drop within a window, never by arrival order (backtest/src/manta_backtest/queue.py).
 - Backtests (NautilusTrader 2.0.0rc9): the risk engine refuses orders over its rate limit (OrderDenied RATE_LIMIT_EXCEEDED, never reaching the simulated exchange); a strategy must handle `on_order_denied`, and a measuring probe that sends many orders at once must bypass it (`RiskEngineConfig(bypass=True)`), or denied orders look like unfilled ones (backtest/src/manta_backtest/strategy.py).
 - NautilusTrader Strategy subclasses can't set `self.log` (it is Nautilus's read-only logger: "attribute 'log' … is not writable"); give your own logger another name (backtest/src/manta_backtest/paper.py `self.jlog`).
+- Site CSS: `.panel` has `overflow: hidden`, which stops `position: sticky` inside it (table headings stay put); a sticky child needs that panel set to `overflow: visible`.
+- Kalshi's website answers 429 to curl and fetch tools; check a kalshi.com URL in a real browser (its API at api.elections.kalshi.com is fine).
+- Site CSS: globals.css is one flat file shared by every page and merged often. Parallel worktrees all append to its end, so merges conflict there: after resolving, count `{` against `}` (comments stripped) before committing; deleting the conflict markers alone once left a phone `@media` block open and every later rule applied on phones only (2026-11-25). Grep a class name before using it.
+- Site CSS: a terminal panel outside the terminal's grid (the Market page) needs `.t-body { flex: none }`: the terminal's `flex: 1` gives the body a zero flex-basis, which overrides a set `height` and drew the chart at 0 px (globals.css `.mkt .t-body`).
+- Vercel previews need their own settings (Preview environment): without Clerk's keys every page answers "Internal Server Error" (middleware throws). Previews use Clerk's development keys; the production keys work only on mantamarkets.com. Check a protected preview with `vercel curl <path> --deployment <url>` from a linked folder.
+- Go: an RSS date with a US zone abbreviation (BEA's "08:30:00 EST") parses as UTC+0 unless read with `time.ParseInLocation(…, America/New_York)`: Go gives an abbreviation it doesn't know for the location a zero offset (recorder/internal/news `parseRSSDate`).
+- infra: a systemd unit with `ReadWritePaths=DIR` fails to start (status 226/NAMESPACE) if DIR is missing, so cleanups must never delete it: replay.sh's empty-folder sweep skips `$OUT/news` for manta-news.service.

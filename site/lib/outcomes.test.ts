@@ -1,9 +1,7 @@
 // Run with: npm test (node's built-in test runner; Node strips the types itself).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { kalshiFee } from "./cost.ts";
 import {
-  buyWithBudget,
   featured,
   type Outcome,
   outcomeLabel,
@@ -82,22 +80,4 @@ test("closing times read in New York time", () => {
     question("KXBTCD", [], close, Date.UTC(2026, 10, 22, 17)),
     "Where will Bitcoin be at 5 pm ET today?",
   );
-});
-
-test("a dollar budget buys the most contracts it can, fees included", () => {
-  // Asks: 100 at 40¢, then 100 at 50¢. Kalshi's fee at 0.07.
-  const asks = [
-    { price: 0.4, size: 100 },
-    { price: 0.5, size: 100 },
-  ];
-  const fee = (n: number, p: number) => kalshiFee(0.07, n, p);
-  // 100 at 40¢ = $40.00 + fee 0.07·100·0.4·0.6 = $1.68 → $41.68.
-  // $50 buys those 100, then $8.32 left at 50¢ + 1.75¢ fee each: 16 more (16 × 0.5175 = $8.28).
-  const c = buyWithBudget(50, asks, fee)!;
-  assert.equal(c.filled, 116);
-  assert.ok(c.total <= 50 && c.total > 49.5, `total ${c.total}`);
-  // Too little for one contract at 40¢ plus fee.
-  assert.equal(buyWithBudget(0.3, asks, fee), null);
-  // More than the book holds: everything on offer.
-  assert.equal(buyWithBudget(1000, asks, fee)!.filled, 200);
 });

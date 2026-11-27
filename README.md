@@ -23,41 +23,123 @@
 </p>
 
 Manta covers the crypto, economics and financial contracts on Kalshi and Polymarket (never sports)
-and gives you the tools to work with them: a screener, live order books and trades, the same
-question compared across venues, what a trade really costs after fees, implied distributions,
-history and replay, and alerts.
+and gives you the tools to work with them: live order books and trades, charts from Manta's own
+recordings, what a trade really costs after fees, the same question compared across venues, and
+alerts. It is read-only: Manta places no orders.
 
 <p align="center">
-  <a href="https://mantamarkets.com/terminal"><img src="docs/images/terminal.png" alt="The Manta terminal: market monitor, price chart, order book, depth, trade ticket and trade tape for one Kalshi Bitcoin contract" width="100%"></a>
+  <a href="https://mantamarkets.com/terminal"><img src="docs/images/terminal.png" alt="The Manta terminal: market list, price chart with fair value, order book, depth, cost to trade, trades and every outcome for one Kalshi Bitcoin question" width="100%"></a>
 </p>
 
 **Built on [NautilusTrader](https://github.com/nautechsystems/nautilus_trader)** (LGPL-3.0), used
 as an installed library for the history catalog and backtesting. Manta's own code is the recorder,
 the pricing and analytics, the site and the measurement.
 
-## What it does
+## The site
 
-- **Terminal** (`/terminal`): market monitor, chart, order book and depth, trade tape and a trade
-  ticket in preset layouts, with a ⌘K command bar.
-- **Screener and event pages** (`/screener`, `/m/<venue>/<event>`): every covered contract,
-  filterable; each event with its order books, candles, trades and plain-English settlement rules.
-- **Compare** (`/compare`): the same question on Kalshi and Polymarket side by side, and where the
-  prices cross after both venues' fees.
-- **Cost to trade** (on contract pages): the average price, slippage and fee of buying or selling
-  N contracts, walked through the live book. **Liquidity** (`/liquidity`): depth and spreads over
-  time.
-- **Distributions** (`/distributions`): each ladder of strikes read as the market's probability
-  distribution and term structure.
-- **Fair value**: a price per contract from Deribit's options (Bitcoin, Ether) or the venues' own
-  books, always labelled with its method; its track record is on the accuracy page (`/stats`).
-- **Replay** (`/replay`): past closes minute by minute, from Manta's own recordings (Kalshi does
-  not publish historical order books).
-- **Data quality** (`/quality`): what the recorder captured, per venue, and every gap.
-- **Accounts**: watchlists and email alerts.
+- **Markets** (`/markets`): every open question, busiest first; each opens to its outcomes with
+  price, spread, size, volume and the gap to fair value.
+- **Market page** (`/m/<venue>/<event>`): one question's chart, order book, depth, trades, cost to
+  trade, fair value, every outcome and a short written brief.
+- **Terminal** (`/terminal`): the same panels in one live workspace, Kalshi books and trades
+  streamed from the recorder, with a ⌘K command bar.
+- **Insights** (`/insights`): when trading is cheapest, which price bands the market gets wrong,
+  and whether crossing between venues pays after fees.
+- **How it's built** (`/how-its-built`): the system, its measured numbers and every recording gap.
+- **Accounts**: watchlists, email alerts and an API of Manta's analytics (`/docs/api`).
 
-| Screener | Distributions |
+| Markets | Market page |
 |---|---|
-| <a href="https://mantamarkets.com/screener"><img src="docs/images/screener.png" alt="Screener: every covered contract with chance, bid, ask, fair value, spread, volume and time to close"></a> | <a href="https://mantamarkets.com/distributions"><img src="docs/images/distributions.png" alt="Distributions: a Bitcoin strike ladder read as the market's probability distribution, with median and implied volatility"></a> |
+| <a href="https://mantamarkets.com/markets"><img src="docs/images/markets.png" alt="Markets: open questions busiest first, one opened to its five outcomes with price, spread, size, volume and gap to fair value"></a> | <a href="https://mantamarkets.com/markets"><img src="docs/images/market.png" alt="Market page: a Bitcoin question's chance, price chart with fair value, cost to trade 100 contracts and fair value with its accuracy"></a> |
+
+## Numbers
+
+Measured, with their dates. The live figures are on [How it's built](https://mantamarkets.com/how-its-built).
+
+- **3.54 billion** venue messages recorded from 2026-11-12 to 2026-11-26, from six venues.
+- **Coverage 99.48% to 99.997%** per venue over that time (the share of time not inside a
+  recording gap); Deribit is the lowest.
+- **0 book mismatches** in 5.6 million rebuilt order-book updates, checked against the venue
+  (2026-11-13).
+- **93 ms** median from a Kalshi message reaching the recorder to the terminal receiving it
+  (2026-11-23).
+- **187 tests**: 66 Go, 57 Python, 64 site (2026-11-26).
+
+## What worked and what did not
+
+Sources: [docs/decisions.md](docs/decisions.md) (dated measurements), the market maker's report
+in [docs/plan-market-maker.md](https://github.com/carsonturnr/manta-markets/blob/carsonturnr/market-maker/docs/plan-market-maker.md)
+(on its own branch until it merges), and read-only queries of Manta's database on 2026-11-27
+(the recorder's quality report and `manta.predictions`). Anything marked *provisional* will change.
+
+### Worked
+
+- **The recorder.** Running since 2026-11-12 17:05 UTC. By its quality report of 2026-11-27
+  18:02 UTC it had recorded 3,781,033,089 messages (Kalshi 3,509,407,688). Coverage, the share of
+  time not inside a logged gap: Binance 99.997%, Polymarket 99.995%, Coinbase 99.981%, Kraken
+  99.977%, Kalshi 99.755%, Deribit 99.345%. Every gap is logged with its start and end (244 in all)
+  and shown on [How it's built](https://mantamarkets.com/how-its-built#quality). It is the only
+  source of Kalshi order-book history: Kalshi does not publish one.
+- **Rebuilt order books match the venue.** 0 mismatches over 5.6 million updates and 9,184 REST
+  comparisons (2026-11-13), and 0 over 13.3 million updates when replay covered all 11 Kalshi
+  families (2026-11-17).
+- **The tools on the site** (Markets, the Market page, the live Terminal, Insights, How it's
+  built) and the **API** of derived analytics (`/docs/api`, live since 2026-11-23). The terminal's
+  live stream reaches the browser 93 ms (median) after a Kalshi message reaches the recorder
+  (2026-11-23).
+- **Event response** (how markets move around a scheduled release) is built and ran end to end on
+  a stand-in hour; no real release has happened since economics recording began. The first is US
+  payrolls on 2026-12-04.
+- **Arbitrage after fees is measured, not assumed.** On 2026-11-25, 8 of 52 questions listed on
+  both Kalshi and Polymarket crossed before fees and 7 after both venues' taker fees. It is a
+  one-minute snapshot: no history is kept.
+- **Tests.** 187: 66 Go, 57 Python, 64 site (counted 2026-11-27). Every fee and cost formula is
+  tested against hand-worked numbers; the backtest has none of its own outside the market maker's
+  branch.
+
+### Did not work, or not well
+
+- **Fair value is not an edge.** Priced from Deribit's options, it is about as accurate as
+  Kalshi's own midpoint. Brier score (average squared miss; lower is better), Kalshi's Bitcoin and
+  Ether contracts, 2026-11-14 to 11-27: 5 minutes before the close 0.1336 vs 0.1336 (5,280
+  predictions, 2,619 events); 1 hour 0.0994 vs Kalshi's 0.1006 (12,957; 1,082); 1 day 0.0847 vs
+  0.0843 (713; 42). The site shows it as a second opinion with this record, not a signal.
+- **Fair value barely predicts the next move.** Over 2.4 million samples on six days, Kalshi's
+  price closed 1.2% of its gap to our fair value within 60 s and 3.0% within 5 minutes; it explains
+  0.1% of the moves (R² 0.001), and a gap of 1¢ or more pointed the right way 52.8% of the time
+  (627,529 cases).
+- **The market maker loses money on every day** (*provisional*: backtest only, its plan awaits
+  approval, and 148 fills on the reported days are in contracts not yet settled, valued at their
+  price 60 s after the fill). Kalshi's hourly "Bitcoin above $X" contracts, 5 contracts at the best
+  bid and ask, backtested with NautilusTrader on three days it was not tuned on: 2026-11-18
+  −$235.51, 11-22 −$95.37, 11-23 −$152.37. In all **−$483.25 on 70,021 contracts, −0.69¢ a
+  contract, against $0 for not quoting**. On the three tuning days it lost −$627.89 (−0.95¢).
+  - Why: it earns the spread (+$350.96) but the price moves against it in the minute after its
+    fills (−$838.94). Firms next to Kalshi's servers are about 1 ms away; we see the market about
+    57 ms late and need about 56 ms more to cancel, so our orders are the stale ones left when
+    better-informed traders arrive (the "pick-offs"). Doubling our order delay to 112 ms changes
+    little (−$500.23): the gap to the incumbents is the problem, not a few milliseconds.
+  - 17% of its orders were refused by Kalshi's limit of 10 orders a second.
+- **Limits of the backtest.** Our simulated orders never change the recorded market, so results
+  hold only for small sizes. Kalshi publishes only total size per price, so our place in the queue
+  is an estimate between a pessimistic and an optimistic bound. The first version missed
+  pick-offs and counted about half the fills; it was corrected on 2026-11-25.
+- **Data lost.** Deribit: 1 h 41 min (2026-11-20 19:34–21:15 UTC) and 37 min (2026-11-27
+  09:00–09:37 UTC). Kalshi: 2026-11-19 08:00–10:00 UTC is nearly empty in the archive (recorder
+  restart at 09:31). The market maker's fair-value measurement also left out 4.4 hours of input
+  because the laptop running it slept.
+- **Stale prices early on.** Until 2026-11-13 the tracker read Kalshi's market list, which trails
+  the live order book by up to about a minute; its statistics from before then are partly against
+  stale prices.
+- **A costly mistake.** The market brief first ran on a large model with thinking, cached for 5
+  minutes, and cost $22 in one day. It now runs on a small model, cached 30 minutes and capped per
+  day.
+
+### Paper trading
+
+> **Placeholder:** results of paper trading on Kalshi's demo environment go here once it runs.
+> Demo fills test the plumbing, not the strategy: the demo's order book and traders are not the
+> real ones, so the backtest on real recordings stays the measure.
 
 ## How it's built
 
@@ -66,8 +148,10 @@ venues (Kalshi, Polymarket, Deribit, Coinbase, Kraken, Binance)
    │  WebSocket / REST, read-only
    ▼
 recorder (Go, on a VM) ──► raw hourly gzip JSONL ──► nightly archive (Storage Box)
-   │                              │
-   │ relay / replay servers       └─► backtest/ (Python + NautilusTrader Parquet catalog)
+   │        │                     │
+   │        │ replay files        └─► backtest/ (Python + NautilusTrader Parquet catalog)
+   │        └─► 1-minute candles for the charts
+   │ live relay (Kalshi books and trades) ──► terminal
    ▼
 pricing jobs (Python, every minute) ──► Postgres (Supabase, schema `manta`)
                                               │  read-only login

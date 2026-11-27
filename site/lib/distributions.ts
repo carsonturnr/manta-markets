@@ -34,7 +34,7 @@ export async function getDistributions(): Promise<Dist[]> {
   return rows.map((r) => ({ ...r, close: Number(r.close), updated: Number(r.updated) }) as Dist);
 }
 
-export { fmtValue, onWhat, underlying, UNDERLYINGS } from "./units";
+export { expects, fmtValue, onWhat, underlying, UNDERLYINGS } from "./units";
 
 /** A key for one distribution in the URL: venue and event (crypto events exist per venue). */
 export const distKey = (d: Pick<Dist, "venue" | "event">) => `${d.venue}/${d.event}`;

@@ -40,3 +40,17 @@ export const onWhat = (family: string) => ON[family]?.on ?? family;
 export const fmtValue = (family: string, x: number | null) =>
   x === null ? "–" : (ON[family]?.fmt ?? String)(x);
 export const underlying = (family: string) => ON[family]?.under;
+
+/** What a ladder says, in one plain sentence: the middle 50% as the likely range, the median as
+ * the middle estimate. `when` is the close, already formatted. */
+export function expects(
+  family: string,
+  d: { median: number | null; q25: number | null; q75: number | null },
+  when: string,
+): string {
+  const v = (x: number | null) => fmtValue(family, x);
+  if (d.median === null) return "Too few contracts are quoted to read what the market expects.";
+  if (d.q25 === null || d.q75 === null)
+    return `The market's middle estimate for ${onWhat(family)} at ${when} is ${v(d.median)}.`;
+  return `The market sees ${onWhat(family)} most likely landing between ${v(d.q25)} and ${v(d.q75)} at ${when} (a 50% chance); middle estimate ${v(d.median)}.`;
+}

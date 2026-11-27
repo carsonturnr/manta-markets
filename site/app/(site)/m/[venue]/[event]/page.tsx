@@ -1,35 +1,47 @@
-// An event: one question and every contract that answers it (each strike of "Bitcoin at 5 pm ET",
-// each Fed outcome). One outcome is in focus (?o=<contract id>, by default the most informative):
-// its chance and chart, its order book, trades and rules, what a dollar amount buys, and our fair
-// value with its method. The contract page (/contract/...) keeps the full detail of a single contract.
+// The Market page: one event (one question, "Bitcoin at 5 pm ET", "the Fed in December") and the
+// outcome in focus (?o=<contract id>, by default the most informative). It shows the terminal's own
+// panels (components/terminal/*), stacked in two columns on a desktop and one on a phone: the
+// chart, the live book, depth and trades, the Bitcoin fair-value ladder; the cost to trade, fair
+// value, the other venue's price, every outcome, the likely range, the AI brief; then the
+// settlement rule. "Open in terminal" shows the same contract in the full workspace.
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import AutoRefresh from "@/components/AutoRefresh";
-import BuyBox from "@/components/BuyBox";
-import { BookSection, Chart, RulesSection, TradesSection, unavailable } from "@/components/ContractSections";
-import { closesIn, pct, ProbBar, Verdict } from "@/components/EventCard";
-import Tabs from "@/components/Tabs";
+import { Chart, RulesSection, TradeLink } from "@/components/ContractSections";
+import { closesIn, pct } from "@/components/EventCard";
+import Live from "@/components/terminal/Live";
+import { BookPanel, CostPanel, DepthPanel, QuoteStrip, TapePanel } from "@/components/terminal/LivePanels";
+import {
+  BoardPanel,
+  BriefPanel,
+  DistPanel,
+  FairPanel,
+  LadderPanel,
+  Panel,
+  PairPanel,
+} from "@/components/terminal/Panels";
+import { getPairs } from "@/lib/compare";
+import { getDistributions } from "@/lib/distributions";
 import { getEvent } from "@/lib/events";
 import { utc } from "@/lib/format";
 import { featured, mid, outcomeLabel, usableFair } from "@/lib/outcomes";
-import type { Row } from "@/lib/screener";
-import { METHODS, SETTLEMENT } from "@/lib/settlement";
-import { getMarket } from "@/lib/screener";
-import { kalshiBook, polyBook, polyTokens } from "@/lib/venues";
+import { getMarket, type Row } from "@/lib/screener";
+import { SETTLEMENT, summary } from "@/lib/settlement";
+import { polyTokens } from "@/lib/venues";
 
 export const metadata = { title: "Manta: market" };
 
-export default function EventPage({ params, searchParams }: PageProps<"/m/[venue]/[event]">) {
+export default function MarketPage({ params, searchParams }: PageProps<"/m/[venue]/[event]">) {
   return (
     <Suspense fallback={<p className="muted">Loading…</p>}>
-      <EventView params={params} searchParams={searchParams} />
+      <MarketView params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function EventView({
+async function MarketView({
   params,
   searchParams,
 }: Pick<PageProps<"/m/[venue]/[event]">, "params" | "searchParams">) {
@@ -44,191 +56,130 @@ async function EventView({
         <h1>Not open</h1>
         <p className="muted">
           This market has closed, or has no contract quoted on both sides right now.{" "}
-          <Link href="/">Back to today&apos;s markets</Link>.
+          <Link href="/markets">Back to Markets</Link>.
         </p>
       </>
     );
   }
   const o = e.outcomes.find((x) => x.id === sp.o) ?? featured(e.outcomes, 1)[0];
-  const got = await getMarket(o.venue, o.id); // whether the BTC tracker has its fair-value history
-  const tokens = venue === "polymarket" ? await polyTokens(o.event, o.id) : null;
+  const [got, tokens, { pairs }, dists] = await Promise.all([
+    getMarket(o.venue, o.id), // whether the BTC tracker has its fair-value history, and the read time
+    venue === "polymarket" ? polyTokens(o.event, o.id) : null,
+    getPairs(),
+    getDistributions(),
+  ]);
+  const paired = pairs.some((p) => (o.venue === "kalshi" ? p.kalshi.ids : p.poly.ids).includes(o.id));
+  const ladder = dists.some((d) => d.event === e.event);
+  const btc = e.venue === "kalshi" && (e.family === "KXBTCD" || e.family === "KXBTC");
+  const now = got?.at ?? e.close;
   const s = SETTLEMENT[e.family];
-  const m = mid(o);
   const href = (x: Row) => `?o=${encodeURIComponent(x.id)}`;
-  // On a long ladder, strikes priced under 2% or over 98% say little: list the ones in play (and
-  // the one in focus), and count the rest.
-  const inPlay = (x: Row) => x.id === o.id || e.outcomes.length <= 8 || ((mid(x) ?? 0) > 0.02 && (mid(x) ?? 1) < 0.98);
-  const listed = e.outcomes.filter(inPlay);
+  const wait = <p className="t-empty">Loading…</p>;
   return (
-    <div className="event-page">
-      <AutoRefresh seconds={10} />
+    <div className="mkt">
+      <AutoRefresh seconds={15} />
       <p className="crumbs">
-        <Link href="/">Home</Link> · {e.category} ·{" "}
+        <Link href="/markets">Markets</Link> · {e.category} ·{" "}
         <span className={`venue ${e.venue}`}>{e.venue === "kalshi" ? "Kalshi" : "Polymarket"}</span>
       </p>
       <h1>{e.question}</h1>
-      <p className="muted event-sub">
-        Closes {utc(e.close)} ({closesIn(e.close, got?.at ?? e.close)}){s && <> · settles on {s.settles}</>}
-      </p>
+      <p className="muted event-sub">Closes {utc(e.close)} ({closesIn(e.close, now)})</p>
 
-      <div className="event-layout">
-        <div className="event-main">
+      <Live venue={o.venue} id={o.id} token={tokens?.[0]}>
+        <div className="focus-row">
           <div className="focus">
-            <span className="focus-pct num">{pct(m)}</span>
+            <span className="focus-pct num">{pct(mid(o))}</span>
             <span className="focus-what">
               chance of <b>{outcomeLabel(o)}</b>
             </span>
           </div>
-          <section className="panel chart-card">
-            <Suspense fallback={<p className="muted pad">Loading the chart…</p>}>
-              <Chart c={o} yesToken={tokens?.[0]} tracked={got?.tracked ?? false} />
-            </Suspense>
-          </section>
-          <Tabs
-            tabs={[
-              {
-                name: "Order book",
-                pane: (
-                  <Suspense fallback={<p className="muted">Loading…</p>}>
-                    <BookSection c={o} yesToken={tokens?.[0]} />
-                  </Suspense>
-                ),
-              },
-              {
-                name: "Recent trades",
-                pane: (
-                  <Suspense fallback={<p className="muted">Loading…</p>}>
-                    <TradesSection c={o} yesToken={tokens?.[0]} />
-                  </Suspense>
-                ),
-              },
-              {
-                name: "Rules",
-                pane: (
-                  <Suspense fallback={<p className="muted">Loading…</p>}>
-                    <RulesSection c={o} />
-                  </Suspense>
-                ),
-              },
-              {
-                name: "Fair value method",
-                pane: (
-                  <div className="prose-sm">
-                    {o.fairMethod ? (
-                      <p>
-                        <b>{METHODS[o.fairMethod].name}.</b> {METHODS[o.fairMethod].explain}
-                      </p>
-                    ) : (
-                      <p>We have no fair value for this contract yet.</p>
-                    )}
-                    <p>
-                      Every number on this page, with the order book&apos;s full depth and the cost
-                      of any size, is on the{" "}
-                      <Link href={`/contract/${o.venue}/${encodeURIComponent(o.id)}`}>
-                        contract&apos;s detail page
-                      </Link>
-                      .
-                    </p>
-                  </div>
-                ),
-              },
-            ]}
-          />
-          <FairValueCard o={o} />
+          <span className="mkt-actions">
+            <Link
+              className="btn btn-sm"
+              href={`/terminal?m=${encodeURIComponent(`${o.venue}:${o.id}`)}`}
+            >
+              Open in terminal
+            </Link>
+            <TradeLink c={o} />
+          </span>
         </div>
-
-        <aside className="event-side">
-          <section className="panel pad">
-            <h2 className="card-h">Buy {outcomeLabel(o)}</h2>
-            <Suspense fallback={<p className="muted">Loading the order book…</p>}>
-              <Buy o={o} yesToken={tokens?.[0]} />
-            </Suspense>
-          </section>
-          <section className="panel pad">
-            <h2 className="card-h">
-              {e.outcomes.length > 1 ? "Outcomes" : "Outcome"}
-            </h2>
-            <div className="ladder">
-              {listed.map((x) => (
-                <Link
-                  key={x.id}
-                  href={href(x)}
-                  scroll={false}
-                  className={x.id === o.id ? "ladder-row on" : "ladder-row"}
-                >
-                  <span className="outcome-lab">
-                    <span>
-                      {outcomeLabel(x)} <Verdict o={x} />
-                    </span>
-                    <ProbBar o={x} />
-                  </span>
-                  <b className="num">{pct(mid(x))}</b>
-                </Link>
-              ))}
-            </div>
-            {listed.length < e.outcomes.length && (
-              <p className="note-sm">
-                {e.outcomes.length - listed.length} more strikes priced under 2% or over 98% are
-                hidden.
-              </p>
+        <p className="focus-help">
+          The midpoint between the best prices to buy and sell &ldquo;yes&rdquo;, which pays $1 if it
+          happens. A price of 40¢ reads as a 40% chance.
+        </p>
+        <QuoteStrip />
+        <div className="mkt-grid">
+          <div className="mkt-main">
+            <Panel k="chart">
+              <Suspense fallback={wait}>
+                <Chart c={o} yesToken={tokens?.[0]} tracked={got?.tracked ?? false} />
+              </Suspense>
+            </Panel>
+            <Panel k="book">
+              <BookPanel fair={usableFair(o)} />
+            </Panel>
+            <Panel k="depth">
+              <DepthPanel />
+            </Panel>
+            <Panel k="tape">
+              <TapePanel />
+            </Panel>
+            {btc && (
+              <Panel k="ladder">
+                <Suspense fallback={wait}>
+                  <LadderPanel e={e} />
+                </Suspense>
+              </Panel>
             )}
-          </section>
-        </aside>
-      </div>
+          </div>
+          <div className="mkt-side">
+            <Panel k="cost">
+              <CostPanel venue={o.venue} rate={o.feeTaker} fair={usableFair(o)} />
+            </Panel>
+            <Panel k="fair" title="Fair value: a second opinion">
+              <Suspense fallback={wait}>
+                <FairPanel o={o} close={e.close} now={now} />
+              </Suspense>
+            </Panel>
+            {paired && (
+              <Panel k="pair">
+                <Suspense fallback={wait}>
+                  <PairPanel o={o} />
+                </Suspense>
+              </Panel>
+            )}
+            <Panel k="board" title={e.outcomes.length > 1 ? "Outcomes" : "Outcome"}>
+              <BoardPanel e={e} focus={o.id} href={href} />
+            </Panel>
+            {ladder && (
+              <Panel k="dist" title="Likely range">
+                <Suspense fallback={wait}>
+                  <DistPanel event={e.event} />
+                </Suspense>
+              </Panel>
+            )}
+            <Panel k="brief" title="Market brief">
+              <Suspense fallback={wait}>
+                <BriefPanel venue={o.venue} id={o.id} />
+              </Suspense>
+            </Panel>
+          </div>
+        </div>
+      </Live>
+
+      <section className="fine-print">
+        <h2>How it settles</h2>
+        <p>
+          {summary(o)} at {utc(o.close)}
+          {s && <>, measured as {s.settles}</>}.
+        </p>
+        <details>
+          <summary>{o.venue === "kalshi" ? "Kalshi" : "Polymarket"}&apos;s own rules</summary>
+          <Suspense fallback={<p className="muted">Loading…</p>}>
+            <RulesSection c={o} />
+          </Suspense>
+        </details>
+      </section>
     </div>
   );
-}
-
-/** The midpoint beside our fair value, labelled with its method: one tool on the page, not a call. */
-function FairValueCard({ o }: { o: Row }) {
-  const m = mid(o);
-  const f = usableFair(o);
-  if (m === null) return null;
-  if (f === null) {
-    return (
-      <section className="verdict-card">
-        <div>
-          <span>Midpoint</span>
-          <b className="num">{pct(m)}</b>
-        </div>
-        <p>
-          {o.fairMethod === "consensus-1"
-            ? "Only one venue quotes this, so a fair value would just repeat its price."
-            : "No fair value for this contract yet."}
-        </p>
-      </section>
-    );
-  }
-  const d = Math.round((f - m) * 1000) / 10; // points, one decimal; rounded first so 0 isn't "−0.0"
-  const method = o.fairMethod ? METHODS[o.fairMethod].name : "Fair value";
-  return (
-    <section className="verdict-card">
-      <div>
-        <span>Midpoint</span>
-        <b className="num">{(m * 100).toFixed(1)}%</b>
-      </div>
-      <div>
-        <span>Fair value</span>
-        <b className="num fair">{(f * 100).toFixed(1)}%</b>
-      </div>
-      <div>
-        <span>Difference</span>
-        <b className={`num ${d > 0 ? "up" : d < 0 ? "down" : ""}`}>
-          {d > 0 ? "+" : d < 0 ? "−" : ""}
-          {Math.abs(d).toFixed(1)} pts
-        </b>
-      </div>
-      <p>
-        <strong>{method}.</strong> Its measured accuracy, against the venues&apos; own prices, is
-        on the <Link href="/stats">accuracy page</Link>. A reference price, not a forecast to trade
-        on. Not investment advice.
-      </p>
-    </section>
-  );
-}
-
-async function Buy({ o, yesToken }: { o: Row; yesToken?: string }) {
-  const book = o.venue === "kalshi" ? await kalshiBook(o.id) : yesToken ? await polyBook(yesToken) : null;
-  if (!book) return unavailable("The order book", o.venue);
-  return <BuyBox venue={o.venue} book={book} rate={o.feeTaker} />;
 }

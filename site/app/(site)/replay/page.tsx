@@ -15,13 +15,9 @@ export default function ReplayPage({ searchParams }: { searchParams: Promise<Par
     <div className="wide">
       <h1>Replay</h1>
       <p className="muted">
-        A past close on Kalshi, minute by minute: every strike&apos;s best bid and ask and where
-        the number settled, for Kalshi&apos;s ladders of &ldquo;above&rdquo; contracts in crypto,
-        stock indexes and economics; for Bitcoin also our fair value from Deribit&apos;s options
-        and Bitcoin&apos;s price. Kalshi publishes no
-        historical order books; these are rebuilt from our own recordings of its live feed, every
-        update applied in order (checked against Kalshi&apos;s own snapshots of the book, with
-        no mismatch). Each minute shows the book as it stood just before the minute began.
+        Play back a past Kalshi close minute by minute: every strike&apos;s bid and ask as the
+        close approached, and where it settled. See how fast prices converge and how wide spreads
+        get in the final minutes, from order books Kalshi doesn&apos;t publish.
       </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Replays searchParams={searchParams} />
@@ -68,11 +64,6 @@ async function Replays({ searchParams }: { searchParams: Promise<Params> }) {
         <ReplayView key={r.event} r={r} />
       )}
       <h2>Other closes</h2>
-      <p className="small">
-        Bitcoin from 2026-11-17, the other families from 2026-11-17 12:00 UTC. Fair values and
-        Bitcoin&apos;s price are the tracker&apos;s once-a-minute readings. An event listed in the hour before its close starts recording up
-        to 10 minutes late: the recorder checks Kalshi&apos;s list of markets every 10 minutes.
-      </p>
       <ul className="replay-list">
         {past.map((x) => (
           <li key={x.event}>
@@ -85,6 +76,21 @@ async function Replays({ searchParams }: { searchParams: Promise<Params> }) {
           </li>
         ))}
       </ul>
+      <details className="more">
+        <summary>How the replay is built</summary>
+        <p className="small">
+          Kalshi publishes no historical order books. These are rebuilt from our own recordings of
+          its live feed, every update applied in order, and checked against Kalshi&apos;s own
+          snapshots of the book with no mismatch. Each minute shows the book as it stood just
+          before the minute began. Bitcoin also shows Manta&apos;s fair value from Deribit&apos;s
+          options and Bitcoin&apos;s price, the tracker&apos;s once-a-minute readings.
+        </p>
+        <p className="small">
+          Bitcoin from 2026-11-17, the other families from 2026-11-17 12:00 UTC. An event listed
+          in the hour before its close starts recording up to 10 minutes late: the recorder checks
+          Kalshi&apos;s list of markets every 10 minutes.
+        </p>
+      </details>
     </>
   );
 }

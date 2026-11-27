@@ -71,7 +71,7 @@ export default function ApiDocsPage() {
         Deribit&apos;s options), <code>consensus-2</code> (both venues&apos; quotes, weighted by
         depth, net of fees) or <code>consensus-1</code> (one venue&apos;s quotes). Optional filters:{" "}
         <code>venue</code>, <code>family</code>, <code>event</code>. Refreshed every minute. Method:{" "}
-        <Link href="/tracker">fair value</Link>.
+        <Link href="/insights#accuracy">fair value</Link>.
       </p>
       <Example path="/fair-values?family=KXBTCD" response={`{"data":[{"venue":"kalshi","id":"KXBTCD-…","family":"KXBTCD",
   "event":"KXBTCD-…","label":"$97,000 or above","payoff":"above","low":97000,"high":null,
@@ -116,7 +116,7 @@ export default function ApiDocsPage() {
         bid–ask range (0 inside). <code>crossing</code> is set when one venue&apos;s ask is below the
         other&apos;s bid: the cents locked in per contract before fees, and <code>net_cents</code>{" "}
         after both legs&apos; taker fees (null if a fee is unknown). Method:{" "}
-        <Link href="/compare">compare venues</Link>.
+        <Link href="/insights#crossing">compare venues</Link>.
       </p>
 
       <h2>GET /liquidity</h2>
@@ -124,7 +124,7 @@ export default function ApiDocsPage() {
         Per contract family, sampled every 15 minutes over active contracts (quoted on both sides,
         midpoint 5¢–95¢): the median spread and the median size at the best prices, and the median
         spread by hour of day (UTC) over the last 14 days. Method:{" "}
-        <Link href="/liquidity">liquidity</Link>.
+        <Link href="/insights#spreads">liquidity</Link>.
       </p>
     </div>
   );

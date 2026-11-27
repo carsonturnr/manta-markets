@@ -1,11 +1,12 @@
 // The signed-in user's watchlist and alerts (step 11). Rows come through row-level security as
 // this user only (lib/account.ts); prices from the screener's listing, refreshed every minute.
 import { auth } from "@clerk/nextjs/server";
-import { SignInButton } from "@clerk/nextjs";
+import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import KeyForm from "@/components/KeyForm";
+import MantaAscii from "@/components/MantaAscii";
 import { getAlerts, getFired, getKeys, getListed, getWatchlist, type Listed } from "@/lib/account";
 import { deleteAlert, deleteKey, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
@@ -17,8 +18,14 @@ export const metadata = { title: "Manta: account" };
 export default function AccountPage() {
   return (
     <div className="wide">
-      <h1>Your watchlist and alerts</h1>
-      <Suspense fallback={<p className="muted">Loading…</p>}>
+      <Suspense
+        fallback={
+          <>
+            <h1>Your watchlist and alerts</h1>
+            <p className="muted">Loading…</p>
+          </>
+        }
+      >
         <Account />
       </Suspense>
     </div>
@@ -43,14 +50,43 @@ async function Account() {
   const { userId } = await auth();
   if (!userId) {
     return (
-      <p>
-        <SignInButton mode="modal">
-          <button type="button" className="link-button">
-            Sign in
-          </button>
-        </SignInButton>{" "}
-        to see your watchlist and alerts.
-      </p>
+      <div className="signed-out">
+        <MantaAscii />
+        <div className="signed-out-side">
+          <h1>Your markets, watched while you&apos;re away</h1>
+          <ul className="sell">
+            <li>
+              Keep a watchlist of the contracts you follow, with the latest bid, ask and fair value.
+            </li>
+            <li>Get an email when a price crosses your level, or a spread or depth changes.</li>
+            <li>Hear when Kalshi and Polymarket disagree on the same question.</li>
+            <li>
+              Make <Link href="/docs/api">API keys</Link> to pull Manta&apos;s analytics into your
+              own tools.
+            </li>
+          </ul>
+          <p className="muted small">Sign in with Google or a code sent to your email.</p>
+          {/* Clerk's own form, in place: hash routing keeps it on this URL. */}
+          <SignIn
+            routing="hash"
+            fallbackRedirectUrl="/account"
+            appearance={{
+              variables: {
+                colorPrimary: "#00ff77",
+                colorPrimaryForeground: "#000000",
+                colorBackground: "#0b0b0c",
+                colorForeground: "#f2f2f2",
+                colorMutedForeground: "#9a9a9a",
+                colorInput: "#000000",
+                colorInputForeground: "#f2f2f2",
+                colorNeutral: "#f2f2f2",
+                borderRadius: "3px",
+                fontFamily: "var(--font-sans), system-ui, sans-serif",
+              },
+            }}
+          />
+        </div>
+      </div>
     );
   }
   const [watched, alerts, fired, keys] = await Promise.all([
@@ -66,10 +102,11 @@ async function Account() {
 
   return (
     <>
+      <h1>Your watchlist and alerts</h1>
       <h2>Watchlist</h2>
       {watched.length === 0 ? (
         <p className="muted">
-          Nothing yet. Open a contract from the <Link href="/screener">screener</Link> and press
+          Nothing yet. Open a contract from <Link href="/markets">Markets</Link> and press
           Watch.
         </p>
       ) : (

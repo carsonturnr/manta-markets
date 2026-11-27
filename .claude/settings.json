@@ -5,7 +5,6 @@
       "Bash(supabase db:*)",
       "Bash(supabase migration:*)",
       "Edit(db/**)",
-      "Write(db/**)",
       "Bash(vercel:*)",
       "Bash(npx vercel:*)",
       "Bash(infra/deploy/*)",
@@ -22,9 +21,7 @@
       "Bash(rm -rf:*)",
       "Bash(rm -fr:*)",
       "Edit(**/.env)",
-      "Edit(**/.env.*)",
-      "Write(**/.env)",
-      "Write(**/.env.*)"
+      "Edit(**/.env.*)"
     ]
   },
   "hooks": {

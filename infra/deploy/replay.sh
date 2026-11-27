@@ -69,7 +69,15 @@ for back in $(seq 11 -1 1); do
   /opt/manta/bin/replay -series "$SERIES" -hour "$hour" -out "$OUT" $(files "$prev") $cur
   touch "$DONE/$hour"
 done
+# News moves (recorder/cmd/news -moves, docs/plan-news-events.md): for each news item whose window
+# now has its replay, the book move around it, read from the replay files just written (about a
+# second; an item at a releases.tsv release only links to it). After the replay, never alongside.
+/opt/manta/bin/news -moves -dir "$OUT/news" -replay "$OUT" -releases "$RELEASES" -series "$EVENT_SERIES" ||
+  { echo "news moves failed, retried next hour"; failed=1; }
+
 find "$OUT" -name '*.json.gz' -mtime +60 -delete
+find "$OUT/news" \( -name '20*.jsonl' -o -path '*/moves/*.json' \) -mtime +60 -delete 2>/dev/null || true
 find "$DONE" -type f -mtime +60 -delete
-find "$OUT" -mindepth 1 -type d -empty -not -path "$DONE" -delete
+# Never the news folders: manta-news.service's ReadWritePaths must exist, or systemd won't start it.
+find "$OUT" -mindepth 1 -type d -empty -not -path "$DONE" -not -path "$OUT/news" -not -path "$OUT/news/*" -delete
 exit "$failed" # a failed release shows as a failed run in systemctl

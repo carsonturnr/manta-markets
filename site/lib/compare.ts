@@ -135,3 +135,19 @@ export function crossed(p: Pair): { cents: number; net: number | null; buy: stri
   }
   return null;
 }
+
+/** The pairs whose prices cross with something left after both legs' taker fees, best first, with
+ * how many contracts both best prices carry (the thinner side limits it; null if a size is unknown). */
+export function arbitrage(pairs: Pair[]) {
+  return pairs
+    .flatMap((p) => {
+      const x = crossed(p);
+      if (!x || x.net === null || x.net <= 1e-9) return [];
+      const buy = x.buy === "Kalshi" ? p.kalshi : p.poly;
+      const sell = x.buy === "Kalshi" ? p.poly : p.kalshi;
+      const size =
+        buy.askSize !== null && sell.bidSize !== null ? Math.floor(Math.min(buy.askSize, sell.bidSize)) : null;
+      return [{ p, x: { ...x, net: x.net }, buy, sell, size }];
+    })
+    .sort((a, b) => b.x.net - a.x.net);
+}

@@ -13,6 +13,7 @@ type Feed = {
   at: number | null;
   error: boolean;
   streaming: boolean;
+  snapshot?: boolean; // one fixed reading (the home page's preview), never refreshed
 };
 const empty: Feed = { book: null, trades: null, at: null, error: false, streaming: false };
 const LiveContext = createContext<Feed>(empty);
@@ -108,4 +109,14 @@ export default function Live({
     };
   }, [venue, id, token]);
   return <LiveContext.Provider value={feed}>{children}</LiveContext.Provider>;
+}
+
+/** The same panels on one reading taken by the server: no polling and no stream, so a page that
+ * only shows the terminal (home) adds no load on the venues or the relay. */
+export function SnapshotLive({ book, trades, at, children }: { book: Book | null; trades: Trade[] | null; at: number; children: React.ReactNode }) {
+  return (
+    <LiveContext.Provider value={{ book, trades, at, error: false, streaming: false, snapshot: true }}>
+      {children}
+    </LiveContext.Provider>
+  );
 }
