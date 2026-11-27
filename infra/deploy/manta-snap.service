@@ -8,6 +8,8 @@ Wants=network-online.target
 Type=oneshot
 User=manta
 EnvironmentFile=/etc/manta/env
+# DATABASE_URL: the local Postgres as manta_job (infra/deploy/db/setup.md); read last, so it wins.
+EnvironmentFile=/etc/manta/db.env
 ExecStart=/opt/manta/pricing/.venv/bin/manta-snap
 # Under a minute, so a slow run never overlaps the next one; a timed-out run is a missing minute.
 TimeoutStartSec=50

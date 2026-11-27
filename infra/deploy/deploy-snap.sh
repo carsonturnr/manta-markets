@@ -4,13 +4,11 @@
 #   - the data-quality report (status -json + manta-quality, every 15 minutes)
 #   - the screener's contracts (contracts + manta-contracts, every minute)
 # Separate from deploy.sh, which restarts the recorder: this one never touches it (it only
-# replaces the status and contracts binaries). Copies DATABASE_URL from the local .env into /etc/manta/env,
-# applies db/schema.sql, and enables the timers. The VM runs the venv's scripts directly, not uv.
+# replaces the status and contracts binaries). The jobs' DATABASE_URL is the local Postgres, kept in
+# /etc/manta/db.env on the VM (infra/deploy/db/setup.md); this applies db/schema.sql and enables the timers. The VM runs the venv's scripts directly, not uv.
 set -euo pipefail
 host=${1:?usage: deploy-snap.sh root@HOST}
 cd "$(dirname "$0")/../.."
-db_url=$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
-site_pw=$(grep '^SITE_DB_PASSWORD=' .env | cut -d= -f2-)
 bin=$(mktemp -d)
 trap 'rm -rf "$bin"' EXIT
 (cd recorder && for c in status contracts; do
@@ -25,12 +23,8 @@ rsync -a --delete db/ "$host:/opt/manta/db/"
 rsync -a infra/deploy/manta-snap.service infra/deploy/manta-snap.timer \
   infra/deploy/manta-quality.service infra/deploy/manta-quality.timer \
   infra/deploy/manta-contracts.service infra/deploy/manta-contracts.timer "$host:/etc/systemd/system/"
-# The secrets go over ssh's stdin, never on a command line (where `ps` would show them).
-printf '%s\n%s\n' "$db_url" "$site_pw" | ssh "$host" 'set -euo pipefail
-  read -r db_url; read -r site_pw
-  grep -v "^DATABASE_URL=" /etc/manta/env > /etc/manta/env.new || true
-  echo "DATABASE_URL=$db_url" >> /etc/manta/env.new
-  chmod 640 /etc/manta/env.new && chown root:manta /etc/manta/env.new && mv /etc/manta/env.new /etc/manta/env
+ssh "$host" 'set -euo pipefail
+  test -f /etc/manta/db.env || { echo "/etc/manta/db.env missing: see infra/deploy/db/setup.md" >&2; exit 1; }
   chown -R root:root /opt/manta/pricing /opt/manta/db
   for c in status contracts; do
     install -m 755 -o root -g root /opt/manta/$c.new /opt/manta/bin/$c && rm /opt/manta/$c.new
@@ -38,7 +32,7 @@ printf '%s\n%s\n' "$db_url" "$site_pw" | ssh "$host" 'set -euo pipefail
   cd /opt/manta/pricing
   UV_PYTHON_INSTALL_DIR=/opt/manta/python uv sync -q --frozen --no-dev
   chmod -R a+rX /opt/manta/pricing /opt/manta/db /opt/manta/python
-  set -a; . /etc/manta/env; set +a
+  set -a; . /etc/manta/env; . /etc/manta/db.env; set +a
   # Schema only: passwords are set by hand (manta-snap --init --passwords) when one changes.
   .venv/bin/manta-snap --init
   chmod 644 /etc/systemd/system/manta-snap.* /etc/systemd/system/manta-quality.* /etc/systemd/system/manta-contracts.*

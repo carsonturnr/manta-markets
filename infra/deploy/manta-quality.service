@@ -9,6 +9,8 @@ Wants=network-online.target
 Type=oneshot
 User=manta
 EnvironmentFile=/etc/manta/env
+# DATABASE_URL: the local Postgres as manta_job (infra/deploy/db/setup.md); read last, so it wins.
+EnvironmentFile=/etc/manta/db.env
 # status re-reads the current hour's files each run (about a minute); the recorder comes first.
 Nice=10
 ExecStart=/opt/manta/bin/status -in /var/lib/manta/raw -json /var/lib/manta/quality.json
