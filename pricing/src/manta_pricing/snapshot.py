@@ -210,13 +210,14 @@ def status(conn: psycopg.Connection) -> None:
     print(f"last hour: {hour} of 60 minutes")
     print(f"quotes:    {quotes}")
     print(f"contracts: {settled} settled, {open_} not yet")
-    print(f"size:      {size} (Supabase free tier: 500 MB)")
+    print(f"size:      {size}")
 
 
 def init(conn: psycopg.Connection, passwords: bool = False) -> None:
     """Applies db/schema.sql; with `passwords`, also sets the logins' passwords from the
-    environment. Only when they change: setting one, even to the same value, makes Supabase's
-    pooler refuse that login for a short while (seen 2026-11-21), and every deploy runs this."""
+    environment (only when asked: every deploy runs this without). Setting passwords needs the
+    admin login (on the VM: sudo -u postgres), not manta_job; then refresh PgBouncer's
+    userlist.txt (infra/deploy/db/setup.md)."""
     with conn.transaction():
         conn.execute(SCHEMA.read_text())
         done = []

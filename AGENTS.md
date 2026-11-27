@@ -12,7 +12,7 @@ Build order (steps 0–13), fee formulas and infra (VM, Storage Box, Vercel, Sup
 - **pricing/** Python 3.13 + uv: fair values and analytics, writes Postgres (`manta-fair`, `manta-snap`, `manta-quality`, `manta-contracts`).
 - **backtest/** Python 3.13 + uv + NautilusTrader `==2.0.0rc9` (exact pin, release candidate): recordings → Nautilus Parquet catalog.
 - **site/** Next.js 16 + React 19 + TypeScript (npm), Clerk sign-in, `postgres` client, deployed on Vercel. Next 16 differs from training data: read `site/AGENTS.md` and `node_modules/next/dist/docs/` before writing site code.
-- **db/schema.sql** Postgres on Supabase, schema `manta`. **infra/deploy/** VM scripts and systemd units.
+- **db/schema.sql** Postgres 17 on the VM behind PgBouncer (moved off Supabase 2026-11-27; infra/deploy/db/setup.md), schema `manta`. **infra/deploy/** VM scripts and systemd units.
 
 ## Commands
 
@@ -48,7 +48,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Simple, readable code over clever code. Every part should be easy to explain.
 - Comments explain the *why* in plain English, often with the measurement and date behind a choice (see `site/lib/db.ts`). Every finance/math term is defined the first time it is used.
 - Formulas get tests with known inputs and hand-checked outputs (`site/lib/cost.test.ts`, `pricing/tests/`).
-- Site: `@/*` path alias, strict TypeScript, pages read the DB only at request time (never during `next build`), through the read-only `manta_site` login and Supabase's **session** pooler (5432; `db.ts` refuses 6543).
+- Site: `@/*` path alias, strict TypeScript, pages read the DB only at request time (never during `next build`), through the read-only `manta_site` login and the VM's PgBouncer (6432, TLS with the pinned certificate `DATABASE_CA`).
 - Python: ruff, line length 100, rules E F I B UP SIM. Go: gofmt.
 - New decisions get a dated line in docs/decisions.md: decision — what was found/measured.
 
@@ -83,7 +83,7 @@ docs/                  product.md, milestone plans, decisions.md
 ## Never (without asking Carson first)
 
 - Edit `.env` files (`.env`, `site/.env.local`, `site/.env.production.local`, `/etc/manta/env`).
-- Write or run database migrations (changes to `db/schema.sql`, any DDL against Supabase).
+- Write or run database migrations (changes to `db/schema.sql`, any DDL against the database).
 - Add, remove or upgrade dependencies (package.json, pyproject.toml, go.mod).
 - Deploy: `vercel`, `infra/deploy/*.sh`, `git push`, restarting VM services.
 - Commit to `main`, force-push, or `rm -rf`.
@@ -100,7 +100,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Site: `PageProps` and `LayoutProps` are global types that Next generates into `.next/types`; in a fresh worktree (no `.next/`) `tsc --noEmit` fails with "Cannot find name 'PageProps'" until `npx next typegen` runs.
 - Site: a lib file with node tests (`npm test`) must not import `next/cache` or `./db`: node cannot resolve `next/cache` as ESM, and db.ts throws without DATABASE_URL. Use a bare `"use cache"` (default profile) or keep the Next-only code in another file (lib/events-response.ts, lib/replayserve.ts).
 - Infra details (IPs, hostnames, account usernames) go in gitignored local files (`infra.local.md`), never in tracked docs; tracked files use placeholders such as `<vm-ip>`. The repo is meant to be public.
-- Database DDL: the Supabase MCP connection is read-only (`supabase_read_only_user`). Approved migrations run with the admin `DATABASE_URL` from the repo-root `.env` (psycopg via `uv run` in pricing/), never printing the URL; the VM's `manta-snap --init` applies the whole of db/schema.sql on the next deploy.
+- Database DDL: the database is reachable from outside only as the three site logins (PgBouncer); the admin and the jobs' `manta_job` connect on the VM only. Approved migrations run there (`sudo -u postgres psql -d manta`, or `manta-snap --init` as manta_job, which applies the whole of db/schema.sql on every deploy-snap.sh). After changing a site login's password, refresh PgBouncer's userlist.txt (infra/deploy/db/setup.md) or that login is refused.
 - API routes (site/app/api/v1): call `authorize()` before validating the query, so a caller without a valid key always gets 401, never a 400 that reveals the query rules (/cost did it the other way round until 2026-11-23).
 - Kalshi trades and the book changes they cause arrive in either order (book first for 58% of KXBTCD trades): anything that combines them (queue position, fills) matches each trade to its size drop within a window, never by arrival order (backtest/src/manta_backtest/queue.py).
 - Backtests (NautilusTrader 2.0.0rc9): the risk engine refuses orders over its rate limit (OrderDenied RATE_LIMIT_EXCEEDED, never reaching the simulated exchange); a strategy must handle `on_order_denied`, and a measuring probe that sends many orders at once must bypass it (`RiskEngineConfig(bypass=True)`), or denied orders look like unfilled ones (backtest/src/manta_backtest/strategy.py).
@@ -112,3 +112,4 @@ docs/                  product.md, milestone plans, decisions.md
 - Vercel previews need their own settings (Preview environment): without Clerk's keys every page answers "Internal Server Error" (middleware throws). Previews use Clerk's development keys; the production keys work only on mantamarkets.com. Check a protected preview with `vercel curl <path> --deployment <url>` from a linked folder.
 - Go: an RSS date with a US zone abbreviation (BEA's "08:30:00 EST") parses as UTC+0 unless read with `time.ParseInLocation(…, America/New_York)`: Go gives an abbreviation it doesn't know for the location a zero offset (recorder/internal/news `parseRSSDate`).
 - infra: a systemd unit with `ReadWritePaths=DIR` fails to start (status 226/NAMESPACE) if DIR is missing, so cleanups must never delete it: replay.sh's empty-folder sweep skips `$OUT/news` for manta-news.service.
+- Vercel: `vercel link` writes a `.env.local` (a login token) into the folder it runs in, and branch-scoped Preview variables (`vercel env add NAME preview BRANCH`) are refused until the branch is on GitHub (branch_not_found).

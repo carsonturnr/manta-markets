@@ -10,7 +10,7 @@ export default function Privacy() {
   return (
     <div className="prose">
       <h1>Privacy policy</h1>
-      <p className="muted">Effective 23 November 2026.</p>
+      <p className="muted">Effective 27 November 2026.</p>
 
       <p>
         Manta is run by Carson Turner. This page explains what personal data Manta collects, why,
@@ -55,7 +55,7 @@ export default function Privacy() {
 
       <h2>Where it is kept, and who can see it</h2>
       <p>
-        In a database hosted by Supabase in the United States (Ohio). The table is protected by
+        In a database on Manta&apos;s own server, rented from Hetzner in Finland (Helsinki). The table is protected by
         row-level security: the website&apos;s sign-up connection can add an address but cannot read
         the list, and only the administrator&apos;s login can read or delete it. Watchlists and
         alerts are protected the same way: the website&apos;s account connection can reach only the

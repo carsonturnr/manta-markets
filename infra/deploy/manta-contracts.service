@@ -9,6 +9,8 @@ Wants=network-online.target
 Type=oneshot
 User=manta
 EnvironmentFile=/etc/manta/env
+# DATABASE_URL: the local Postgres as manta_job (infra/deploy/db/setup.md); read last, so it wins.
+EnvironmentFile=/etc/manta/db.env
 ExecStart=/opt/manta/bin/contracts -out /var/lib/manta/contracts.json
 ExecStart=/opt/manta/pricing/.venv/bin/manta-contracts /var/lib/manta/contracts.json
 # Under a minute (a run takes about 15 s), so a slow run never overlaps the next one.
