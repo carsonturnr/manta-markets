@@ -4,7 +4,7 @@ Manta (repo/package `manta-markets`) is an analytics terminal for prediction mar
 
 **Every step ends in something that runs and can be shown.** Live site: https://mantamarkets.com.
 
-Build order (steps 0–13), fee formulas and infra (VM, Storage Box, Vercel, Supabase): docs/agent-reference.md. Real infra values (VM IP, Storage Box user, Vercel team) are in `infra.local.md` at the repo root: gitignored, copied into worktrees by `.worktreeinclude`; ask Carson if it is missing.
+Build order (steps 0–13), fee formulas and infra (VM, Postgres, Storage Box, Vercel): docs/agent-reference.md. Real infra values (VM IP, Storage Box user, Vercel team) are in `infra.local.md` at the repo root: gitignored, copied into worktrees by `.worktreeinclude`; ask Carson if it is missing.
 
 ## Stack
 

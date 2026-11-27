@@ -83,7 +83,7 @@ Each step ends in something that runs and can be shown.
 
 ## Costs to approve when reached
 
-- Supabase Pro ($25/month) when coverage outgrows the free 500 MB.
+- A bigger VM, or a separate database server, when the database outgrows the recorder VM (it moved there from Supabase on 2026-11-27).
 - A second small server for history and replay (the recorder's server already uses up to 2.6 GB of its 4 GB of memory).
 - More Storage Box space: 1 TB lasts about 8 months at today's 3.8 GB/day, less with new coverage.
 - An email-sending service for alerts (free tiers exist).

@@ -13,7 +13,10 @@
 - Site: the 6543 session-pooler rule is gone; both connections pin PgBouncer's certificate.
   Privacy page: the data is now in Finland (Hetzner), effective 27 November.
 - Jobs read the local DATABASE_URL from /etc/manta/db.env; deploy-snap.sh no longer copies the
-  Supabase URL.
+  Supabase URL. Switched over 2026-11-27 23:35 UTC (PR #26); jobs resumed on the VM.
+- Nightly pg_dump + logins to the Storage Box (db-backup.sh, 14 days), restore-tested. The recorder
+  email also covers database down and disk over 80% (OPS_EMAIL=ops@mantamarkets.com). README,
+  decisions.md, agent-reference.md updated (PR #27).
 
 ## Why
 The Supabase org used 46 GB of egress against the free tier's 5 GB (grace period ending
@@ -29,7 +32,7 @@ The Supabase org used 46 GB of egress against the free tier's 5 GB (grace period
 - Site passwords kept (48 characters), so Vercel only changed host and certificate.
 
 ## Follow-ups
-- Nightly pg_dump to the Storage Box (14 days) with a restore test; database-down and disk-80%
-  checks in the recorder email (needs OPS_EMAIL and a Namecheap forward); README and decisions.md.
+- A Namecheap forward for ops@mantamarkets.com, then one test email. The VM's price in the README
+  is from third-party lists; check it against the invoice.
 - Repo-root `.env` DATABASE_URL is still Supabase's admin URL (backtest/check.py uses it).
 - Pause the Supabase project after a few clean days; delete only when Carson says so.
