@@ -8,6 +8,7 @@ import {
   duration,
   joined,
   marks,
+  marksOn,
   type NewsItem,
   type NewsMove,
   NEWS_KEY,
@@ -88,12 +89,27 @@ test("joined: newest first, each with its move; an item with no moment placed by
   assert.equal(got[1].at, null);
 });
 
-test("chart marks: items with a moment, oldest first", () => {
-  const got = marks([item({ title: "B" }), item({ source: "bls-cpi", stated_real: false, received_ms: T - 5, title: "A" }), item({ stated_real: false, backfill: true })]);
-  assert.deepEqual(got, [
+test("chart marks: items with a moment whose source moves the family, oldest first", () => {
+  const items = [
+    item({ title: "B" }),
+    item({ source: "bls-cpi", stated_real: false, received_ms: T - 5, title: "A" }),
+    item({ stated_real: false, backfill: true }), // no moment
+  ];
+  assert.deepEqual(marks(items, "KXINXU"), [
     { t: T - 5, short: "BLS", title: "A" },
     { t: T, short: "Fed", title: "B" },
   ]);
+  assert.deepEqual(marks(items, "KXBTCD"), [{ t: T, short: "Fed", title: "B" }]); // CPI: not on Bitcoin
+  assert.deepEqual(marks(items, "BTC"), []); // a reference price: no group, no marks
+});
+
+test("which sources mark which families", () => {
+  assert.ok(marksOn("fed-press", "KXBTCD") && marksOn("fed-speech", "fed-decision") && marksOn("fed-press", "KXEURUSDH"));
+  assert.ok(marksOn("treasury-auction", "KXFED") && marksOn("treasury-press", "KXUSDJPY"));
+  assert.ok(!marksOn("treasury-auction", "KXBTCD") && !marksOn("treasury-press", "KXINXU"));
+  assert.ok(marksOn("bls-cpi", "KXCPICORE") && !marksOn("bls-cpi", "KXU3") && marksOn("bls-payrolls", "payrolls"));
+  assert.ok(marksOn("dol", "KXU3") && marksOn("bea", "KXNASDAQ100U") && !marksOn("bea", "KXETHD"));
+  assert.ok(!marksOn("unknown", "KXFED"));
 });
 
 test("formats", () => {

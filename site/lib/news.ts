@@ -140,12 +140,41 @@ export function overall(moves: NewsMove[]) {
   return { moments: ms.length, after: avg((m) => m.moved), before: avg((m) => m.moved_before), contracts: avg((m) => m.contracts) };
 }
 
-/** Chart marks for the candle chart: each item with a known moment, oldest first. */
-export const marks = (items: NewsItem[]) =>
+// Which contract families each source's news plausibly moves (lib/families.ts ids), for chart
+// marks only: every item is still listed on /insights/news and in the terminal's Catalysts list.
+// A family in no group gets no marks.
+const GROUPS = {
+  rates: ["KXFED", "KXFEDDECISION", "fed-decision"],
+  fx: ["KXEURUSD", "KXEURUSDH", "KXUSDJPY", "KXUSDJPYH"],
+  indexes: ["KXINX", "KXINXU", "KXNASDAQ100", "KXNASDAQ100U"],
+  crypto: ["KXBTCD", "KXBTC", "KXBTC15M", "KXETHD", "KXETH", "KXETH15M", "btc-above", "btc-price", "eth-above", "eth-price"],
+  cpi: ["KXCPI", "KXCPIYOY", "KXCPICORE", "KXCPICOREYOY", "cpi"],
+  jobs: ["KXPAYROLLS", "KXU3", "payrolls", "unemployment"],
+};
+type Group = keyof typeof GROUPS;
+const fed: Group[] = ["rates", "fx", "indexes", "crypto"];
+const treasury: Group[] = ["rates", "fx"];
+const MOVES: Record<string, Group[]> = {
+  "fed-press": fed,
+  "fed-speech": fed,
+  "treasury-press": treasury,
+  "treasury-auction": treasury,
+  bea: ["indexes", "rates"], // GDP and PCE have no recorded family of their own
+  dol: ["jobs", "indexes", "rates"],
+  "bls-cpi": ["cpi", "indexes", "rates"],
+  "bls-payrolls": ["jobs", "indexes", "rates"],
+};
+
+/** Whether a source's news is marked on a family's chart. */
+export const marksOn = (source: string, family: string) =>
+  MOVES[source]?.some((g) => GROUPS[g].includes(family)) ?? false;
+
+/** Chart marks for one family's candle chart: its sources' items with a known moment, oldest first. */
+export const marks = (items: NewsItem[], family: string) =>
   items
     .flatMap((it) => {
       const at = t0(it);
-      return at ? [{ t: at.t, short: SOURCES[it.source]?.short ?? it.source, title: it.title }] : [];
+      return at && marksOn(it.source, family) ? [{ t: at.t, short: SOURCES[it.source]?.short ?? it.source, title: it.title }] : [];
     })
     .sort((a, b) => a.t - b.t);
 export type Mark = ReturnType<typeof marks>[number];

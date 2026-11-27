@@ -2161,7 +2161,8 @@ h1.h2 {
 /* ---- Event response (/events/[release]): one small chart per reacting contract ----------- */
 .response-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  /* min(): on a 390 px phone the content is narrower than 360 px; one chart per row there. */
+  grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr));
   gap: 24px;
   margin: 0 0 32px;
 }
@@ -3782,4 +3783,39 @@ details.more[open] > summary {
 }
 .news-table td.title {
   min-width: 320px;
+}
+/* On phones each news row stacks into lines, each figure labelled (the headings are hidden). */
+@media (max-width: 700px) {
+  .news-table {
+    min-width: 0;
+  }
+  .news-table thead {
+    display: none;
+  }
+  .news-table,
+  .news-table tbody,
+  .news-table tr,
+  .news-table td {
+    display: block;
+  }
+  .news-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .news-table td,
+  .news-table td:first-child,
+  .news-table td:last-child {
+    height: auto;
+    padding: 2px 16px;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+  }
+  .news-table td.title {
+    min-width: 0;
+  }
+  .news-table td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--text-3);
+  }
 }

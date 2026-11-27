@@ -16,7 +16,7 @@ with how the order books moved around it. Sources and measured delays: docs/news
 | Fed press releases | federalreserve.gov/feeds/press_all.xml | 15 s | statements, minutes, actions |
 | Fed speeches | federalreserve.gov/feeds/speeches.xml | 15 s | governors' remarks |
 | Treasury press | home.treasury.gov/news/press-releases (HTML list: link, title, `<time>`) | 15 s | sanctions, statements; no RSS exists |
-| Treasury auctions | TreasuryDirect `securities/auctioned` JSON | 15 s | high rate, bid-to-cover |
+| Treasury auctions | TreasuryDirect `securities/auctioned` JSON (2 days) | 15 s | high rate, bid-to-cover |
 | BEA | apps.bea.gov/rss/rss.xml | 15 s | GDP, PCE, trade |
 | DOL | dol.gov/rss/releases.xml | 15 s at 8:29–8:45 ET weekdays, 5 min otherwise | weekly jobless claims (the only source) |
 | BLS | bls.gov/feed/cpi.rss, empsit.rss (Atom) | same as DOL | CPI and payrolls headlines |

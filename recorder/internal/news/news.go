@@ -54,7 +54,9 @@ var Sources = []Source{
 	{Name: "fed-press", URL: "https://www.federalreserve.gov/feeds/press_all.xml", Parse: ParseRSS, StatedReal: true},
 	{Name: "fed-speech", URL: "https://www.federalreserve.gov/feeds/speeches.xml", Parse: ParseRSS, StatedReal: true},
 	{Name: "treasury-press", URL: "https://home.treasury.gov/news/press-releases", Parse: ParseTreasuryPress},
-	{Name: "treasury-auction", URL: "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&days=7", Parse: ParseAuctions, StatedReal: true},
+	// TreasuryDirect ignores conditional requests: two days of results (~5 KB gzipped, measured
+	// 2026-11-27) rather than seven (~14 KB) keeps a 15 s poll at ~30 MB a day.
+	{Name: "treasury-auction", URL: "https://www.treasurydirect.gov/TA_WS/securities/auctioned?format=json&days=2", Parse: ParseAuctions, StatedReal: true},
 	{Name: "bea", URL: "https://apps.bea.gov/rss/rss.xml", Parse: ParseRSS, StatedReal: true},
 	{Name: "dol", URL: "https://www.dol.gov/rss/releases.xml", Parse: ParseRSS, ReleaseOnly: true},
 	{Name: "bls-cpi", URL: "https://www.bls.gov/feed/cpi.rss", Parse: ParseAtom, ReleaseOnly: true},

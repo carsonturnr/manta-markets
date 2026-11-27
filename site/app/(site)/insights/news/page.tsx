@@ -89,10 +89,10 @@ async function NewsView() {
                         {it.title}
                       </a>
                     </td>
-                    <td className="num">
+                    <td className="num" data-label="Received after">
                       {d !== null ? duration(d) : <span className="muted">{it.backfill ? "n/a" : "no real stated time"}</span>}
                     </td>
-                    <td className="num">
+                    <td className="num" data-label="1¢+ movers, after vs before">
                       {move?.release ? (
                         <Link href={`/insights/releases/${move.release}`}>at a scheduled release →</Link>
                       ) : move && move.contracts > 0 ? (

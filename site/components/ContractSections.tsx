@@ -17,11 +17,12 @@ export const unavailable = (what: string, venue: string) => (
   </p>
 );
 
-// Official news marks for the chart (tool 16). The replay server being down costs the marks, not
+// Official news marks for the chart (tool 16), only from sources that move this family
+// (lib/news.ts marksOn). The replay server being down costs the marks, not
 // the chart.
-const newsMarks = () =>
+const newsMarks = (family: string) =>
   getNews()
-    .then((n) => marks(n.items))
+    .then((n) => marks(n.items, family))
     .catch((e) => {
       console.error(e);
       return [];
@@ -34,14 +35,14 @@ export async function Chart({ c, yesToken, tracked }: { c: Row; yesToken?: strin
       kalshiCandles(c.family, c.id, "1m"),
       kalshiCandles(c.family, c.id, "1h"),
       tracked ? getContract(c.id) : null, // our fair value, recorded once a minute
-      newsMarks(),
+      newsMarks(c.family),
     ]);
     if (!m1 || !h1) return unavailable("Price history", c.venue);
     const fair = ours?.points.flatMap((p) => (p.fair === null ? [] : [{ t: p.t, fair: p.fair }]));
     return <CandleChart kalshi={{ m1, h1 }} fair={fair} close={c.close} news={news} />;
   }
   if (!yesToken) return unavailable("Price history", c.venue);
-  const [m1, h1, news] = await Promise.all([polyCandles(yesToken, "1m"), polyCandles(yesToken, "1h"), newsMarks()]);
+  const [m1, h1, news] = await Promise.all([polyCandles(yesToken, "1m"), polyCandles(yesToken, "1h"), newsMarks(c.family)]);
   if (!m1 || !h1) return unavailable("Price history", c.venue);
   return <CandleChart poly={{ m1, h1 }} close={c.close} news={news} />;
 }
