@@ -1,9 +1,12 @@
 // Command news polls the official news feeds (internal/news, docs/plan-news-events.md) and
 // appends each item it has not seen before, stamped with when we first received it, to
-// DIR/<UTC day>.jsonl. replayserve serves that folder to the site. Every DIR/status.json minute
-// it writes each feed's poll counts, for the page's honest figures (failed polls included).
+// DIR/<UTC day>.jsonl. replayserve serves that folder to the site. Every minute it writes each
+// feed's poll counts to DIR/status.json, for the page's honest figures (failed polls included).
 //
 //	news -dir /var/lib/manta/replay/news
+//
+// With -moves (moves.go) it instead measures how the books moved around each item, from the
+// hourly replay files, and exits: replay.sh runs it after each hour's replay.
 //
 // Times are this machine's clock (the VM syncs to ntp.hetzner.com; the offset is published).
 package main
@@ -57,7 +60,20 @@ type collector struct {
 
 func main() {
 	dir := flag.String("dir", "/var/lib/manta/replay/news", "output folder")
+	moves := flag.Bool("moves", false, "compute the moves of items whose window has a replay, then exit (run by replay.sh)")
+	replayDir := flag.String("replay", "/var/lib/manta/replay", "with -moves: the replay directory (cmd/replay's output)")
+	releases := flag.String("releases", "/opt/manta/releases.tsv", "with -moves: event response's scheduled releases")
+	series := flag.String("series", "", "with -moves: comma-separated Kalshi series to measure")
 	flag.Parse()
+	if *moves {
+		if *series == "" {
+			log.Fatal("usage: news -moves -dir DIR -replay DIR -releases FILE -series KXFED,…")
+		}
+		if err := runMoves(*dir, *replayDir, *releases, strings.Split(*series, ","), time.Now()); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if err := os.MkdirAll(*dir, 0o755); err != nil {
 		log.Fatal(err)
 	}
@@ -113,6 +129,7 @@ func fresh(src news.Source, items []news.Item, seen map[string]bool, first bool,
 	var out []news.Item
 	for _, it := range items {
 		it.Source, it.StatedReal, it.ReceivedMs, it.Backfill = src.Name, src.StatedReal, now.UnixMilli(), first
+		it.Key = news.Key(it)
 		k := key(it)
 		if seen[k] {
 			continue
@@ -155,7 +172,7 @@ func (c *collector) poll(src news.Source) {
 			st.LastOkMs = now.UnixMilli()
 			etag, modified = h.Get("ETag"), h.Get("Last-Modified")
 			for _, it := range fresh(src, items, c.seen, first, now) {
-				if err := c.append(it); err != nil {
+				if err := appendLine(filepath.Join(c.dir, time.UnixMilli(it.ReceivedMs).UTC().Format(time.DateOnly)+".jsonl"), it); err != nil {
 					log.Printf("%s: writing %s: %v", src.Name, it.ID, err) // retried on the next poll
 					delete(c.seen, key(it))
 					continue
@@ -201,36 +218,10 @@ func (c *collector) fetch(url, etag, modified string) ([]byte, int, http.Header,
 	return body, res.StatusCode, res.Header, err
 }
 
-// append writes one item as a line of its receipt day's file (UTC), in one write call.
-func (c *collector) append(it news.Item) error {
-	line, err := json.Marshal(it)
-	if err != nil {
-		return err
-	}
-	day := time.UnixMilli(it.ReceivedMs).UTC().Format(time.DateOnly)
-	f, err := os.OpenFile(filepath.Join(c.dir, day+".jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	if _, err := f.Write(append(line, '\n')); err != nil {
-		f.Close()
-		return err
-	}
-	return f.Close()
-}
-
-// writeStatus saves every feed's counts since start, through a temporary file so a reader never
-// sees half of it.
+// writeStatus saves every feed's counts since start.
 func (c *collector) writeStatus(since int64) error {
 	c.mu.Lock()
-	body, err := json.Marshal(map[string]any{"since_ms": since, "written_ms": time.Now().UnixMilli(), "feeds": c.stats})
-	c.mu.Unlock()
-	if err != nil {
-		return err
-	}
-	tmp := filepath.Join(c.dir, ".status.tmp")
-	if err := os.WriteFile(tmp, body, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, filepath.Join(c.dir, "status.json"))
+	defer c.mu.Unlock()
+	return writeJSON(filepath.Join(c.dir, "status.json"),
+		map[string]any{"since_ms": since, "written_ms": time.Now().UnixMilli(), "feeds": c.stats})
 }

@@ -1,0 +1,24 @@
+# Manta news collector (recorder/cmd/news, docs/plan-news-events.md): polls the official feeds
+# (Fed, Treasury, BEA, DOL, BLS) and appends new items to /var/lib/manta/replay/news, which
+# replayserve serves. Its own unit, never the recorder's: a news crash can't gap the books.
+# Capped: it sleeps between polls (a few small requests every 15 s).
+[Unit]
+Description=Manta news collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=manta
+ExecStart=/opt/manta/bin/news -dir /var/lib/manta/replay/news
+Restart=always
+RestartSec=30
+CPUQuota=10%
+MemoryMax=200M
+Nice=10
+ProtectSystem=strict
+ReadWritePaths=/var/lib/manta/replay/news
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

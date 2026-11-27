@@ -20,6 +20,7 @@ import (
 
 // Item is one piece of news, one JSON line in the collector's daily file.
 type Item struct {
+	Key    string `json:"key"`    // Key(item): its name in file names and URLs
 	Source string `json:"source"` // a Source's Name
 	ID     string `json:"id"`     // unique within its source (the feed's guid or link)
 	Title  string `json:"title"`
