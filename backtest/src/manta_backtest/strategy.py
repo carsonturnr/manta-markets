@@ -557,12 +557,12 @@ def backtest_main() -> None:
 KALSHI_API = "https://api.elections.kalshi.com/trade-api/v2"
 
 
-def settlements(tickers: set[str], cache: Path) -> dict[str, float]:
+def settlements(tickers: set[str], cache: Path, api: str = KALSHI_API) -> dict[str, float]:
     """Each contract's settlement value ($1 YES, $0 NO) from Kalshi's public API, one request
     per hourly event, kept in `cache` so a report can be rerun offline."""
     known: dict[str, float] = json.loads(cache.read_text()) if cache.exists() else {}
     for ev in sorted({event_of(t) for t in tickers if t not in known}):
-        url = f"{KALSHI_API}/markets?event_ticker={ev}&limit=1000"
+        url = f"{api}/markets?event_ticker={ev}&limit=1000"
         time.sleep(0.2)  # stay well under Kalshi's read limit (20 a second on the Basic tier)
         for attempt in range(5):  # timeouts and 429s: back off exponentially, then give up
             try:
