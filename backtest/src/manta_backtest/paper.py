@@ -84,25 +84,25 @@ class PaperMaker(MarketMaker):
     ) -> None:
         # No fair-value guard: our fair values are for the real exchange's contracts.
         super().__init__(0.5, 5 * S, closes_ns, {}, size=PAPER_SIZE, total=PAPER_TOTAL)
-        self.log, self.on_kill, self.killed = log, on_kill, False
+        self.jlog, self.on_kill, self.killed = log, on_kill, False
         self.stop_at = stop_at_ns
 
     def on_start(self) -> None:
         super().on_start()
         self.clock.set_timer_ns("kill-check", S)
-        self.log.write("start", size=self.size, total_cap=self.total)
+        self.jlog.write("start", size=self.size, total_cap=self.total)
 
     def on_time_event(self, event) -> None:
         if self.killed:
             return
-        if (self.log.dir / KILL_FILE).exists():
+        if (self.jlog.dir / KILL_FILE).exists():
             self.kill("kill file")
         elif self.stop_at and self.clock.timestamp_ns() >= self.stop_at:
             self.kill("time limit")
 
     def kill(self, reason: str) -> None:
         self.killed = True
-        self.log.write("kill", reason=reason)
+        self.jlog.write("kill", reason=reason)
         self.cancel_all()
         self.on_kill()
 
@@ -112,10 +112,10 @@ class PaperMaker(MarketMaker):
 
     def on_stop(self) -> None:
         self.cancel_all()
-        self.log.write("stop", positions=self.pos | self.settled)
+        self.jlog.write("stop", positions=self.pos | self.settled)
 
     def on_order_event(self, event) -> None:
-        self.log.write(
+        self.jlog.write(
             type(event).__name__,
             client_order_id=str(event.client_order_id),
             instrument=str(event.instrument_id),
@@ -125,14 +125,14 @@ class PaperMaker(MarketMaker):
     def on_order_filled(self, event) -> None:
         super().on_order_filled(event)
         if self.fills and self.fills[-1]["ts"] == event.ts_event:
-            self.log.write("fill", **self.fills[-1])
+            self.jlog.write("fill", **self.fills[-1])
 
     def settle_waiting(self, now: int) -> None:
         before = {i: f["mid_after"] for i, f in enumerate(self.fills)}
         super().settle_waiting(now)
         for i, f in enumerate(self.fills):
             if before.get(i) is None and f["mid_after"] is not None:
-                self.log.write(
+                self.jlog.write(
                     "markout", index=i, ticker=f["ticker"], ts=f["ts"], mid_after=f["mid_after"]
                 )
 
