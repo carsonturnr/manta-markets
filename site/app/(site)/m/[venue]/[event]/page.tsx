@@ -12,7 +12,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import { Chart, RulesSection, TradeLink } from "@/components/ContractSections";
 import { closesIn, pct } from "@/components/EventCard";
 import Live from "@/components/terminal/Live";
-import { BookPanel, CostPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePanels";
+import { BookPanel, CostPanel, DepthPanel, QuoteStrip, TapePanel } from "@/components/terminal/LivePanels";
 import {
   BoardPanel,
   BriefPanel,
@@ -85,29 +85,29 @@ async function MarketView({
       <h1>{e.question}</h1>
       <p className="muted event-sub">Closes {utc(e.close)} ({closesIn(e.close, now)})</p>
 
-      <div className="focus-row">
-        <div className="focus">
-          <span className="focus-pct num">{pct(mid(o))}</span>
-          <span className="focus-what">
-            chance of <b>{outcomeLabel(o)}</b>
+      <Live venue={o.venue} id={o.id} token={tokens?.[0]}>
+        <div className="focus-row">
+          <div className="focus">
+            <span className="focus-pct num">{pct(mid(o))}</span>
+            <span className="focus-what">
+              chance of <b>{outcomeLabel(o)}</b>
+            </span>
+          </div>
+          <span className="mkt-actions">
+            <Link
+              className="btn btn-sm"
+              href={`/terminal?m=${encodeURIComponent(`${o.venue}:${o.id}`)}`}
+            >
+              Open in terminal
+            </Link>
+            <TradeLink c={o} />
           </span>
         </div>
-        <span className="mkt-actions">
-          <Link
-            className="btn btn-sm"
-            href={`/terminal?m=${encodeURIComponent(`${o.venue}:${o.id}`)}`}
-          >
-            Open in terminal
-          </Link>
-          <TradeLink c={o} />
-        </span>
-      </div>
-      <p className="focus-help">
-        The midpoint between the best prices to buy and sell &ldquo;yes&rdquo;, which pays $1 if it
-        happens. A price of 40¢ reads as a 40% chance.
-      </p>
-
-      <Live venue={o.venue} id={o.id} token={tokens?.[0]}>
+        <p className="focus-help">
+          The midpoint between the best prices to buy and sell &ldquo;yes&rdquo;, which pays $1 if it
+          happens. A price of 40¢ reads as a 40% chance.
+        </p>
+        <QuoteStrip />
         <div className="mkt-grid">
           <div className="mkt-main">
             <Panel k="chart">

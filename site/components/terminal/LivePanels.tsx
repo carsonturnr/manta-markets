@@ -22,6 +22,47 @@ function Fresh() {
   return <span className="t-live">{!at ? "loading" : streaming ? "live · streaming" : "live · every 2 s"}</span>;
 }
 
+/** The live quote in one line: best bid and ask with their sizes, the spread and the last trade.
+ * Read from the live book, not the market list, so it always agrees with the book panel. */
+export function QuoteStrip() {
+  const { book, trades } = useLive();
+  const bid = book?.bids[0];
+  const ask = book?.asks[0];
+  const last = trades?.[0];
+  const cell = (label: string, value: React.ReactNode) => (
+    <div>
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
+  );
+  const sized = (l: Level | undefined) =>
+    l ? (
+      <>
+        {c(l.price)} <small>× {qty(l.size)}</small>
+      </>
+    ) : (
+      "–"
+    );
+  return (
+    <div className="quote-strip num" aria-label="Live quote">
+      {cell("Bid", sized(bid))}
+      {cell("Ask", sized(ask))}
+      {cell("Spread", bid && ask ? c(ask.price - bid.price) : "–")}
+      {cell(
+        "Last trade",
+        last ? (
+          <>
+            {c(last.price)} <small className={last.side === "buy" ? "up" : "down"}>{last.side}</small>
+          </>
+        ) : (
+          "–"
+        ),
+      )}
+      <Fresh />
+    </div>
+  );
+}
+
 /** The order book: asks above, bids below, a bar for each level's size, the spread between. */
 export function BookPanel({ fair }: { fair: number | null }) {
   const { book } = useLive();
