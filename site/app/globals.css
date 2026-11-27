@@ -1129,29 +1129,11 @@ h1.h2 {
   }
 }
 
-/* The homepage's list of tools: a band one step off black, edged by the rails. */
-.band {
-  margin: 0 -32px 80px;
-  padding: 56px 32px 40px;
-  background: var(--panel);
-  border-block: 1px dashed var(--rail);
-  color: var(--text);
-}
-/* Full-bleed bands reach the rails: on a phone match its 16px padding, not the desktop's 32px. */
+/* The full-bleed figures row reaches the rails: on a phone match its 16px padding, not 32px. */
 @media (max-width: 960px) {
-  .stats-row,
-  .band {
+  .stats-row {
     margin-inline: -16px;
   }
-}
-.band .tag {
-  color: rgba(242, 245, 251, 0.75);
-  border-color: rgba(242, 245, 251, 0.3);
-}
-.band h2 {
-  margin: 16px 0 8px;
-  font-size: 44px;
-  color: #fff;
 }
 .ranked {
   list-style: none;
@@ -1192,19 +1174,6 @@ h1.h2 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.band .m3 {
-  color: rgba(242, 245, 251, 0.55);
-}
-.band .fair {
-  color: var(--fair);
-}
-/* On the band, gaps use the same green and red, lifted toward white so they read on deep blue. */
-.band .gap-pts.up {
-  color: color-mix(in srgb, var(--up) 55%, white);
-}
-.band .gap-pts.down {
-  color: color-mix(in srgb, var(--down) 55%, white);
-}
 .gap-pts {
   font-family: var(--mono);
   font-size: 12px;
@@ -1222,65 +1191,6 @@ h1.h2 {
   }
 }
 
-/* Cards share their borders, like cells of one table. */
-.event-card {
-  display: flex;
-  flex-direction: column;
-  padding: 24px;
-  border-right: 1px solid var(--line-2);
-  border-bottom: 1px solid var(--line-2);
-  background: var(--panel);
-  color: var(--text);
-  transition: background-color 0.15s var(--ease);
-}
-.event-card:hover {
-  text-decoration: none;
-  background: var(--bg);
-}
-.event-q {
-  font-family: var(--serif);
-  font-size: 21px;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-.event-meta {
-  margin-top: 8px;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-3);
-}
-.event-outcomes {
-  margin: 20px 0 16px;
-  display: grid;
-  gap: 10px;
-}
-.outcome {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
-  align-items: center;
-  gap: 16px;
-}
-.outcome > b {
-  text-align: right;
-  font-size: 15px;
-  font-weight: 500;
-}
-.outcome-lab {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  font-size: 14px;
-}
-.outcome-lab > span {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-}
 /* A probability bar; the mint dot on it is Manta's fair value. */
 .prob-bar {
   position: relative;
@@ -1302,18 +1212,6 @@ h1.h2 {
   border-radius: 50%;
   background: var(--fair);
   box-shadow: 0 0 0 1.5px var(--panel);
-}
-.event-foot {
-  display: flex;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-3);
 }
 .venue::before {
   content: "";
