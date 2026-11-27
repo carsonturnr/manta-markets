@@ -1,8 +1,8 @@
 # Step 14: market maker, plan
 
-**The result, in plain English (2026-11-27).** The bot is a market maker on Kalshi's hourly "Bitcoin above $X" contracts: it keeps a small buy order (5 contracts) at the best bid and a sell order at the best ask of every actively traded contract, hoping to earn the 1¢ gap between them when both get traded. It never crosses the spread, cancels when the line of orders ahead of it at its price thins to half, leans away from any position it builds up, stops 15 minutes before each contract closes, and never holds more than 200 contracts. Backtested on our own recordings with NautilusTrader, on three days it was not tuned on (including the most volatile weekday in our archive), it **lost $483 on 70,021 contracts traded, 0.69¢ a contract, against $0 for not quoting at all, and lost on every day**. It does earn the spread (+$351), but the price moves against it in the minute after its fills (−$839): professional firms sit next to Kalshi's servers about 1 ms away and cancel their quotes the moment the price starts to move, while we see the market about 57 ms late and need another 56 ms to cancel, so our orders are the ones still resting when better-informed traders arrive, and we get filled mostly when we are about to be wrong. Our options-based fair value does not help (the price closes only 1–3% of its gap to it), and doubling our latency changes almost nothing (−$500), because the problem is being slower than the incumbents and last in their queues, not a few milliseconds. Paper trading only: no real money is involved anywhere.
+**The result, in plain English (2026-11-27).** The bot is a market maker on Kalshi's hourly "Bitcoin above $X" contracts: it keeps a small buy order (5 contracts) at the best bid and a sell order at the best ask of every actively traded contract, hoping to earn the 1¢ gap between them when both get traded. It never crosses the spread, cancels when the line of orders ahead of it at its price thins to half, leans away from any position it builds up, stops 15 minutes before each contract closes, and never holds more than 200 contracts. Backtested on our own recordings with NautilusTrader, on three days it was not tuned on (including the most volatile weekday in our archive), it **lost $504 on 70,021 contracts traded, 0.72¢ a contract, against $0 for not quoting at all, and lost on every day**. It does earn the spread (+$351), but the price moves against it in the minute after its fills (−$839): professional firms sit next to Kalshi's servers about 1 ms away and cancel their quotes the moment the price starts to move, while we see the market about 57 ms late and need another 56 ms to cancel, so our orders are the ones still resting when better-informed traders arrive, and we get filled mostly when we are about to be wrong. Our options-based fair value does not help (the price closes only 1–3% of its gap to it), and doubling our latency changes almost nothing (−$510), because the problem is being slower than the incumbents and last in their queues, not a few milliseconds. Lifting Kalshi's order-rate limit would not help (−$539, a hypothetical run), and the 15-minute Bitcoin contracts lose too (−$443 on the same days). Paper trading only: no real money is involved anywhere.
 
-**Status:** approved by Carson 2026-11-24 with two changes (below: more data before choosing quotes; latency measured from our server to Kalshi's production API). Next stop for approval: sub-step 4, the quoting rules. No strategy code before then.
+**Status (2026-11-27):** plan approved 2026-11-24, quoting rules 2026-11-25; backtest report (sub-step 6) final, every fill valued at Kalshi's settlement. Sub-step 7, paper trading on Kalshi demo, approved as a lean version and in progress.
 
 **Expectation, set now:** with the fill rates measured below, the likely result is a strategy that earns little or loses a little to better-informed traders. That is an acceptable outcome; the deliverable is the honest profit-and-loss breakdown.
 
@@ -98,79 +98,97 @@ The six pre-registered settings, KXBTCD, 56 ms latency, on the three tuning days
 
 | Setting (cancel below this fraction of the size we joined; rejoin wait) | 2026-11-17 | 2026-11-19 | 2026-11-21 | **Total** |
 |---|---|---|---|---|
-| 0 (never on shrinking); 0 s, and 0; 5 s (identical: the wait only follows such a cancel) | −$563.43 | −$636.85 | −$526.38 | −$1,726.66 |
-| 0.25; 0 s | −$443.80 | −$480.80 | −$516.03 | −$1,440.63 |
-| 0.25; 5 s | −$243.83 | −$216.97 | −$196.67 | −$657.47 |
-| 0.5; 0 s | −$490.30 | −$467.19 | −$463.54 | −$1,421.03 |
-| **0.5; 5 s (chosen)** | −$222.90 | −$211.43 | −$193.56 | **−$627.89** |
+| 0 (never on shrinking); 0 s, and 0; 5 s (identical: the wait only follows such a cancel) | −$563.43 | −$636.85 | −$507.71 | −$1,707.98 |
+| 0.25; 0 s | −$443.80 | −$480.80 | −$497.43 | −$1,422.03 |
+| 0.25; 5 s | −$243.83 | −$216.97 | −$177.87 | −$638.67 |
+| 0.5; 0 s | −$490.30 | −$467.19 | −$448.65 | −$1,406.15 |
+| **0.5; 5 s (chosen)** | −$222.90 | −$211.43 | −$176.61 | **−$610.94** |
 
-**Chosen: cancel when the size at our price falls below half of what it was when we joined, then wait 5 s before rejoining.** By the rule fixed beforehand (best total over the tuning days); the next best, 0.25 with 5 s, is $29.58 behind.
+(Settled values, re-run 2026-11-27 after every contract had settled. The choice was made on 2026-11-26 with some 11-21 fills still valued at their mid: chosen −$627.89, next best −$657.47; the order is the same.)
+
+**Chosen: cancel when the size at our price falls below half of what it was when we joined, then wait 5 s before rejoining.** By the rule fixed beforehand (best total over the tuning days); the next best, 0.25 with 5 s, is $27.73 behind.
 
 What the tuning days already say, for reading the reported days:
 
 - **Every setting loses to adverse selection.** Spread earned is $112–$480 a day; adverse selection (the mid's move in the 60 s after each fill) takes $269–$1,072. Inventory (the rest of the move until settlement) is small; maker fees are 0.
-- **Less trading loses less in dollars but more per contract**: the chosen setting trades about a quarter as many contracts as never cancelling (20,000–24,000 a day against 77,000–98,000) and loses 0.88–1.10¢ a contract against 0.63–0.73¢. Cancelling when the level thins avoids some bad fills but also gives up the queue position that the better fills need.
+- **Less trading loses less in dollars but more per contract**: the chosen setting trades about a quarter as many contracts as never cancelling (20,000–24,000 a day against 77,000–98,000) and loses 0.80–1.10¢ a contract against 0.60–0.73¢. Cancelling when the level thins avoids some bad fills but also gives up the queue position that the better fills need.
 - **Kalshi's order rate binds**: with no rejoin wait, 43–61% of the orders sent are refused at 10 a second (e.g. 119,479 of 195,101); the 5 s wait cuts that to 11–26%.
 - Positions reach about 150 contracts (three hourly events at the 50 cap) on every day; the 200 total cap never binds.
-- Some fills are in contracts that close after 2026-11-26 (38–67 a day on 11-21); they are valued at their mid 60 s after the fill until Kalshi settles them.
 
-Full report of the 18 runs:
-
-| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts | Spread earned | Adverse selection | Inventory | Fees | Total | Total per contract | Peak position |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 2026-11-17 | mm-tune-f0-r0 | 89,035 | 38,030 | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | $-563.43 | -0.73¢ | 149 |
-| 2026-11-17 | mm-tune-f0-r5 | 89,035 | 38,030 | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | $-563.43 | -0.73¢ | 149 |
-| 2026-11-17 | mm-tune-f0.25-r0 | 111,757 | 57,627 | 12,215 | 55,070 | $+319.20 | $-722.45 | $-40.56 | $+0.00 | $-443.80 | -0.81¢ | 150 |
-| 2026-11-17 | mm-tune-f0.25-r5 | 39,190 | 6,033 | 5,364 | 23,769 | $+131.67 | $-319.17 | $-56.33 | $+0.00 | $-243.83 | -1.03¢ | 150 |
-| 2026-11-17 | mm-tune-f0.5-r0 | 146,929 | 78,647 | 13,198 | 58,921 | $+340.07 | $-814.90 | $-15.47 | $+0.00 | $-490.30 | -0.83¢ | 149 |
-| 2026-11-17 | mm-tune-f0.5-r5 | 38,506 | 4,377 | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | $-222.90 | -1.10¢ | 150 |
-| 2026-11-19 | mm-tune-f0-r0 | 126,134 | 68,656 | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | $-636.85 | -0.65¢ | 150 |
-| 2026-11-19 | mm-tune-f0-r5 | 126,134 | 68,656 | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | $-636.85 | -0.65¢ | 150 |
-| 2026-11-19 | mm-tune-f0.25-r0 | 162,715 | 96,893 | 15,726 | 73,317 | $+394.11 | $-841.89 | $-33.02 | $+0.00 | $-480.80 | -0.66¢ | 150 |
-| 2026-11-19 | mm-tune-f0.25-r5 | 42,054 | 7,651 | 5,566 | 25,928 | $+129.95 | $-291.39 | $-55.53 | $+0.00 | $-216.97 | -0.84¢ | 149 |
-| 2026-11-19 | mm-tune-f0.5-r0 | 195,101 | 119,479 | 14,902 | 69,609 | $+373.97 | $-775.67 | $-65.49 | $+0.00 | $-467.19 | -0.67¢ | 150 |
-| 2026-11-19 | mm-tune-f0.5-r5 | 49,538 | 8,726 | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | $-211.43 | -0.90¢ | 149 |
-| 2026-11-21 | mm-tune-f0-r0 | 123,832 | 65,167 | 18,119 | 84,144 | $+370.95 | $-895.92 | $-1.41 | $+0.00 | $-526.38 | -0.63¢ | 149 | (56 fills not yet settled, valued at their mid)
-| 2026-11-21 | mm-tune-f0-r5 | 123,832 | 65,167 | 18,119 | 84,144 | $+370.95 | $-895.92 | $-1.41 | $+0.00 | $-526.38 | -0.63¢ | 149 | (56 fills not yet settled, valued at their mid)
-| 2026-11-21 | mm-tune-f0.25-r0 | 156,173 | 88,652 | 15,669 | 73,273 | $+348.94 | $-812.31 | $-52.65 | $+0.00 | $-516.03 | -0.70¢ | 150 | (67 fills not yet settled, valued at their mid)
-| 2026-11-21 | mm-tune-f0.25-r5 | 42,416 | 10,985 | 5,268 | 24,391 | $+118.32 | $-314.53 | $-0.46 | $+0.00 | $-196.67 | -0.81¢ | 148 | (38 fills not yet settled, valued at their mid)
-| 2026-11-21 | mm-tune-f0.5-r0 | 159,710 | 88,981 | 14,257 | 66,400 | $+323.82 | $-752.98 | $-34.38 | $+0.00 | $-463.54 | -0.70¢ | 149 | (67 fills not yet settled, valued at their mid)
-| 2026-11-21 | mm-tune-f0.5-r5 | 44,660 | 10,340 | 4,699 | 21,994 | $+112.29 | $-269.42 | $-36.44 | $+0.00 | $-193.56 | -0.88¢ | 150 | (43 fills not yet settled, valued at their mid)
-
-### Backtest report (sub-step 6, 2026-11-27)
-
-`manta-mm-backtest` per day and setting, then `manta-mm-report` (settlement values from Kalshi's public API). The chosen setting (cancel at half the joined size, rejoin after 5 s), KXBTCD, run once on each reported day after the choice was written down. **Don't quote** is the baseline of sending no orders: $0. Every row's parts add up to its total (asserted in the code). Fills in contracts that close after the report was run are valued at their mid 60 s after the fill (noted per row; the report is re-run once they settle).
+Full report of the 18 runs (settled):
 
 | Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts traded | Spread earned | Adverse selection (60 s) | Inventory | Fees | **Total** | Per contract | Don't quote | Peak position |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| tuning, 56 ms | 2026-11-17 mm-tune-f0.5-r5 | 38,506 | 4,377 (11%) | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | **$-222.90** | -1.10¢ | $0.00 | 150 |
-| tuning, 56 ms | 2026-11-19 mm-tune-f0.5-r5 | 49,538 | 8,726 (18%) | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | **$-211.43** | -0.90¢ | $0.00 | 149 |
-| tuning, 56 ms | 2026-11-21 mm-tune-f0.5-r5 | 44,660 | 10,340 (23%) | 4,699 | 21,994 | $+112.29 | $-269.42 | $-36.44 | $+0.00 | **$-193.56** | -0.88¢ | $0.00 | 150 | 43 fills not yet settled, valued at their mid.
-| reported, 56 ms | 2026-11-18 mm-rep-56 | 48,317 | 6,908 (14%) | 5,377 | 24,970 | $+129.97 | $-359.51 | $-5.97 | $+0.00 | **$-235.51** | -0.94¢ | $0.00 | 150 |
-| reported, 56 ms | 2026-11-22 mm-rep-56 | 35,373 | 9,175 (26%) | 3,846 | 17,493 | $+89.25 | $-182.70 | $-1.91 | $+0.00 | **$-95.37** | -0.55¢ | $0.00 | 150 | 54 fills not yet settled, valued at their mid.
-| reported, 56 ms | 2026-11-23 mm-rep-56 | 47,834 | 6,117 (13%) | 5,962 | 27,558 | $+131.74 | $-296.73 | $+12.61 | $+0.00 | **$-152.37** | -0.55¢ | $0.00 | 149 | 94 fills not yet settled, valued at their mid.
-| reported, 112 ms | 2026-11-18 mm-rep-112 | 45,993 | 5,261 (11%) | 5,517 | 25,827 | $+131.18 | $-326.31 | $-47.13 | $+0.00 | **$-242.25** | -0.94¢ | $0.00 | 148 |
-| reported, 112 ms | 2026-11-22 mm-rep-112 | 29,934 | 6,298 (21%) | 4,068 | 18,344 | $+95.42 | $-204.17 | $+27.83 | $+0.00 | **$-80.92** | -0.44¢ | $0.00 | 150 | 46 fills not yet settled, valued at their mid.
-| reported, 112 ms | 2026-11-23 mm-rep-112 | 45,117 | 5,700 (13%) | 6,065 | 27,755 | $+128.60 | $-296.73 | $-8.93 | $+0.00 | **$-177.05** | -0.64¢ | $0.00 | 150 | 166 fills not yet settled, valued at their mid.
-| **tuning, 56 ms** | **all days** | 132,704 | 23,443 (18%) | 14,259 | 65,761 | $+351.72 | $-823.65 | $-155.97 | $+0.00 | **$-627.89** | -0.95¢ | $0.00 | 150 |
-| **reported, 56 ms** | **all days** | 131,524 | 22,200 (17%) | 15,185 | 70,021 | $+350.96 | $-838.94 | $+4.73 | $+0.00 | **$-483.25** | -0.69¢ | $0.00 | 150 |
-| **reported, 112 ms** | **all days** | 121,044 | 17,259 (14%) | 15,650 | 71,927 | $+355.20 | $-827.20 | $-28.23 | $+0.00 | **$-500.23** | -0.70¢ | $0.00 | 150 |
+| f0-r0 | 2026-11-17 mm-tune-f0-r0 | 89,035 | 38,030 (43%) | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | **$-563.43** | -0.73¢ | $0.00 | 149 |
+| f0-r5 | 2026-11-17 mm-tune-f0-r5 | 89,035 | 38,030 (43%) | 17,126 | 77,325 | $+420.47 | $-945.56 | $-38.34 | $+0.00 | **$-563.43** | -0.73¢ | $0.00 | 149 |
+| f0.25-r0 | 2026-11-17 mm-tune-f0.25-r0 | 111,757 | 57,627 (52%) | 12,215 | 55,070 | $+319.20 | $-722.45 | $-40.56 | $+0.00 | **$-443.80** | -0.81¢ | $0.00 | 150 |
+| f0.25-r5 | 2026-11-17 mm-tune-f0.25-r5 | 39,190 | 6,033 (15%) | 5,364 | 23,769 | $+131.67 | $-319.17 | $-56.33 | $+0.00 | **$-243.83** | -1.03¢ | $0.00 | 150 |
+| f0.5-r0 | 2026-11-17 mm-tune-f0.5-r0 | 146,929 | 78,647 (54%) | 13,198 | 58,921 | $+340.07 | $-814.90 | $-15.47 | $+0.00 | **$-490.30** | -0.83¢ | $0.00 | 149 |
+| f0.5-r5 | 2026-11-17 mm-tune-f0.5-r5 | 38,506 | 4,377 (11%) | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | **$-222.90** | -1.10¢ | $0.00 | 150 |
+| f0-r0 | 2026-11-19 mm-tune-f0-r0 | 126,134 | 68,656 (54%) | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | **$-636.85** | -0.65¢ | $0.00 | 150 |
+| f0-r5 | 2026-11-19 mm-tune-f0-r5 | 126,134 | 68,656 (54%) | 20,920 | 97,994 | $+480.19 | $-1,072.35 | $-44.68 | $+0.00 | **$-636.85** | -0.65¢ | $0.00 | 150 |
+| f0.25-r0 | 2026-11-19 mm-tune-f0.25-r0 | 162,715 | 96,893 (60%) | 15,726 | 73,317 | $+394.11 | $-841.89 | $-33.02 | $+0.00 | **$-480.80** | -0.66¢ | $0.00 | 150 |
+| f0.25-r5 | 2026-11-19 mm-tune-f0.25-r5 | 42,054 | 7,651 (18%) | 5,566 | 25,928 | $+129.95 | $-291.39 | $-55.53 | $+0.00 | **$-216.97** | -0.84¢ | $0.00 | 149 |
+| f0.5-r0 | 2026-11-19 mm-tune-f0.5-r0 | 195,101 | 119,479 (61%) | 14,902 | 69,609 | $+373.97 | $-775.67 | $-65.49 | $+0.00 | **$-467.19** | -0.67¢ | $0.00 | 150 |
+| f0.5-r5 | 2026-11-19 mm-tune-f0.5-r5 | 49,538 | 8,726 (18%) | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | **$-211.43** | -0.90¢ | $0.00 | 149 |
+| f0-r0 | 2026-11-21 mm-tune-f0-r0 | 123,832 | 65,167 (53%) | 18,119 | 84,144 | $+370.95 | $-895.92 | $+17.26 | $+0.00 | **$-507.71** | -0.60¢ | $0.00 | 149 |
+| f0-r5 | 2026-11-21 mm-tune-f0-r5 | 123,832 | 65,167 (53%) | 18,119 | 84,144 | $+370.95 | $-895.92 | $+17.26 | $+0.00 | **$-507.71** | -0.60¢ | $0.00 | 149 |
+| f0.25-r0 | 2026-11-21 mm-tune-f0.25-r0 | 156,173 | 88,652 (57%) | 15,669 | 73,273 | $+348.94 | $-812.31 | $-34.06 | $+0.00 | **$-497.43** | -0.68¢ | $0.00 | 150 |
+| f0.25-r5 | 2026-11-21 mm-tune-f0.25-r5 | 42,416 | 10,985 (26%) | 5,268 | 24,391 | $+118.32 | $-314.53 | $+18.33 | $+0.00 | **$-177.87** | -0.73¢ | $0.00 | 148 |
+| f0.5-r0 | 2026-11-21 mm-tune-f0.5-r0 | 159,710 | 88,981 (56%) | 14,257 | 66,400 | $+323.82 | $-752.98 | $-19.50 | $+0.00 | **$-448.65** | -0.68¢ | $0.00 | 149 |
+| f0.5-r5 | 2026-11-21 mm-tune-f0.5-r5 | 44,660 | 10,340 (23%) | 4,699 | 21,994 | $+112.29 | $-269.42 | $-19.49 | $+0.00 | **$-176.61** | -0.80¢ | $0.00 | 150 |
+
+### Backtest report (sub-step 6, 2026-11-27)
+
+`manta-mm-backtest` per day and setting, then `manta-mm-report` (settlement values from Kalshi's public API). The chosen setting (cancel at half the joined size, rejoin after 5 s), KXBTCD, run once on each reported day after the choice was written down. **Don't quote** is the baseline of sending no orders: $0. Every row's parts add up to its total (asserted in the code). Final run 2026-11-27 22:30 UTC, after every contract had settled: no fill is valued at its mid. Two comparisons added: Kalshi's rate limit lifted (hypothetical: the bot cannot buy that), and KXBTC15M with the setting tuned on KXBTCD, its stop window scaled to the last quarter of the contract's life (3.75 min, `--stop-min`), since the 15-minute rule would never let a 15-minute contract quote.
+
+| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts traded | Spread earned | Adverse selection (60 s) | Inventory | Fees | **Total** | Per contract | Don't quote | Peak position |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| KXBTCD tuning, 56 ms | 2026-11-17 mm-tune-f0.5-r5 | 38,506 | 4,377 (11%) | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | **$-222.90** | -1.10¢ | $0.00 | 150 |
+| KXBTCD tuning, 56 ms | 2026-11-19 mm-tune-f0.5-r5 | 49,538 | 8,726 (18%) | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | **$-211.43** | -0.90¢ | $0.00 | 149 |
+| KXBTCD tuning, 56 ms | 2026-11-21 mm-tune-f0.5-r5 | 44,660 | 10,340 (23%) | 4,699 | 21,994 | $+112.29 | $-269.42 | $-19.49 | $+0.00 | **$-176.61** | -0.80¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms | 2026-11-18 mm-rep-56 | 48,317 | 6,908 (14%) | 5,377 | 24,970 | $+129.97 | $-359.51 | $-5.97 | $+0.00 | **$-235.51** | -0.94¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms | 2026-11-22 mm-rep-56 | 35,373 | 9,175 (26%) | 3,846 | 17,493 | $+89.25 | $-182.70 | $-5.31 | $+0.00 | **$-98.77** | -0.56¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms | 2026-11-23 mm-rep-56 | 47,834 | 6,117 (13%) | 5,962 | 27,558 | $+131.74 | $-296.73 | $-5.08 | $+0.00 | **$-170.07** | -0.62¢ | $0.00 | 149 |
+| KXBTCD reported, 112 ms | 2026-11-18 mm-rep-112 | 45,993 | 5,261 (11%) | 5,517 | 25,827 | $+131.18 | $-326.31 | $-47.13 | $+0.00 | **$-242.25** | -0.94¢ | $0.00 | 148 |
+| KXBTCD reported, 112 ms | 2026-11-22 mm-rep-112 | 29,934 | 6,298 (21%) | 4,068 | 18,344 | $+95.42 | $-204.17 | $+29.65 | $+0.00 | **$-79.10** | -0.43¢ | $0.00 | 150 |
+| KXBTCD reported, 112 ms | 2026-11-23 mm-rep-112 | 45,117 | 5,700 (13%) | 6,065 | 27,755 | $+128.60 | $-296.73 | $-20.15 | $+0.00 | **$-188.28** | -0.68¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms, no rate limit (hypothetical) | 2026-11-18 mm-rep-nolimit | 37,490 | 0 (0%) | 4,830 | 22,504 | $+121.79 | $-330.02 | $-15.97 | $+0.00 | **$-224.21** | -1.00¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms, no rate limit (hypothetical) | 2026-11-22 mm-rep-nolimit | 25,341 | 0 (0%) | 3,716 | 16,865 | $+86.44 | $-193.83 | $-14.10 | $+0.00 | **$-121.48** | -0.72¢ | $0.00 | 150 |
+| KXBTCD reported, 56 ms, no rate limit (hypothetical) | 2026-11-23 mm-rep-nolimit | 40,104 | 0 (0%) | 5,534 | 25,427 | $+123.08 | $-275.48 | $-41.03 | $+0.00 | **$-193.43** | -0.76¢ | $0.00 | 150 |
+| KXBTC15M tuning days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-17 mm-15m-stop375 | 224,512 | 191,171 (85%) | 3,489 | 16,164 | $+71.92 | $-137.67 | $+6.98 | $+0.00 | **$-58.77** | -0.36¢ | $0.00 | 20 |
+| KXBTC15M tuning days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-19 mm-15m-stop375 | 224,237 | 192,950 (86%) | 3,382 | 15,451 | $+58.53 | $-211.69 | $-16.99 | $+0.00 | **$-170.15** | -1.10¢ | $0.00 | 20 |
+| KXBTC15M tuning days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-21 mm-15m-stop375 | 136,963 | 108,180 (79%) | 4,068 | 17,244 | $+75.48 | $-206.31 | $+9.92 | $+0.00 | **$-120.90** | -0.70¢ | $0.00 | 20 |
+| KXBTC15M reported days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-18 mm-15m-stop375 | 167,978 | 135,637 (81%) | 3,743 | 17,100 | $+71.47 | $-206.28 | $-23.68 | $+0.00 | **$-158.50** | -0.93¢ | $0.00 | 20 |
+| KXBTC15M reported days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-22 mm-15m-stop375 | 209,864 | 178,044 (85%) | 4,240 | 17,386 | $+84.43 | $-270.13 | $-6.42 | $+0.00 | **$-192.12** | -1.10¢ | $0.00 | 20 |
+| KXBTC15M reported days (KXBTCD-tuned setting, stop 3.75 min) | 2026-11-23 mm-15m-stop375 | 133,784 | 112,267 (84%) | 2,519 | 11,380 | $+45.93 | $-131.40 | $-6.64 | $+0.00 | **$-92.10** | -0.81¢ | $0.00 | 20 |
+| **KXBTCD tuning, 56 ms** | **all days** | 132,704 | 23,443 (18%) | 14,259 | 65,761 | $+351.72 | $-823.65 | $-139.02 | $+0.00 | **$-610.94** | -0.93¢ | $0.00 | 150 |
+| **KXBTCD reported, 56 ms** | **all days** | 131,524 | 22,200 (17%) | 15,185 | 70,021 | $+350.96 | $-838.94 | $-16.37 | $+0.00 | **$-504.35** | -0.72¢ | $0.00 | 150 |
+| **KXBTCD reported, 112 ms** | **all days** | 121,044 | 17,259 (14%) | 15,650 | 71,927 | $+355.20 | $-827.20 | $-37.63 | $+0.00 | **$-509.63** | -0.71¢ | $0.00 | 150 |
+| **KXBTCD reported, 56 ms, no rate limit (hypothetical)** | **all days** | 102,935 | 0 (0%) | 14,080 | 64,795 | $+331.31 | $-799.33 | $-71.10 | $+0.00 | **$-539.12** | -0.83¢ | $0.00 | 150 |
+| **KXBTC15M tuning days (KXBTCD-tuned setting, stop 3.75 min)** | **all days** | 585,712 | 492,301 (84%) | 10,939 | 48,860 | $+205.93 | $-555.66 | $-0.10 | $+0.00 | **$-349.83** | -0.72¢ | $0.00 | 20 |
+| **KXBTC15M reported days (KXBTCD-tuned setting, stop 3.75 min)** | **all days** | 511,626 | 425,948 (83%) | 10,502 | 45,867 | $+201.84 | $-607.81 | $-36.75 | $+0.00 | **$-442.72** | -0.97¢ | $0.00 | 20 |
 
 Spread earned + adverse selection + inventory + fees = total in every row (checked in code). Don't quote = the profit and loss of sending no orders: $0.
 
 What this says:
 
-- **Out-of-sample it lost less than in-sample** (−$483 against −$628 over three days each; −0.69¢ against −0.95¢ a contract) and lost on every one of the six days, including the volatile one (−$152). Not trading at all beats every setting on every day.
+- **Out-of-sample it lost less than in-sample** (−$504 against −$611 over three days each; −0.72¢ against −0.93¢ a contract) and lost on every one of the six days, including the volatile one (−$170). Not trading at all beats every setting on every day.
 - **The loss is adverse selection**: spread earned ($351 over the reported days) is less than half of what the price then takes back within a minute ($839). Inventory (holding positions to settlement) and fees (0 for makers on KXBTCD) are small.
-- **Latency is not the lever**: at 112 ms per order instead of 56 ms the reported days lose $500 instead of $483. The gap that matters is about 113 ms (our data delay plus order delay) against about 1 ms for the firms next to Kalshi; adding another 56 ms barely changes who gets picked off.
-- **Kalshi's order rate binds**: 17% of the chosen setting's orders were refused at the Basic tier's 10 a second on the reported days (13–26% by day).
+- **Latency is not the lever**: at 112 ms per order instead of 56 ms the reported days lose $510 instead of $504. The gap that matters is about 113 ms (our data delay plus order delay) against about 1 ms for the firms next to Kalshi; adding another 56 ms barely changes who gets picked off.
+- **Kalshi's order rate binds, but lifting it does not help**: 17% of the chosen setting's orders were refused at the Basic tier's 10 a second on the reported days (13–26% by day). With no limit at all (hypothetical) the reported days lose more, $539 (−0.83¢ a contract), so a higher rate tier would not rescue the strategy.
+- **KXBTC15M loses too**: −$443 on the reported days (−0.97¢ a contract) and −$350 on the tuning days, with the setting tuned on KXBTCD (not re-tuned). 83–84% of its orders are refused at the rate limit: many short contracts share the same 10 a second.
 
 ## Paper trading on Kalshi demo
 
-- **Needs:** Kalshi demo API keys (none yet; Carson to create them at the demo site), stored in `.env` / `/etc/manta/env` only. Nautilus's Kalshi adapter, demo environment, limit and post-only orders only.
-- **Runs where:** first on the Mac, then (with Carson's go-ahead, it is a deploy) a systemd unit on the VM.
-- **Recorded:** every order, cancel and fill with timestamps, to a local JSONL log, then a table in Postgres (a migration, so asked for first).
-- **Shown:** a results page on the site: fills, inventory, the same profit-and-loss split, and the backtest's prediction for the same period beside it.
+Approved 2026-11-27 as a lean version (`manta-paper`, backtest/src/manta_backtest/paper.py).
+
+- **Keys:** Kalshi demo keys only (`KALSHI_DEMO_API_KEY_ID`, `KALSHI_DEMO_PRIVATE_KEY_PATH` in `.env` / `/etc/manta/env`). The bot refuses to start unless the adapter's environment is DEMO, removes the real account's key variables from its own process, and never prints key values.
+- **Strategy:** the backtest's chosen setting on KXBTCD, 1 contract per quote, a 20-contract total cap, Kalshi's Basic-tier 10 orders a second. No fair-value guard: our fair values are for the real exchange's contracts.
+- **Stopping:** `--minutes` for smoke runs; a kill switch (`manta-paper --kill --log-dir DIR`, or `systemctl stop manta-paper` on the VM) cancels every order and stops.
+- **Recorded:** every order event, fill and error to a JSONL file per day (no database table, no migration).
+- **Runs where:** a short smoke run on the Mac first, then a `manta-paper` systemd unit on the VM for a few days (approved by Carson with conditions: demo-only check tested, recorder untouched, caps like manta-replay).
+- **Shown:** `manta-paper-summary --log-dir DIR --out FILE` (orders, fills, refusals, errors, uptime, the same profit-and-loss split), for one section of the site's how-it's-built page beside the backtest result (that page is a separate step).
 - **Caveat:** the demo environment's order book and traders are not the real ones, so demo fills say whether the plumbing works, not what real fills would be. The backtest on real recordings stays the measure of the strategy.
 
 ## Sub-steps, in order (each ends in a demo)
@@ -178,11 +196,11 @@ What this says:
 1. **This plan and measurement 1.** *Demo:* `manta-queue` on recorded hours, numbers below. Done 2026-11-23; re-run on six days 2026-11-25.
 2. **Measurement 2, adverse selection.** *Demo:* a table of mid moves after fills, by horizon and day type. Done 2026-11-25.
 3. **Measurement 3, fair value as a predictor.** *Demo:* the regression and hit-rate table by time to close. Done 2026-11-25.
-4. **Quoting rules** chosen from 1–3, written up for Carson's approval. Drafted below; waiting for approval.
+4. **Quoting rules** chosen from 1–3, written up for Carson's approval. Approved 2026-11-25 (below).
 5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table. Done 2026-11-25 (below).
-6. **Strategy and backtest report.** *Demo:* one command over a recorded week prints the profit-and-loss split, per day and per contract.
-7. **Paper trading** on Kalshi demo (needs keys). *Demo:* the bot running, orders visible in the demo account.
-8. **Results page.** *Demo:* the public page with paper results and the backtest beside them.
+6. **Strategy and backtest report.** *Demo:* one command over a recorded week prints the profit-and-loss split, per day and per contract. Done 2026-11-27 (final after settlement).
+7. **Paper trading** on Kalshi demo, lean version (approved 2026-11-27). *Demo:* the bot running, orders visible in the demo account.
+8. **Results page.** *Demo:* one section of the how-it's-built page with the paper summary and the backtest beside it (a separate site step).
 
 ## Results: measurements 1–4 on six days
 

@@ -5,9 +5,11 @@
   rules (approved 2026-11-25), Nautilus fill check, tuning and backtest report, plain-English
   result at the top.
 - backtest/: `manta-queue` (queue, fills, markouts, pick-offs, locked books), `manta-fair-predict`,
-  `manta-mm-probe`, `manta-mm-backtest`, `manta-mm-report`; 29 hand-worked tests.
-- Result: on the three reported days the bot lost $483 on 70,021 contracts (−0.69¢ a contract)
-  against $0 for not quoting; spread +$351, adverse selection −$839. Lost on all six days.
+  `manta-mm-probe`, `manta-mm-backtest`, `manta-mm-report`, `manta-paper` (Kalshi demo only, not yet
+  run) and `manta-paper-summary`; 33 hand-worked tests.
+- Result (settled, 2026-11-27): on the three reported days the bot lost $504 on 70,021 contracts
+  (−0.72¢ a contract) against $0 for not quoting; spread +$351, adverse selection −$839. Lost on
+  all six days. 112 ms: −$510; rate limit lifted (hypothetical): −$539; KXBTC15M: −$443.
 
 ## Why
 - Step 14: a market maker designed from measurements, with an honest profit-and-loss split.
@@ -21,9 +23,12 @@
 - Grid, choice rule and tuning/reported split fixed and pushed before any tuning run;
   chosen cancel 0.5 / rejoin 5 s on tuning days only, then run once on reported days.
 - Kalshi's Basic-tier order rate (10 a second, verified in its docs) applied in the backtest.
+- KXBTC15M stop window scaled to the last quarter of its life (3.75 min): the 15-minute rule
+  sent zero orders on a 15-minute contract.
+- Paper trading lean: JSONL logs and a summary command instead of a Postgres table (no migration).
 
 ## Follow-ups
-- Sub-step 7 (paper trading on Kalshi demo) needs demo keys that only Carson can create.
+- Sub-step 7: Mac smoke run, then the VM unit (Carson approved, with conditions), then summary.
 - Two hours of 2026-11-19 are a recording gap in the archive (recorder restart).
 - Nautilus limits order submissions only; cancels are not rate-limited in the backtest.
 - Pricing has no KXBTC15M model; fair value adds nothing measurable on KXBTCD anyway.
