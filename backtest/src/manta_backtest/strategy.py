@@ -19,6 +19,7 @@ import bisect
 import heapq
 import json
 import tempfile
+import time
 import urllib.request
 from decimal import Decimal
 from pathlib import Path
@@ -562,14 +563,16 @@ def settlements(tickers: set[str], cache: Path) -> dict[str, float]:
     known: dict[str, float] = json.loads(cache.read_text()) if cache.exists() else {}
     for ev in sorted({event_of(t) for t in tickers if t not in known}):
         url = f"{KALSHI_API}/markets?event_ticker={ev}&limit=1000"
-        for attempt in range(3):  # the public API sometimes times out; retry, then give up
+        time.sleep(0.2)  # stay well under Kalshi's read limit (20 a second on the Basic tier)
+        for attempt in range(5):  # timeouts and 429s: back off exponentially, then give up
             try:
                 with urllib.request.urlopen(url, timeout=30) as r:
                     markets_ = json.load(r)["markets"]
                 break
-            except (TimeoutError, OSError):
-                if attempt == 2:
+            except (TimeoutError, OSError):  # urllib's HTTPError (429) is an OSError
+                if attempt == 4:
                     raise
+                time.sleep(2**attempt)
         for m in markets_:
             if m.get("result") in ("yes", "no"):
                 known[m["ticker"]] = 1.0 if m["result"] == "yes" else 0.0
