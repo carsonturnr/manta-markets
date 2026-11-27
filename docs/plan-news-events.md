@@ -42,16 +42,16 @@ collector starts are `backfill: true` (no real receipt time) and never enter the
 Kept 60 days like the replay files. `replayserve` gets one endpoint, `GET /news`: the last 30
 days of items, newest first. Same token, same TLS.
 
-**Order-book move around each item:** `replay.sh` runs `cmd/eventresponse` for each item whose
-window has closed, inside the hourly replay job (same nice, CPUQuota, MemoryMax; one after the
-other, so it never overlaps the replay), writing `news/moves/<id>.json`. t0 is the stated time
-where the source's is real (Fed, auctions, BEA), else our receipt time; each move says which.
-**No double counting:** an item at a releases.tsv release (CPI, payrolls, the Fed's decision)
-links to that release's page and gets no run of its own. GDP, PCE and claims are not in
-releases.tsv, so they get a run unless Carson adds them there. **Cost first:** the 2026-11-23
-stand-in run took 864 s for 1,705 contracts. One run is measured before relying on it; above
-~2 min, one pass per hour serves every t0 in it, and each source reads only the families it
-plausibly moves (Fed: rates, FX, indexes; Treasury: rates; BEA/BLS/DOL: their own families).
+**Order-book move around each item** (`news -moves`, changed at step 2 after measuring): a full
+event-response run parses every raw Kalshi record of its window (152 s CPU on the Mac, 864 s on the
+VM), so instead replay.sh, after each hourly replay, reads the replay files it just wrote (minute
+books of all 22 series, ~2 MB an hour): 1.2 s CPU for two items. Move = mid 30 min after t0's
+minute minus mid at it; **baseline** = the same contract's move over the 30 min before (on the
+2026-11-25 16:30 auction, 411 of 715 contracts moved ≥ 1¢ after, 380 before). Minute resolution.
+t0 is the stated time where real (Fed, auctions, BEA), else our receipt time; each move says which.
+**No double counting:** an item within 10 min after a releases.tsv release (CPI, payrolls, the
+Fed's decision) links to that release's page and gets no move. GDP, PCE and claims are not in
+releases.tsv, so they get their own move unless Carson adds them there.
 
 ## What the site shows (current style, no redesign)
 1. **Market page and terminal chart:** a small mark on the candle chart at each item's received
