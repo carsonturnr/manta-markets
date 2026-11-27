@@ -2,6 +2,7 @@
 
 Newest first. One line each: date — decision — why.
 
+- 2026-11-27 — The Market page's quote strip (bid, ask, spread, last trade) reads the live book through the page's `<Live>` feed, never the market list. — The list lags the book by up to a minute; a header that disagreed with the book panel below it would mislead.
 - 2026-11-27 — Market page on wide screens puts the order book and trades side by side under the chart; on phones the outcomes come right after the chart. — A trader reads the queue and the prints together, and on a ladder picks the strike first; the page also got 460 px shorter at 1440 px wide.
 - 2026-11-27 — Large trades on the tape are marked by weight and a grey wash, not a green one. — The green wash and green dollar figure made large sells read as buys; Buy and Sell now keep their colours in the terminal and on the Market page.
 - 2026-11-27 — Markets shows its column headings once (with the fair-value dot named) and, on phones, packs price, volume and time to close onto one line. — The dot on each bar was never explained, and the phone list ran 14,454 px for 72 questions with time to close hidden (now about 10,300 px, close shown).
