@@ -34,12 +34,34 @@ type summary struct {
 	T0        int64  `json:"t0"`
 	T0Kind    string `json:"t0_kind"` // "stated" or "received"
 	Release   string `json:"release,omitempty"`
-	Contracts int    `json:"contracts"` // with a defined move: the sample size
+	Contracts int    `json:"contracts"` // with both a move and a baseline: the sample size
 	Moved     int    `json:"moved"`     // of those, by 1¢ or more
 	// MovedBefore is the baseline: contracts that moved 1¢ or more in the 30 minutes before.
 	MovedBefore int      `json:"moved_before"`
 	Top         string   `json:"top,omitempty"`
 	TopCents    *float64 `json:"top_cents,omitempty"`
+}
+
+// count fills the summary: the biggest mover, and, over the contracts with both a move and a
+// baseline (so the two counts share one sample), how many moved 1¢ or more after t0 and before.
+// The page leads with the difference: drift alone moves hundreds of hourly contracts.
+func (s *summary) count(moves []news.Move) {
+	big := func(c *float64) bool { return *c >= 1 || *c <= -1 }
+	for _, m := range moves {
+		if s.Top == "" && m.MoveCents != nil {
+			s.Top, s.TopCents = m.Ticker, m.MoveCents
+		}
+		if m.MoveCents == nil || m.BeforeCents == nil {
+			continue
+		}
+		s.Contracts++
+		if big(m.MoveCents) {
+			s.Moved++
+		}
+		if big(m.BeforeCents) {
+			s.MovedBefore++
+		}
+	}
 }
 
 // detail is DIR/moves/<key>.json, the item's own page.
@@ -97,7 +119,7 @@ func runMoves(dir, replayDir, releasesPath string, series []string, now time.Tim
 			continue
 		}
 		s := summary{Key: it.Key, T0: t0, T0Kind: kind}
-		if id, ok := news.AtRelease(t0, releases); ok {
+		if id, ok := news.AtRelease(it.Source, t0, releases); ok {
 			s.Release = id
 		} else {
 			from, to := news.Window(t0)
@@ -121,20 +143,7 @@ func runMoves(dir, replayDir, releasesPath string, series []string, now time.Tim
 			if err := writeJSON(filepath.Join(dir, "moves", it.Key+".json"), detail{it.Key, t0, kind, moves}); err != nil {
 				return err
 			}
-			for _, m := range moves {
-				if m.MoveCents == nil {
-					continue
-				}
-				if s.Contracts++; *m.MoveCents >= 1 || *m.MoveCents <= -1 {
-					s.Moved++
-				}
-				if b := m.BeforeCents; b != nil && (*b >= 1 || *b <= -1) {
-					s.MovedBefore++
-				}
-				if s.Top == "" {
-					s.Top, s.TopCents = m.Ticker, m.MoveCents
-				}
-			}
+			s.count(moves)
 		}
 		if err := appendLine(filepath.Join(dir, "moves.jsonl"), s); err != nil {
 			return err
@@ -183,7 +192,7 @@ func readReleases(path string) ([]news.Release, error) {
 			return
 		}
 		if t, err := time.Parse(time.RFC3339, f[1]); err == nil {
-			out = append(out, news.Release{ID: f[0], T0: t.UnixMilli()})
+			out = append(out, news.Release{ID: f[0], T0: t.UnixMilli(), Agency: news.ReleaseAgency(f[0])})
 		}
 	})
 	return out, err

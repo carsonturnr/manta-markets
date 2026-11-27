@@ -49,8 +49,8 @@ books of all 22 series, ~2 MB an hour): 1.2 s CPU for two items. Move = mid 30 m
 minute minus mid at it; **baseline** = the same contract's move over the 30 min before (on the
 2026-11-25 16:30 auction, 411 of 715 contracts moved ≥ 1¢ after, 380 before). Minute resolution.
 t0 is the stated time where real (Fed, auctions, BEA), else our receipt time; each move says which.
-**No double counting:** an item within 10 min after a releases.tsv release (CPI, payrolls, the
-Fed's decision) links to that release's page and gets no move. GDP, PCE and claims are not in
+**No double counting:** an item from the same agency within 10 min after a releases.tsv release
+(CPI, payrolls, the Fed's decision) links to that release's page and gets no move. GDP, PCE and claims are not in
 releases.tsv, so they get their own move unless Carson adds them there.
 
 ## What the site shows (current style, no redesign)

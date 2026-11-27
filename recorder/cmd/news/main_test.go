@@ -33,3 +33,18 @@ func TestFresh(t *testing.T) {
 		t.Fatalf("later poll: %+v", got)
 	}
 }
+
+func TestCount(t *testing.T) {
+	f := func(v float64) *float64 { return &v }
+	var s summary
+	s.count([]news.Move{
+		{Ticker: "A", MoveCents: f(-6), BeforeCents: f(0.5)}, // biggest first, as news.Moves sorts
+		{Ticker: "B", MoveCents: f(2), BeforeCents: f(-3)},
+		{Ticker: "C", MoveCents: f(0.5), BeforeCents: nil}, // no baseline: out of both counts
+		{Ticker: "D", MoveCents: nil, BeforeCents: f(4)},
+		{Ticker: "E", MoveCents: f(0), BeforeCents: f(1)},
+	})
+	if s.Top != "A" || *s.TopCents != -6 || s.Contracts != 3 || s.Moved != 2 || s.MovedBefore != 2 {
+		t.Fatalf("%+v", s)
+	}
+}

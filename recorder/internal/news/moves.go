@@ -34,16 +34,35 @@ func T0(it Item) (t0 int64, kind string, ok bool) {
 
 // Release is one line of releases.tsv: a scheduled release event response already measures.
 type Release struct {
-	ID string
-	T0 int64 // unix ms
+	ID     string
+	T0     int64  // unix ms
+	Agency string // who publishes it: "bls", "fed" (ReleaseAgency)
 }
 
-// AtRelease is the release an item belongs to, if its t0 falls in the 10 minutes from a
-// release's minute (a CPI headline received at 8:30:20, the FOMC statement stated 19:00): event
-// response already measures that moment, so the item links there and gets no move of its own.
-func AtRelease(t0 int64, releases []Release) (string, bool) {
+// releaseAgencies maps a release id's kind (2026-12-10-cpi → cpi) to its agency.
+var releaseAgencies = map[string]string{"cpi": "bls", "payrolls": "bls", "fed": "fed"}
+
+// ReleaseAgency is the agency of a releases.tsv id, "" for a kind not listed.
+func ReleaseAgency(id string) string {
+	if len(id) < 11 {
+		return ""
+	}
+	return releaseAgencies[id[11:]]
+}
+
+// Agency is who publishes a source: its name up to the first "-" (fed-press → fed, bls-cpi → bls).
+func Agency(source string) string {
+	a, _, _ := strings.Cut(source, "-")
+	return a
+}
+
+// AtRelease is the release an item belongs to: same agency, and t0 in the 10 minutes from the
+// release's minute (the CPI headline received at 8:30:20, the FOMC statement stated 19:00).
+// Event response already measures that moment, so the item links there and gets no move of its
+// own. Another agency's news in those minutes (a Fed speech just after CPI) keeps its own move.
+func AtRelease(source string, t0 int64, releases []Release) (string, bool) {
 	for _, r := range releases {
-		if t0 >= r.T0 && t0 < r.T0+10*time.Minute.Milliseconds() {
+		if r.Agency == Agency(source) && t0 >= r.T0 && t0 < r.T0+10*time.Minute.Milliseconds() {
 			return r.ID, true
 		}
 	}

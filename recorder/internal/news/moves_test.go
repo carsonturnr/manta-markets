@@ -37,17 +37,25 @@ func TestKeyAndT0(t *testing.T) {
 }
 
 func TestAtRelease(t *testing.T) {
-	rs := []Release{{"2026-12-10-cpi", ms("2026-12-10T13:30:00Z")}, {"2026-12-09-fed", ms("2026-12-09T19:00:00Z")}}
-	cases := map[string]string{
-		"2026-12-10T13:30:20Z": "2026-12-10-cpi", // the BLS headline, received 20 s after
-		"2026-12-09T19:00:00Z": "2026-12-09-fed", // the FOMC statement's stated time
-		"2026-12-10T13:39:59Z": "2026-12-10-cpi",
-		"2026-12-10T13:40:00Z": "", // 10 minutes after: its own move
-		"2026-12-10T13:29:59Z": "", // before the release
+	rs := []Release{
+		{"2026-12-10-cpi", ms("2026-12-10T13:30:00Z"), ReleaseAgency("2026-12-10-cpi")},
+		{"2026-12-09-fed", ms("2026-12-09T19:00:00Z"), ReleaseAgency("2026-12-09-fed")},
 	}
-	for at, want := range cases {
-		if got, _ := AtRelease(ms(at), rs); got != want {
-			t.Errorf("%s: %q, want %q", at, got, want)
+	if rs[0].Agency != "bls" || rs[1].Agency != "fed" || ReleaseAgency("2026-12-25-gdp") != "" {
+		t.Fatalf("agencies %+v", rs)
+	}
+	cases := []struct{ source, at, want string }{
+		{"bls-cpi", "2026-12-10T13:30:20Z", "2026-12-10-cpi"},   // the BLS headline, received 20 s after
+		{"fed-press", "2026-12-09T19:00:00Z", "2026-12-09-fed"}, // the FOMC statement's stated time
+		{"bls-cpi", "2026-12-10T13:39:59Z", "2026-12-10-cpi"},
+		{"bls-cpi", "2026-12-10T13:40:00Z", ""},      // 10 minutes after: its own move
+		{"bls-cpi", "2026-12-10T13:29:59Z", ""},      // before the release
+		{"fed-speech", "2026-12-10T13:35:00Z", ""},   // another agency just after CPI
+		{"bls-payrolls", "2026-12-09T19:00:00Z", ""}, // BLS at the Fed's minute
+	}
+	for _, c := range cases {
+		if got, _ := AtRelease(c.source, ms(c.at), rs); got != c.want {
+			t.Errorf("%s at %s: %q, want %q", c.source, c.at, got, c.want)
 		}
 	}
 }
