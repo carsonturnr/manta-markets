@@ -21,7 +21,7 @@ Site (run in `site/`):
 - Typecheck: `npx next typegen && npx tsc --noEmit` (no script in package.json; typegen writes the `PageProps`/`LayoutProps` types into .next/) · Lint: `npm run lint` · Test: `npm test` (`node --test lib/*.test.ts`)
 
 Python (run in `pricing/` or `backtest/`, same as CI):
-- `uv sync --locked` · `uv run ruff format --check .` · `uv run ruff check .` · `uv run pytest -q` (backtest has no tests yet)
+- `uv sync --locked` · `uv run ruff format --check .` · `uv run ruff check .` · `uv run pytest -q`
 
 Go (run in `recorder/`, same as CI):
 - `gofmt -l .` (must print nothing) · `go vet ./...` · `go test ./...`
@@ -34,7 +34,7 @@ CI (.github/workflows/ci.yml) runs the recorder, pricing and site checks (site: 
 recorder/cmd/          binaries: recorder, status, rawcat, normalize, contracts, replay, replayserve, eventresponse, news
 recorder/internal/     tap (venue clients), rawlog, book, contracts, crossvenue, normalize, replay, md, fixed
 pricing/src/manta_pricing/   fair-value model and analytics; tests in pricing/tests/
-backtest/src/manta_backtest/ catalog, check, fairseries
+backtest/src/manta_backtest/ catalog, check, fairseries, queue (market-maker measurements), predict
 site/app/              one folder per page (screener, c/[ticker], contract/[venue]/[id], compare, liquidity, distributions, replay, stats, quality, tracker, account, privacy)
 site/components/       charts and forms
 site/lib/              queries and pure analytics; tests are lib/*.test.ts next to the code
@@ -77,7 +77,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Every tool in docs/product.md is live on the public site, each with its method explained in plain English.
 - Fair values are tested and labelled by method; accuracy statistics are published with honest sample sizes.
 - Sign-up is live: accounts with watchlists, alerts and API keys (the waitlist was retired 2026-11-26), after the data-terms checks.
-- The market maker's backtest report and paper-trading results show the profit-and-loss breakdown.
+- The market maker's backtest report shows the profit-and-loss breakdown (paper trading dropped 2026-11-27: the backtest showed it loses, and demo fills cannot change that).
 - README explains the project in plain English, credits NautilusTrader, states what worked and what did not, and includes the real numbers, including unflattering ones.
 
 ## Never (without asking Carson first)
@@ -102,6 +102,9 @@ docs/                  product.md, milestone plans, decisions.md
 - Infra details (IPs, hostnames, account usernames) go in gitignored local files (`infra.local.md`), never in tracked docs; tracked files use placeholders such as `<vm-ip>`. The repo is meant to be public.
 - Database DDL: the Supabase MCP connection is read-only (`supabase_read_only_user`). Approved migrations run with the admin `DATABASE_URL` from the repo-root `.env` (psycopg via `uv run` in pricing/), never printing the URL; the VM's `manta-snap --init` applies the whole of db/schema.sql on the next deploy.
 - API routes (site/app/api/v1): call `authorize()` before validating the query, so a caller without a valid key always gets 401, never a 400 that reveals the query rules (/cost did it the other way round until 2026-11-23).
+- Kalshi trades and the book changes they cause arrive in either order (book first for 58% of KXBTCD trades): anything that combines them (queue position, fills) matches each trade to its size drop within a window, never by arrival order (backtest/src/manta_backtest/queue.py).
+- Backtests (NautilusTrader 2.0.0rc9): the risk engine refuses orders over its rate limit (OrderDenied RATE_LIMIT_EXCEEDED, never reaching the simulated exchange); a strategy must handle `on_order_denied`, and a measuring probe that sends many orders at once must bypass it (`RiskEngineConfig(bypass=True)`), or denied orders look like unfilled ones (backtest/src/manta_backtest/strategy.py).
+- NautilusTrader Strategy subclasses can't set `self.log` (it is Nautilus's read-only logger: "attribute 'log' … is not writable"); give your own logger another name (backtest/src/manta_backtest/paper.py `self.jlog`).
 - Site CSS: `.panel` has `overflow: hidden`, which stops `position: sticky` inside it (table headings stay put); a sticky child needs that panel set to `overflow: visible`.
 - Kalshi's website answers 429 to curl and fetch tools; check a kalshi.com URL in a real browser (its API at api.elections.kalshi.com is fine).
 - Site CSS: globals.css is one flat file shared by every page and merged often. Parallel worktrees all append to its end, so merges conflict there: after resolving, count `{` against `}` (comments stripped) before committing; deleting the conflict markers alone once left a phone `@media` block open and every later rule applied on phones only (2026-11-25). Grep a class name before using it.

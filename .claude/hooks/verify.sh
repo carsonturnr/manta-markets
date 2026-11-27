@@ -28,6 +28,10 @@ if grep -q '^pricing/' <<<"$changed"; then
   run pricing "uv run ruff check ."
   run pricing "uv run pytest -q"
 fi
+if grep -q '^backtest/' <<<"$changed"; then
+  run backtest "uv run ruff check ."
+  run backtest "uv run pytest -q"
+fi
 if grep -q '^recorder/' <<<"$changed"; then
   run recorder "go vet ./..."
   run recorder "go test ./..."

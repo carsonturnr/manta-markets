@@ -68,8 +68,7 @@ Measured, with their dates. The live figures are on [How it's built](https://man
 ## What worked and what did not
 
 Sources: [docs/decisions.md](docs/decisions.md) (dated measurements), the market maker's report
-in [docs/plan-market-maker.md](https://github.com/carsonturnr/manta-markets/blob/carsonturnr/market-maker/docs/plan-market-maker.md)
-(on its own branch until it merges), and read-only queries of Manta's database on 2026-11-27
+in [docs/plan-market-maker.md](docs/plan-market-maker.md), and read-only queries of Manta's database on 2026-11-27
 (the recorder's quality report and `manta.predictions`). Anything marked *provisional* will change.
 
 ### Worked
@@ -108,18 +107,20 @@ in [docs/plan-market-maker.md](https://github.com/carsonturnr/manta-markets/blob
   price closed 1.2% of its gap to our fair value within 60 s and 3.0% within 5 minutes; it explains
   0.1% of the moves (R² 0.001), and a gap of 1¢ or more pointed the right way 52.8% of the time
   (627,529 cases).
-- **The market maker loses money on every day** (*provisional*: backtest only, its plan awaits
-  approval, and 148 fills on the reported days are in contracts not yet settled, valued at their
-  price 60 s after the fill). Kalshi's hourly "Bitcoin above $X" contracts, 5 contracts at the best
-  bid and ask, backtested with NautilusTrader on three days it was not tuned on: 2026-11-18
-  −$235.51, 11-22 −$95.37, 11-23 −$152.37. In all **−$483.25 on 70,021 contracts, −0.69¢ a
-  contract, against $0 for not quoting**. On the three tuning days it lost −$627.89 (−0.95¢).
+- **The market maker loses money on every day** (backtest, every fill valued at Kalshi's
+  settlement). Kalshi's hourly "Bitcoin above $X" contracts, 5 contracts at the best bid and ask,
+  backtested with NautilusTrader on three days it was not tuned on: 2026-11-18 −$235.51, 11-22
+  −$98.77, 11-23 −$170.07. In all **−$504.35 on 70,021 contracts, −0.72¢ a contract, against $0
+  for not quoting**. On the three tuning days it lost −$610.94 (−0.93¢).
   - Why: it earns the spread (+$350.96) but the price moves against it in the minute after its
     fills (−$838.94). Firms next to Kalshi's servers are about 1 ms away; we see the market about
     57 ms late and need about 56 ms more to cancel, so our orders are the stale ones left when
     better-informed traders arrive (the "pick-offs"). Doubling our order delay to 112 ms changes
-    little (−$500.23): the gap to the incumbents is the problem, not a few milliseconds.
-  - 17% of its orders were refused by Kalshi's limit of 10 orders a second.
+    little (−$509.63): the gap to the incumbents is the problem, not a few milliseconds.
+  - 17% of its orders were refused by Kalshi's limit of 10 orders a second, but lifting the limit
+    (a hypothetical run) loses more, −$539.12, so a faster order tier would not help.
+  - Kalshi's 15-minute Bitcoin contracts lose too: −$442.72 on the same days (−0.97¢ a
+    contract), with the setting tuned on the hourly ones.
 - **Limits of the backtest.** Our simulated orders never change the recorded market, so results
   hold only for small sizes. Kalshi publishes only total size per price, so our place in the queue
   is an estimate between a pessimistic and an optimistic bound. The first version missed
@@ -135,11 +136,12 @@ in [docs/plan-market-maker.md](https://github.com/carsonturnr/manta-markets/blob
   minutes, and cost $22 in one day. It now runs on a small model, cached 30 minutes and capped per
   day.
 
-### Paper trading
+### Paper trading: not done
 
-> **Placeholder:** results of paper trading on Kalshi's demo environment go here once it runs.
-> Demo fills test the plumbing, not the strategy: the demo's order book and traders are not the
-> real ones, so the backtest on real recordings stays the measure.
+The plan ended with paper trading on Kalshi's demo environment. It was dropped once the backtest
+showed the strategy loses: the demo's order book and traders are not the real ones, so demo fills
+could test the plumbing but never change that answer. The paper-trading bot
+(backtest/src/manta_backtest/paper.py) is written and unit-tested but has never run.
 
 ## How it's built
 

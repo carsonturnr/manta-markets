@@ -26,13 +26,13 @@ Details moved out of AGENTS.md (2026-11-21) to keep it short. AGENTS.md links he
 10. **Waitlist and product shell**, only after the data-terms checks. **Demo:** a landing page with a working sign-up and a published privacy policy.
 11. **Accounts, watchlists and alerts.** **Demo:** an alert firing on a real condition.
 12. **API** of our analytics (no raw venue data). **Demo:** documented endpoints with keys.
-13. **Market maker on the platform.** Designed from measurements (queue sizes, fill likelihood, adverse selection, whether our fair value predicts price moves), backtested with Nautilus on the recordings with profit and loss split into spread earned, losses to better-informed traders, and fees, then paper traded on Kalshi's demo environment. **Demo:** a backtest report from one command, then a paper-trading results page.
+13. **Market maker on the platform.** Designed from measurements (queue sizes, fill likelihood, adverse selection, whether our fair value predicts price moves), backtested with Nautilus on the recordings with profit and loss split into spread earned, losses to better-informed traders, and fees. **Demo:** a backtest report from one command. (Paper trading on Kalshi's demo environment was dropped 2026-11-27: the backtest showed the strategy loses.)
 
 ## Fees
 
 M is the series fee multiplier, C the number of contracts, P the price in dollars (0.01–0.99).
 
-- Kalshi (fee schedule "July 2026, 7.7.26 Update", read 2026-11-16): takers pay 0.07 × M × C × P × (1 − P), makers 0.0175 × M × C × P × (1 − P) only where a series charges them, rounded up so fee + position cost is a whole $0.0001; no settlement fee. Crypto, index and FX series are `quadratic` (no maker fee); Fed, CPI, payrolls and unemployment are `quadratic_with_maker_fees` (makers pay). The API's per-series `fee_type` and `fee_multiplier` are the live source (the PDF's list omits KXPAYROLLS, which the API marks with maker fees). Polymarket (docs.polymarket.com): takers pay rate × C × P × (1 − P), rate 0.07 crypto and 0.05 economics, from each market's `feeSchedule`; makers pay nothing.
+- Kalshi (fee schedule "July 2026, 7.7.26 Update", read 2026-11-16): takers pay 0.07 × M × C × P × (1 − P), makers 0.0175 × M × C × P × (1 − P) only where a series charges them, rounded up so fee + position cost is a whole $0.0001; no settlement fee. Crypto, index and FX series are `quadratic` (no maker fee); KXFED, KXFEDDECISION, KXCPI, KXCPIYOY, KXPAYROLLS and KXU3 are `quadratic_with_maker_fees` (makers pay); the core CPI series KXCPICORE and KXCPICOREYOY are `quadratic` (checked on the live API 2026-11-24). The API's per-series `fee_type` and `fee_multiplier` are the live source (the PDF's list omits KXPAYROLLS, which the API marks with maker fees). Polymarket (docs.polymarket.com): takers pay rate × C × P × (1 − P), rate 0.07 crypto and 0.05 economics, from each market's `feeSchedule`; makers pay nothing.
 
 ## Infra
 

@@ -171,10 +171,13 @@ def trade(msg: dict, inst: BinaryOption) -> TradeTick:
     )
 
 
-def convert(files: list[str], out: Path, series: set[str]) -> dict:
+def convert(
+    files: list[str], out: Path, series: set[str], listings_from: list[str] | None = None
+) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         rawcat, normalize = build_tools(Path(tmp))
-        insts = listings(rawcat, files, series)
+        # The listings can come from a separate file, so `files` are read once (they may be pipes).
+        insts = listings(rawcat, listings_from or files, series)
         out.mkdir(parents=True, exist_ok=True)
         catalog = ParquetDataCatalog(str(out))
         catalog.write_instruments(list(insts.values()))
@@ -239,8 +242,9 @@ def main() -> None:
     ap.add_argument("files", nargs="+", help="raw Kalshi hourly files, in time order")
     ap.add_argument("--out", required=True, type=Path, help="catalog directory")
     ap.add_argument("--series", default="KXBTCD", help="comma-separated Kalshi series")
+    ap.add_argument("--listings", nargs="+", help="read market listings from these files instead")
     a = ap.parse_args()
-    stats = convert(sorted(a.files), a.out, set(a.series.split(",")))
+    stats = convert(sorted(a.files), a.out, set(a.series.split(",")), a.listings)
     norm = stats.pop("normalizer")
     print(json.dumps(stats))
     keys = ("delta_mismatches", "rest_mismatches", "ws_snapshot_mismatches", "coverage_pct")
