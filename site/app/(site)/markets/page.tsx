@@ -138,6 +138,15 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
         </p>
       ) : (
         <div className="mkt-list">
+          {/* Column headings once, instead of a label under every figure (wide screens only). */}
+          <div className="mkt-head" aria-hidden="true">
+            <span>Question</span>
+            <span>
+              Outcome · price, <i className="dot" /> fair value
+            </span>
+            <span>Traded 24 h</span>
+            <span>Closes in</span>
+          </div>
           {shown.map(({ e, usd }) => (
             <EventRow key={`${e.venue}/${e.event}`} e={e} usd={usd} at={at ?? 0} />
           ))}

@@ -1989,12 +1989,14 @@ h1.h2 {
   color: var(--text-2);
   font-size: 11.5px;
 }
+/* Large prints stand out by weight and a neutral wash, so Buy and Sell keep their green and red
+   (a green wash and green dollars once made large sells read as buys). */
 .t-tape tr.large td {
-  background: rgba(0, 255, 119, 0.06);
-  color: var(--text);
+  background: var(--panel-2);
+  font-weight: 600;
 }
 .t-tape tr.large td:last-child {
-  color: var(--mint);
+  color: var(--text);
 }
 
 /* Depth chart and liquidity. */
@@ -3193,13 +3195,14 @@ details.more[open] > summary {
   .mkt-side {
     display: contents;
   }
-  .mkt [data-panel="cost"] { order: 1; }
+  /* Outcomes right after the chart: on a ladder the first thing to do is pick the strike. */
+  .mkt [data-panel="board"] { order: 1; }
   .mkt [data-panel="book"] { order: 2; }
-  .mkt [data-panel="depth"] { order: 3; }
+  .mkt [data-panel="cost"] { order: 3; }
   .mkt [data-panel="tape"] { order: 4; }
-  .mkt [data-panel="fair"] { order: 5; }
-  .mkt [data-panel="pair"] { order: 6; }
-  .mkt [data-panel="board"] { order: 7; }
+  .mkt [data-panel="depth"] { order: 5; }
+  .mkt [data-panel="fair"] { order: 6; }
+  .mkt [data-panel="pair"] { order: 7; }
   .mkt [data-panel="dist"] { order: 8; }
   .mkt [data-panel="ladder"] { order: 9; }
   .mkt [data-panel="brief"] { order: 10; }
@@ -3649,3 +3652,145 @@ details.more[open] > summary {
   }
 }
 
+/* ---- design-core: home, Markets and Market page polish (2026-11-27) ------------------------ */
+/* Markets: one heading row over the list on wide screens; each row's own labels then only
+   reach screen readers. On a phone the headings hide and the labels show. */
+.mkt-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 260px) 110px 100px;
+  gap: 20px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.mkt-head span:first-child {
+  padding-left: 16px; /* past the rows' "+" */
+}
+.mkt-head span:nth-child(n + 3) {
+  text-align: right;
+}
+.mkt-head .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fair);
+  vertical-align: 0;
+}
+.mkt-row > summary {
+  padding-block: 10px;
+}
+@media (min-width: 761px) {
+  .mkt-fig .sub {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 760px) {
+  .mkt-head {
+    display: none;
+  }
+  /* Question on its own line, then outcome and price, volume and time to close on one line. */
+  .mkt-row > summary {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 6px 14px;
+    padding: 12px 4px;
+  }
+  .mkt-q {
+    grid-column: 1 / -1;
+  }
+  .mkt-top {
+    grid-column: auto;
+  }
+  .mkt-fig:last-child {
+    display: flex;
+  }
+  .mkt-fig b {
+    font-size: 13.5px;
+  }
+  .mkt-fig .sub {
+    font-size: 11px;
+  }
+  .mkt-top .chance .prob-bar {
+    width: 56px;
+  }
+}
+
+/* Market page, wide screens: book and trades side by side under the chart (both columns of the
+   main stack), so a trader sees the queue and the prints at once; the rest span the width. */
+@media (min-width: 1001px) {
+  .mkt-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense; /* trades fill the cell beside the book, ahead of depth */
+  }
+  .mkt-main > * {
+    grid-column: 1 / -1;
+  }
+  .mkt-main > [data-panel="book"],
+  .mkt-main > [data-panel="tape"] {
+    grid-column: auto;
+  }
+  .mkt [data-panel="book"] .t-body,
+  .mkt [data-panel="tape"] .t-body {
+    height: 420px;
+  }
+}
+
+/* Implied distribution panel: legend and axis labels inside the panel's padding, line keys
+   centred on the text. */
+.t-dist .legend {
+  gap: 4px 16px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.t-dist .legend .key {
+  vertical-align: middle;
+}
+.t-dist .chart {
+  padding: 0 8px 8px;
+}
+
+/* Home: the four pages as four cells side by side, the link at each cell's foot; the system's
+   numbers two to a row on a phone. */
+@media (min-width: 961px) {
+  .home-pages .ranked {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .home-pages .ranked li + li {
+    border-left: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .home-pages .ranked li a {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: space-between;
+    gap: 20px;
+    height: 100%;
+    padding: 20px;
+  }
+  .home-pages .ranked .gap-pts {
+    text-align: left;
+  }
+}
+@media (max-width: 600px) {
+  .home-figures .figures-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-figures .figures-row > div {
+    padding: 18px 16px 20px;
+  }
+  .home-figures .figures-row > div:nth-child(even) {
+    border-left: 1px dashed var(--rail);
+  }
+  .home-figures .figures-row > div:last-child {
+    grid-column: 1 / -1;
+  }
+  .home-figures .figures-row b {
+    font-size: 28px;
+  }
+}
