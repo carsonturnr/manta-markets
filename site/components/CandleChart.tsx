@@ -12,10 +12,13 @@ import {
   CandlestickSeries,
   ColorType,
   createChart,
+  createSeriesMarkers,
   CrosshairMode,
   HistogramSeries,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type Time,
   AreaSeries,
   LineSeries,
   LineStyle,
@@ -23,6 +26,7 @@ import {
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type Bar, defaultMinutes, fill, group, type KalshiCandle, midBars, tradeBars } from "@/lib/candles";
+import type { Mark } from "@/lib/news";
 
 // Each timeframe is regrouped from one of the two resolutions the server fetched.
 const FRAMES = [
@@ -39,6 +43,7 @@ type Props = {
   poly?: { m1: Bar[]; h1: Bar[] }; // one price per period, no volume
   fair?: { t: number; fair: number }[]; // ms, probability: our options-implied fair value
   close?: number; // unix ms: the contract's close; flat bars are drawn up to it (or to now)
+  news?: Mark[]; // official news (lib/news.ts marks), oldest first: a mark on its bar
 };
 
 const cents = (p: number) => `${(Math.round(p * 1000) / 10).toFixed(1)}%`;
@@ -53,7 +58,7 @@ const alpha = (hex: string, a: number) => {
   return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 };
 
-export default function CandleChart({ kalshi, poly, fair, close }: Props) {
+export default function CandleChart({ kalshi, poly, fair, close, news }: Props) {
   // Open on the bar length that suits the contract's life (hourly: 1m, daily: 15m, longer: 1h).
   const [frame, setFrame] = useState<Frame>(() => {
     // The hourly history reaches back further than the 1-minute one, so it measures the life.
@@ -63,7 +68,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
   });
   const [source, setSource] = useState<"mid" | "trades">("mid");
   const [kind, setKind] = useState<"candles" | "line">("candles");
-  const [show, setShow] = useState({ fair: true, quotes: false, volume: true });
+  const [show, setShow] = useState({ fair: true, quotes: false, volume: true, news: true });
   const [hover, setHover] = useState<Bar | null>(null);
   // Where the pointer is over the chart, for the hover card; null when it's off the chart.
   const [at, setAt] = useState<{ x: number; y: number; w: number } | null>(null);
@@ -101,7 +106,21 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
       .map(([time, value]) => ({ time: ts(time), value }));
   }, [fair, bars, frame]);
 
+  // News items by the start of the bar they fall in (unix seconds), within the bars' span.
+  const newsByBar = useMemo(() => {
+    const by = new Map<number, Mark[]>();
+    if (!news || bars.length === 0) return by;
+    const step = frame.minutes * 60;
+    for (const n of news) {
+      const t = Math.floor(n.t / 1000 / step) * step;
+      if (t < bars[0].time || t > bars[bars.length - 1].time) continue;
+      by.set(t, [...(by.get(t) ?? []), n]);
+    }
+    return by;
+  }, [news, bars, frame]);
+
   const box = useRef<HTMLDivElement>(null);
+  const markers = useRef<{ candles: ISeriesMarkersPluginApi<Time>; line: ISeriesMarkersPluginApi<Time> } | null>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<{
     candles: ISeriesApi<"Candlestick">;
@@ -183,6 +202,11 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
         priceFormat,
       }),
     };
+    // News marks sit on whichever of the two price series is showing.
+    markers.current = {
+      candles: createSeriesMarkers(series.current.candles, []),
+      line: createSeriesMarkers(series.current.line, []),
+    };
     // Volume sits in the bottom fifth, on its own scale.
     c.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     chart.current = c;
@@ -190,6 +214,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
       c.remove();
       chart.current = null;
       series.current = null;
+      markers.current = null;
     };
   }, []);
 
@@ -230,16 +255,28 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
     s.bid.setData(show.quotes ? quotes.map((q) => ({ time: ts(q.time), value: q.bid })) : []);
     s.ask.setData(show.quotes ? quotes.map((q) => ({ time: ts(q.time), value: q.ask })) : []);
     s.fair.setData(show.fair ? fairLine : []);
+    // One plain mark per bar with news (labels overlap on long bars); sources and titles on hover.
+    const marks = show.news
+      ? [...newsByBar.keys()].map((time) => ({
+          time: ts(time),
+          position: "aboveBar" as const,
+          shape: "arrowDown" as const,
+          color: css("--text-2"),
+        }))
+      : [];
+    markers.current?.candles.setMarkers(kind === "candles" ? marks : []);
+    markers.current?.line.setMarkers(kind === "line" ? marks : []);
     if (kept) c.timeScale().setVisibleLogicalRange(kept);
     else if (bars.length < 120) c.timeScale().fitContent(); // a young contract: show it all
     else c.timeScale().setVisibleLogicalRange({ from: bars.length - 120, to: bars.length + 2 });
     lastFrame.current = frame;
-  }, [bars, quotes, fairLine, kind, show, frame, kalshi]);
+  }, [bars, quotes, fairLine, kind, show, frame, kalshi, newsByBar]);
 
   const b = hover ?? bars.at(-1);
   // The hover card's extra rows: the bid and ask at that bar's close, and our fair value then.
   const quoteAt = hover ? quotes.find((q) => q.time === hover.time) : undefined;
   const fairAt = hover && show.fair ? fairLine.find((f) => f.time === hover.time)?.value : undefined;
+  const newsAt = hover && show.news ? newsByBar.get(hover.time) : undefined;
   const when = (t: number) => new Date(t * 1000).toISOString().slice(5, 16).replace("T", " ");
   const toggle = (k: keyof typeof show) => setShow((s) => ({ ...s, [k]: !s[k] }));
   const chip = (on: boolean) => (on ? "chip on" : "chip");
@@ -276,6 +313,11 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
           {fair && fair.length > 0 && (
             <button type="button" className={chip(show.fair)} aria-pressed={show.fair} onClick={() => toggle("fair")}>
               Fair value
+            </button>
+          )}
+          {newsByBar.size > 0 && (
+            <button type="button" className={chip(show.news)} aria-pressed={show.news} onClick={() => toggle("news")}>
+              News
             </button>
           )}
           {kalshi && (
@@ -327,6 +369,7 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
             </span>
           )}
           {!kalshi && <span>Polymarket&apos;s price (midpoint or last trade)</span>}
+          {newsByBar.size > 0 && show.news && <span>▼ Official news</span>}
         </div>
       </div>
       <div className="candle-box">
@@ -372,6 +415,12 @@ export default function CandleChart({ kalshi, poly, fair, close }: Props) {
                 <b className="fair">{cents(fairAt)}</b>
               </>
             )}
+            {newsAt?.slice(0, 3).map((n) => (
+              <span key={`${n.t}-${n.title}`} className="tip-news">
+                {n.short} {when(n.t / 1000)}: {n.title}
+              </span>
+            ))}
+            {newsAt && newsAt.length > 3 && <span className="tip-news">and {newsAt.length - 3} more</span>}
           </div>
         )}
         {bars.length === 0 && <p className="muted candle-empty">No {source === "trades" ? "trades" : "prices"} in this window.</p>}

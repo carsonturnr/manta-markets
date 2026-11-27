@@ -3,6 +3,7 @@
 // sits in: used by /terminal, the Market page (/m/...) and the home page's demo of the terminal.
 import { auth } from "@clerk/nextjs/server";
 import Link from "next/link";
+import { Suspense } from "react";
 import AlertForm from "@/components/AlertForm";
 import DistChart from "@/components/DistChart";
 import FairLadder from "@/components/FairLadder";
@@ -16,6 +17,8 @@ import { kalshiFee, polymarketFee } from "@/lib/cost";
 import { fmtValue, getDistributions } from "@/lib/distributions";
 import { type Event } from "@/lib/events";
 import { utc } from "@/lib/format";
+import { beyondText, joined, SOURCES } from "@/lib/news";
+import { getNews } from "@/lib/news-data";
 import { featured, mid, outcomeLabel, usableFair } from "@/lib/outcomes";
 import { getBoard } from "@/lib/queries";
 import { score } from "@/lib/scoring";
@@ -384,6 +387,48 @@ export async function DistPanel({ event }: { event: string }) {
   );
 }
 
+/** The five newest official news items (lib/news.ts), each with how long ago and how the books
+ * moved after it against the 30 minutes before. Nothing at all if the replay server is down. */
+async function RecentNews({ now }: { now: number }) {
+  const n = await getNews().catch((e) => {
+    console.error(e);
+    return null;
+  });
+  if (!n) return null;
+  const latest = joined(n).slice(0, 5);
+  if (latest.length === 0) return null;
+  const ago = (t: number) => {
+    const m = Math.max(0, (now - t) / 60_000);
+    return `${m < 60 ? `${Math.round(m)} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} d`} ago`;
+  };
+  return (
+    <>
+      <p className="t-dim small">Official news</p>
+      <ul className="t-cal">
+        {latest.map(({ it, t, move }) => (
+          <li key={it.key}>
+            <Link href={`/insights/news/${it.key}`}>
+              <span className="t-cal-when num">
+                <b>{ago(t)}</b>
+                <span className="t-dim">{utc(t)}</span>
+              </span>
+              <span className="t-cal-q">
+                <span className="t-dim">{SOURCES[it.source]?.short ?? it.source}</span> {it.title}
+              </span>
+              <span className="t-cal-top num t-dim">
+                {move?.release ? "release" : move && move.contracts > 0 ? beyondText(move) : "pending"}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="t-dim small">
+        <Link href="/insights/news">Every item, with its timing →</Link>
+      </p>
+    </>
+  );
+}
+
 /** Scheduled releases: economics and financial events by when their contracts close (a release
  * comes a minute after its contracts close), with the market's current favourite. */
 export function CalendarPanel({ events, now, layout }: { events: Event[]; now: number; layout: string }) {
@@ -395,11 +440,17 @@ export function CalendarPanel({ events, now, layout }: { events: Event[]; now: n
     const h = (t - now) / 3_600_000;
     return h < 24 ? `${Math.round(h)} h` : `${Math.round(h / 24)} d`;
   };
-  // Past releases: how contracts reacted, measured from our recordings (event response).
+  // Past releases: how contracts reacted, measured from our recordings (event response); then the
+  // latest official news (tool 16), which arrives unscheduled.
   const past = (
-    <p className="t-dim small">
-      <Link href="/insights#release">Past releases: how markets reacted →</Link>
-    </p>
+    <>
+      <p className="t-dim small">
+        <Link href="/insights#release">Past releases: how markets reacted →</Link>
+      </p>
+      <Suspense fallback={null}>
+        <RecentNews now={now} />
+      </Suspense>
+    </>
   );
   if (!upcoming.length)
     return (

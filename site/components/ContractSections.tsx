@@ -5,6 +5,8 @@
 import CandleChart from "@/components/CandleChart";
 import { BriefPanel } from "@/components/terminal/Panels";
 import { getBrief } from "@/lib/brief-api";
+import { marks } from "@/lib/news";
+import { getNews } from "@/lib/news-data";
 import { getContract } from "@/lib/queries";
 import type { Row } from "@/lib/screener";
 import { kalshiCandles, kalshiRules, polyCandles, polyRules } from "@/lib/venues";
@@ -15,22 +17,33 @@ export const unavailable = (what: string, venue: string) => (
   </p>
 );
 
+// Official news marks for the chart (tool 16). The replay server being down costs the marks, not
+// the chart.
+const newsMarks = () =>
+  getNews()
+    .then((n) => marks(n.items))
+    .catch((e) => {
+      console.error(e);
+      return [];
+    });
+
 export async function Chart({ c, yesToken, tracked }: { c: Row; yesToken?: string; tracked: boolean }) {
   // Both resolutions at once, so switching timeframe on the chart needs no new request.
   if (c.venue === "kalshi") {
-    const [m1, h1, ours] = await Promise.all([
+    const [m1, h1, ours, news] = await Promise.all([
       kalshiCandles(c.family, c.id, "1m"),
       kalshiCandles(c.family, c.id, "1h"),
       tracked ? getContract(c.id) : null, // our fair value, recorded once a minute
+      newsMarks(),
     ]);
     if (!m1 || !h1) return unavailable("Price history", c.venue);
     const fair = ours?.points.flatMap((p) => (p.fair === null ? [] : [{ t: p.t, fair: p.fair }]));
-    return <CandleChart kalshi={{ m1, h1 }} fair={fair} close={c.close} />;
+    return <CandleChart kalshi={{ m1, h1 }} fair={fair} close={c.close} news={news} />;
   }
   if (!yesToken) return unavailable("Price history", c.venue);
-  const [m1, h1] = await Promise.all([polyCandles(yesToken, "1m"), polyCandles(yesToken, "1h")]);
+  const [m1, h1, news] = await Promise.all([polyCandles(yesToken, "1m"), polyCandles(yesToken, "1h"), newsMarks()]);
   if (!m1 || !h1) return unavailable("Price history", c.venue);
-  return <CandleChart poly={{ m1, h1 }} close={c.close} />;
+  return <CandleChart poly={{ m1, h1 }} close={c.close} news={news} />;
 }
 
 /** The venue's own page for this contract's event, where it can be traded (Manta places no

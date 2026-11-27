@@ -3764,3 +3764,22 @@ details.more[open] > summary {
     padding-block: 6px;
   }
 }
+
+/* News on the candle chart's hover card (tool 16): a title runs across both columns and wraps. */
+.candle-tip .tip-news {
+  grid-column: 1 / -1;
+  max-width: 300px;
+  margin-top: 4px;
+  white-space: normal;
+  color: var(--text);
+}
+
+/* The news list (/insights/news): source and title read as text, left-aligned, and titles wrap. */
+.news-table th.text,
+.news-table td.text {
+  text-align: left;
+  white-space: normal;
+}
+.news-table td.title {
+  min-width: 320px;
+}
