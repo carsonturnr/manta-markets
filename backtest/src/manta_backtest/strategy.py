@@ -277,9 +277,13 @@ class MarketMaker(Strategy):
         rejoin_ns: int,
         closes_ns: dict[str, int],
         fair: dict[str, tuple[list[int], list[float]]],
+        size: float = SIZE,
+        total: float = TOTAL,
+        stop_ns: int = STOP_NS,
     ) -> None:
         super().__init__()
         self.cancel_frac, self.rejoin_ns = cancel_frac, rejoin_ns
+        self.size, self.total, self.stop_ns = size, total, stop_ns
         self.closes, self.fair = closes_ns, fair
         self.pos: dict[str, float] = {}  # ticker → net contracts (+ long YES)
         self.live: dict[tuple, dict] = {}  # (ticker, side) → our order
@@ -320,19 +324,20 @@ class MarketMaker(Strategy):
 
         def worst(tk: str) -> float:
             p = self.pos.get(tk, 0.0)
-            buys = sum(SIZE for (t, sd) in self.live if t == tk and sd == 1)
-            sells = sum(SIZE for (t, sd) in self.live if t == tk and sd == -1)
+            buys = sum(self.size for (t, sd) in self.live if t == tk and sd == 1)
+            sells = sum(self.size for (t, sd) in self.live if t == tk and sd == -1)
             if tk == ticker:
-                buys, sells = buys + (SIZE if side == 1 else 0), sells + (SIZE if side == -1 else 0)
+                buys += self.size if side == 1 else 0
+                sells += self.size if side == -1 else 0
             return max(abs(p + buys), abs(p - sells))
 
-        if abs(self.pos.get(ticker, 0.0) + side * SIZE) > PER_CONTRACT:
+        if abs(self.pos.get(ticker, 0.0) + side * self.size) > PER_CONTRACT:
             return False
         ev = event_of(ticker)
         tickers = set(self.pos) | {t for t, _ in self.live} | {ticker}
         event = sum(worst(t) for t in tickers if event_of(t) == ev)
         total = sum(worst(t) for t in tickers)
-        return event <= PER_EVENT and total <= TOTAL
+        return event <= PER_EVENT and total <= self.total
 
     # -- events ------------------------------------------------------------------------------
 
@@ -363,7 +368,7 @@ class MarketMaker(Strategy):
                     h.pop(0)
         if top is None and not self.n_live.get(ticker):
             return
-        quoting = top is not None and now < self.closes.get(ticker, 0) - STOP_NS
+        quoting = top is not None and now < self.closes.get(ticker, 0) - self.stop_ns
         fair = self.fair_at(ticker, now)
         for side in (1, -1):
             key = (ticker, side)
@@ -397,7 +402,7 @@ class MarketMaker(Strategy):
             order = self.order_factory.limit(
                 iid,
                 OrderSide.BUY if side == 1 else OrderSide.SELL,
-                Quantity(SIZE, 2),
+                Quantity(self.size, 2),
                 Price(target, 2),
                 post_only=True,
             )
@@ -463,7 +468,7 @@ class MarketMaker(Strategy):
         o = self.live.get(key)
         if o and o["id"] == event.client_order_id:
             o["filled"] = o.get("filled", 0.0) + qty
-            if o["filled"] >= SIZE - 1e-9:
+            if o["filled"] >= self.size - 1e-9:
                 self._gone(event)
 
     def settle_waiting(self, now: int) -> None:
@@ -509,6 +514,12 @@ def backtest_main() -> None:
     ap.add_argument("--cancel-frac", type=float, required=True)
     ap.add_argument("--rejoin", type=float, required=True, help="seconds")
     ap.add_argument("--latency-ms", type=float, default=56)
+    ap.add_argument(
+        "--stop-min",
+        type=float,
+        default=STOP_NS / 60 / S,
+        help="no quotes this many minutes before a close (15; 3.75 for 15-minute contracts)",
+    )
     ap.add_argument("--out", required=True, type=Path, help="fills as JSON")
     ap.add_argument(
         "--no-rate-limit",
@@ -521,6 +532,7 @@ def backtest_main() -> None:
         int(a.rejoin * S),
         closes(a.markets, set(a.series.split(","))),
         load_fair(a.fair) if a.fair else {},
+        stop_ns=int(a.stop_min * 60 * S),
     )
     replay(
         a.catalog,
@@ -532,7 +544,8 @@ def backtest_main() -> None:
         else RiskEngineConfig(max_order_submit_rate=KALSHI_RATE),
     )
     run = {
-        k: getattr(a, k) for k in ("cancel_frac", "rejoin", "latency_ms", "series", "no_rate_limit")
+        k: getattr(a, k)
+        for k in ("cancel_frac", "rejoin", "latency_ms", "series", "no_rate_limit", "stop_min")
     }
     run |= {"submitted": mm.submitted, "rejected": mm.rejected, "denied": mm.denied}
     run |= {"peak": mm.peak}
