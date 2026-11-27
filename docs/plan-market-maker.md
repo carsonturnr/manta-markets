@@ -1,5 +1,7 @@
 # Step 14: market maker, plan
 
+**The result, in plain English (2026-11-27).** The bot is a market maker on Kalshi's hourly "Bitcoin above $X" contracts: it keeps a small buy order (5 contracts) at the best bid and a sell order at the best ask of every actively traded contract, hoping to earn the 1¢ gap between them when both get traded. It never crosses the spread, cancels when the line of orders ahead of it at its price thins to half, leans away from any position it builds up, stops 15 minutes before each contract closes, and never holds more than 200 contracts. Backtested on our own recordings with NautilusTrader, on three days it was not tuned on (including the most volatile weekday in our archive), it **lost $483 on 70,021 contracts traded, 0.69¢ a contract, against $0 for not quoting at all, and lost on every day**. It does earn the spread (+$351), but the price moves against it in the minute after its fills (−$839): professional firms sit next to Kalshi's servers about 1 ms away and cancel their quotes the moment the price starts to move, while we see the market about 57 ms late and need another 56 ms to cancel, so our orders are the ones still resting when better-informed traders arrive, and we get filled mostly when we are about to be wrong. Our options-based fair value does not help (the price closes only 1–3% of its gap to it), and doubling our latency changes almost nothing (−$500), because the problem is being slower than the incumbents and last in their queues, not a few milliseconds. Paper trading only: no real money is involved anywhere.
+
 **Status:** approved by Carson 2026-11-24 with two changes (below: more data before choosing quotes; latency measured from our server to Kalshi's production API). Next stop for approval: sub-step 4, the quoting rules. No strategy code before then.
 
 **Expectation, set now:** with the fill rates measured below, the likely result is a strategy that earns little or loses a little to better-informed traders. That is an acceptable outcome; the deliverable is the honest profit-and-loss breakdown.
@@ -134,6 +136,34 @@ Full report of the 18 runs:
 | 2026-11-21 | mm-tune-f0.25-r5 | 42,416 | 10,985 | 5,268 | 24,391 | $+118.32 | $-314.53 | $-0.46 | $+0.00 | $-196.67 | -0.81¢ | 148 | (38 fills not yet settled, valued at their mid)
 | 2026-11-21 | mm-tune-f0.5-r0 | 159,710 | 88,981 | 14,257 | 66,400 | $+323.82 | $-752.98 | $-34.38 | $+0.00 | $-463.54 | -0.70¢ | 149 | (67 fills not yet settled, valued at their mid)
 | 2026-11-21 | mm-tune-f0.5-r5 | 44,660 | 10,340 | 4,699 | 21,994 | $+112.29 | $-269.42 | $-36.44 | $+0.00 | $-193.56 | -0.88¢ | 150 | (43 fills not yet settled, valued at their mid)
+
+### Backtest report (sub-step 6, 2026-11-27)
+
+`manta-mm-backtest` per day and setting, then `manta-mm-report` (settlement values from Kalshi's public API). The chosen setting (cancel at half the joined size, rejoin after 5 s), KXBTCD, run once on each reported day after the choice was written down. **Don't quote** is the baseline of sending no orders: $0. Every row's parts add up to its total (asserted in the code). Fills in contracts that close after the report was run are valued at their mid 60 s after the fill (noted per row; the report is re-run once they settle).
+
+| Set | Run | Orders sent | Refused at the rate limit | Fills | Contracts traded | Spread earned | Adverse selection (60 s) | Inventory | Fees | **Total** | Per contract | Don't quote | Peak position |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| tuning, 56 ms | 2026-11-17 mm-tune-f0.5-r5 | 38,506 | 4,377 (11%) | 4,543 | 20,182 | $+114.18 | $-272.68 | $-64.41 | $+0.00 | **$-222.90** | -1.10¢ | $0.00 | 150 |
+| tuning, 56 ms | 2026-11-19 mm-tune-f0.5-r5 | 49,538 | 8,726 (18%) | 5,017 | 23,584 | $+125.25 | $-281.55 | $-55.12 | $+0.00 | **$-211.43** | -0.90¢ | $0.00 | 149 |
+| tuning, 56 ms | 2026-11-21 mm-tune-f0.5-r5 | 44,660 | 10,340 (23%) | 4,699 | 21,994 | $+112.29 | $-269.42 | $-36.44 | $+0.00 | **$-193.56** | -0.88¢ | $0.00 | 150 | 43 fills not yet settled, valued at their mid.
+| reported, 56 ms | 2026-11-18 mm-rep-56 | 48,317 | 6,908 (14%) | 5,377 | 24,970 | $+129.97 | $-359.51 | $-5.97 | $+0.00 | **$-235.51** | -0.94¢ | $0.00 | 150 |
+| reported, 56 ms | 2026-11-22 mm-rep-56 | 35,373 | 9,175 (26%) | 3,846 | 17,493 | $+89.25 | $-182.70 | $-1.91 | $+0.00 | **$-95.37** | -0.55¢ | $0.00 | 150 | 54 fills not yet settled, valued at their mid.
+| reported, 56 ms | 2026-11-23 mm-rep-56 | 47,834 | 6,117 (13%) | 5,962 | 27,558 | $+131.74 | $-296.73 | $+12.61 | $+0.00 | **$-152.37** | -0.55¢ | $0.00 | 149 | 94 fills not yet settled, valued at their mid.
+| reported, 112 ms | 2026-11-18 mm-rep-112 | 45,993 | 5,261 (11%) | 5,517 | 25,827 | $+131.18 | $-326.31 | $-47.13 | $+0.00 | **$-242.25** | -0.94¢ | $0.00 | 148 |
+| reported, 112 ms | 2026-11-22 mm-rep-112 | 29,934 | 6,298 (21%) | 4,068 | 18,344 | $+95.42 | $-204.17 | $+27.83 | $+0.00 | **$-80.92** | -0.44¢ | $0.00 | 150 | 46 fills not yet settled, valued at their mid.
+| reported, 112 ms | 2026-11-23 mm-rep-112 | 45,117 | 5,700 (13%) | 6,065 | 27,755 | $+128.60 | $-296.73 | $-8.93 | $+0.00 | **$-177.05** | -0.64¢ | $0.00 | 150 | 166 fills not yet settled, valued at their mid.
+| **tuning, 56 ms** | **all days** | 132,704 | 23,443 (18%) | 14,259 | 65,761 | $+351.72 | $-823.65 | $-155.97 | $+0.00 | **$-627.89** | -0.95¢ | $0.00 | 150 |
+| **reported, 56 ms** | **all days** | 131,524 | 22,200 (17%) | 15,185 | 70,021 | $+350.96 | $-838.94 | $+4.73 | $+0.00 | **$-483.25** | -0.69¢ | $0.00 | 150 |
+| **reported, 112 ms** | **all days** | 121,044 | 17,259 (14%) | 15,650 | 71,927 | $+355.20 | $-827.20 | $-28.23 | $+0.00 | **$-500.23** | -0.70¢ | $0.00 | 150 |
+
+Spread earned + adverse selection + inventory + fees = total in every row (checked in code). Don't quote = the profit and loss of sending no orders: $0.
+
+What this says:
+
+- **Out-of-sample it lost less than in-sample** (−$483 against −$628 over three days each; −0.69¢ against −0.95¢ a contract) and lost on every one of the six days, including the volatile one (−$152). Not trading at all beats every setting on every day.
+- **The loss is adverse selection**: spread earned ($351 over the reported days) is less than half of what the price then takes back within a minute ($839). Inventory (holding positions to settlement) and fees (0 for makers on KXBTCD) are small.
+- **Latency is not the lever**: at 112 ms per order instead of 56 ms the reported days lose $500 instead of $483. The gap that matters is about 113 ms (our data delay plus order delay) against about 1 ms for the firms next to Kalshi; adding another 56 ms barely changes who gets picked off.
+- **Kalshi's order rate binds**: 17% of the chosen setting's orders were refused at the Basic tier's 10 a second on the reported days (13–26% by day).
 
 ## Paper trading on Kalshi demo
 
