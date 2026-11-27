@@ -26,7 +26,7 @@ Details moved out of AGENTS.md (2026-11-21) to keep it short. AGENTS.md links he
 10. **Waitlist and product shell**, only after the data-terms checks. **Demo:** a landing page with a working sign-up and a published privacy policy.
 11. **Accounts, watchlists and alerts.** **Demo:** an alert firing on a real condition.
 12. **API** of our analytics (no raw venue data). **Demo:** documented endpoints with keys.
-13. **Market maker on the platform.** Designed from measurements (queue sizes, fill likelihood, adverse selection, whether our fair value predicts price moves), backtested with Nautilus on the recordings with profit and loss split into spread earned, losses to better-informed traders, and fees, then paper traded on Kalshi's demo environment. **Demo:** a backtest report from one command, then a paper-trading results page.
+13. **Market maker on the platform.** Designed from measurements (queue sizes, fill likelihood, adverse selection, whether our fair value predicts price moves), backtested with Nautilus on the recordings with profit and loss split into spread earned, losses to better-informed traders, and fees. **Demo:** a backtest report from one command. (Paper trading on Kalshi's demo environment was dropped 2026-11-27: the backtest showed the strategy loses.)
 
 ## Fees
 

@@ -5,7 +5,7 @@
   rules (approved 2026-11-25), Nautilus fill check, tuning and backtest report, plain-English
   result at the top.
 - backtest/: `manta-queue` (queue, fills, markouts, pick-offs, locked books), `manta-fair-predict`,
-  `manta-mm-probe`, `manta-mm-backtest`, `manta-mm-report`, `manta-paper` (Kalshi demo only, not yet
+  `manta-mm-probe`, `manta-mm-backtest`, `manta-mm-report`, `manta-paper` (Kalshi demo only, never
   run) and `manta-paper-summary`; 33 hand-worked tests.
 - Result (settled, 2026-11-27): on the three reported days the bot lost $504 on 70,021 contracts
   (−0.72¢ a contract) against $0 for not quoting; spread +$351, adverse selection −$839. Lost on
@@ -28,7 +28,8 @@
 - Paper trading lean: JSONL logs and a summary command instead of a Postgres table (no migration).
 
 ## Follow-ups
-- Sub-step 7: Mac smoke run, then the VM unit (Carson approved, with conditions), then summary.
+- Paper trading dropped 2026-11-27 (Carson): the strategy loses; demo fills can't change that.
+  The bot's demo key was rejected by Kalshi demo (NOT_FOUND) and was never sorted out.
 - Two hours of 2026-11-19 are a recording gap in the archive (recorder restart).
 - Nautilus limits order submissions only; cancels are not rate-limited in the backtest.
 - Pricing has no KXBTC15M model; fair value adds nothing measurable on KXBTCD anyway.

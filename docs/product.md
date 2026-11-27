@@ -52,7 +52,7 @@ Every series and every Polymarket event pattern is on an explicit allow-list, ch
 16. **News events** (research first). Unscheduled events from official sources and, if approved, a paid real-time feed, placed on the same clock as the order book. A comparison of sources (cost, measured delay, display terms) comes to Carson before any code.
 
 **On top**
-14. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader, then paper traded on Kalshi's demo environment. Paper trading only until Carson decides otherwise.
+14. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader. Done 2026-11-27: it loses money (docs/plan-market-maker.md). Paper trading on Kalshi's demo environment was dropped (Carson, 2026-11-27); no live-money order path.
 
 ## Build order
 

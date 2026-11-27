@@ -77,7 +77,7 @@ docs/                  product.md, milestone plans, decisions.md
 - Every tool in docs/product.md is live on the public site, each with its method explained in plain English.
 - Fair values are tested and labelled by method; accuracy statistics are published with honest sample sizes.
 - Sign-up is live: accounts with watchlists, alerts and API keys (the waitlist was retired 2026-11-26), after the data-terms checks.
-- The market maker's backtest report and paper-trading results show the profit-and-loss breakdown.
+- The market maker's backtest report shows the profit-and-loss breakdown (paper trading dropped 2026-11-27: the backtest showed it loses, and demo fills cannot change that).
 - README explains the project in plain English, credits NautilusTrader, states what worked and what did not, and includes the real numbers, including unflattering ones.
 
 ## Never (without asking Carson first)

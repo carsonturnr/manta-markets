@@ -2,7 +2,7 @@
 
 **The result, in plain English (2026-11-27).** The bot is a market maker on Kalshi's hourly "Bitcoin above $X" contracts: it keeps a small buy order (5 contracts) at the best bid and a sell order at the best ask of every actively traded contract, hoping to earn the 1¢ gap between them when both get traded. It never crosses the spread, cancels when the line of orders ahead of it at its price thins to half, leans away from any position it builds up, stops 15 minutes before each contract closes, and never holds more than 200 contracts. Backtested on our own recordings with NautilusTrader, on three days it was not tuned on (including the most volatile weekday in our archive), it **lost $504 on 70,021 contracts traded, 0.72¢ a contract, against $0 for not quoting at all, and lost on every day**. It does earn the spread (+$351), but the price moves against it in the minute after its fills (−$839): professional firms sit next to Kalshi's servers about 1 ms away and cancel their quotes the moment the price starts to move, while we see the market about 57 ms late and need another 56 ms to cancel, so our orders are the ones still resting when better-informed traders arrive, and we get filled mostly when we are about to be wrong. Our options-based fair value does not help (the price closes only 1–3% of its gap to it), and doubling our latency changes almost nothing (−$510), because the problem is being slower than the incumbents and last in their queues, not a few milliseconds. Lifting Kalshi's order-rate limit would not help (−$539, a hypothetical run), and the 15-minute Bitcoin contracts lose too (−$443 on the same days). Paper trading only: no real money is involved anywhere.
 
-**Status (2026-11-27):** plan approved 2026-11-24, quoting rules 2026-11-25; backtest report (sub-step 6) final, every fill valued at Kalshi's settlement. Sub-step 7, paper trading on Kalshi demo, approved as a lean version and in progress.
+**Status (2026-11-27):** plan approved 2026-11-24, quoting rules 2026-11-25; backtest report (sub-step 6) final, every fill valued at Kalshi's settlement. Step 14 ends here: paper trading (sub-step 7) was dropped by Carson on 2026-11-27, because the strategy loses and demo fills, against the demo's own order book and traders, cannot change that.
 
 **Expectation, set now:** with the fill rates measured below, the likely result is a strategy that earns little or loses a little to better-informed traders. That is an acceptable outcome; the deliverable is the honest profit-and-loss breakdown.
 
@@ -179,9 +179,11 @@ What this says:
 - **Kalshi's order rate binds, but lifting it does not help**: 17% of the chosen setting's orders were refused at the Basic tier's 10 a second on the reported days (13–26% by day). With no limit at all (hypothetical) the reported days lose more, $539 (−0.83¢ a contract), so a higher rate tier would not rescue the strategy.
 - **KXBTC15M loses too**: −$443 on the reported days (−0.97¢ a contract) and −$350 on the tuning days, with the setting tuned on KXBTCD (not re-tuned). 83–84% of its orders are refused at the rate limit: many short contracts share the same 10 a second.
 
-## Paper trading on Kalshi demo
+## Paper trading on Kalshi demo (dropped 2026-11-27, never run)
 
-Approved 2026-11-27 as a lean version (`manta-paper`, backtest/src/manta_backtest/paper.py).
+**Dropped (Carson, 2026-11-27):** the backtest says the strategy loses, and demo fills cannot say otherwise. The bot below was written and unit-tested; its demo-only startup check refused every non-demo environment in a test on 2026-11-27, but it never connected (the demo exchange did not recognise the key: `authentication_error`, `NOT_FOUND`). It stays in the repo as written, unrun.
+
+What was approved as a lean version (`manta-paper`, backtest/src/manta_backtest/paper.py):
 
 - **Keys:** Kalshi demo keys only (`KALSHI_DEMO_API_KEY_ID`, `KALSHI_DEMO_PRIVATE_KEY_PATH` in `.env` / `/etc/manta/env`). The bot refuses to start unless the adapter's environment is DEMO, removes the real account's key variables from its own process, and never prints key values.
 - **Strategy:** the backtest's chosen setting on KXBTCD, 1 contract per quote, a 20-contract total cap, Kalshi's Basic-tier 10 orders a second. No fair-value guard: our fair values are for the real exchange's contracts.
@@ -199,8 +201,8 @@ Approved 2026-11-27 as a lean version (`manta-paper`, backtest/src/manta_backtes
 4. **Quoting rules** chosen from 1–3, written up for Carson's approval. Approved 2026-11-25 (below).
 5. **Nautilus fill check:** `queue_position` against the measured bounds. *Demo:* the comparison table. Done 2026-11-25 (below).
 6. **Strategy and backtest report.** *Demo:* one command over a recorded week prints the profit-and-loss split, per day and per contract. Done 2026-11-27 (final after settlement).
-7. **Paper trading** on Kalshi demo, lean version (approved 2026-11-27). *Demo:* the bot running, orders visible in the demo account.
-8. **Results page.** *Demo:* one section of the how-it's-built page with the paper summary and the backtest beside it (a separate site step).
+7. **Paper trading** on Kalshi demo, lean version: dropped 2026-11-27 (bot written and tested, never run). *Demo:* the bot running, orders visible in the demo account.
+8. **Results page:** dropped with 7; the backtest result is in the README.
 
 ## Results: measurements 1–4 on six days
 
