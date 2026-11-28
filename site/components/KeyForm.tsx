@@ -8,21 +8,17 @@ export default function KeyForm({ ids }: { ids: number[] }) {
   const [made, action, pending] = useActionState(createKey, null);
   const state = made?.keyId !== undefined && !ids.includes(made.keyId) ? null : made;
   return (
-    <form action={action} className="alert-form" key={made?.at ?? 0}>
-      <label htmlFor="key-name">Name</label>
-      <input id="key-name" name="name" maxLength={40} required placeholder="laptop" className="key-name" />
+    <form action={action} className="acct-key" key={made?.at ?? 0}>
+      <input name="name" maxLength={40} required placeholder="Name, e.g. laptop" aria-label="Key name" />
       <button type="submit" disabled={pending}>
         {pending ? "Making…" : "Make a key"}
       </button>
-      {state && (
-        <p className={state.ok ? "small" : "waitlist-error"} role={state.ok ? "status" : "alert"}>
-          {state.message}
-        </p>
-      )}
+      {state && !state.key && <p role={state.ok ? "status" : "alert"}>{state.message}</p>}
       {state?.key && (
-        <p>
-          <code className="api-key">{state.key}</code>
-        </p>
+        <div className="acct-new" role="status">
+          {state.message}
+          <code>{state.key}</code>
+        </div>
       )}
     </form>
   );
