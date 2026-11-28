@@ -2215,15 +2215,6 @@ h1.h2 {
   margin: 0;
 }
 
-/* ---- API keys (/account) ------------------------------------------------------------------ */
-.alert-form input.key-name {
-  width: 12em;
-}
-.api-key {
-  user-select: all;
-  word-break: break-all;
-}
-
 /* ---- API docs (/docs/api) ------------------------------------------------------------------- */
 main pre {
   overflow-x: auto;
@@ -2483,50 +2474,222 @@ details.how[open] > summary {
   }
 }
 
-/* ==== Task C (account-analytics): signed-out account, Distributions, Liquidity ============= */
-
-/* Account, signed out: the bank-building artwork filling the left half, sign-in on the right. */
-.signed-out {
+/* ==== Account (/account): the terminal's panels in two columns, as on the Market page ======== */
+/* Signed in: watchlist and alerts in the wide column, fired alerts and API keys in the narrow
+   one; one column under 1000 px. The panels are the terminal's own (.t-panel). */
+.acct h1 {
+  margin: 0 0 24px;
+}
+.acct-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: calc(100svh - 65px); /* the screen under the sticky header */
-  margin: -40px -32px -80px; /* bleed to main's rails */
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 16px;
+  align-items: start;
+  font-size: 13px;
 }
-.signed-out .ascii {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 360px;
-  border-right: 1px dashed var(--rail);
+.acct-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.acct .t-panel {
+  border: 1px solid var(--line);
+}
+.acct .t-panel > header {
+  height: 32px;
+}
+.acct .t-body {
+  flex: none; /* as .mkt .t-body: the terminal's flex: 1 gives a zero flex-basis */
+  overflow: visible;
+}
+/* "3 of 3" at the right of a panel header; the "?" follows it. */
+.acct-count {
+  margin-left: auto;
   font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
 }
-.signed-out-side {
-  padding: 56px 48px 64px;
-  max-width: 560px;
+.acct-count + .t-help {
+  margin-left: 2px;
 }
-.signed-out-side h1 {
-  margin: 0 0 20px;
+.acct-count a {
+  margin-right: 10px;
+  color: inherit;
 }
-@media (max-width: 900px) {
-  .signed-out {
+.acct table {
+  min-width: 0;
+}
+.acct th,
+.acct td {
+  height: 40px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.acct th {
+  position: static;
+  height: 28px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: var(--bg);
+  font-size: 11px;
+}
+.acct th:first-child,
+.acct td:first-child {
+  padding-left: 12px;
+  white-space: normal; /* a long contract name wraps; the numbers beside it never do */
+  overflow-wrap: anywhere; /* a closed contract shows its id: one long word */
+}
+.acct td:first-child .acct-badge {
+  margin-left: 6px;
+}
+.acct th:last-child,
+.acct td:last-child {
+  padding-right: 12px;
+}
+.acct td a {
+  color: var(--text);
+}
+.acct td a:hover {
+  color: var(--mint);
+}
+.acct tbody tr:hover td {
+  background: var(--panel); /* darker than the site's row hover: the grey second line stays readable */
+}
+/* The second line of a row: venue and close, or the alert's condition. */
+.acct-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+/* Status as a small boxed label: waiting, met, ended, closed. */
+.acct-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.acct-badge.met {
+  border-color: transparent;
+  background: var(--mint-soft);
+  color: var(--mint);
+}
+.acct-badge.off {
+  border-color: var(--line);
+  color: var(--text-3);
+}
+.acct-badge.warn {
+  border-color: transparent;
+  background: rgba(255, 181, 71, 0.12);
+  color: var(--bad);
+}
+/* Remove and Delete: quiet words at the end of a row, not the site's mint submit button. */
+.acct .acct-del {
+  display: inline;
+  height: auto;
+  padding: 4px 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+.acct .acct-del:hover {
+  background: none;
+  color: var(--down);
+}
+/* An empty panel: one line and one action. */
+.acct-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 36px 16px;
+  color: var(--text-2);
+}
+.acct-empty p {
+  margin: 0;
+}
+.acct .btn-sm,
+.acct-key button {
+  height: 36px; /* the site's input height */
+  padding: 0 16px;
+  font-size: 15px;
+}
+/* API keys: the name field and its button in one row under the list. */
+.acct-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+}
+.acct-key:first-child {
+  border-top: 0;
+}
+.acct-key input {
+  flex: 1;
+  min-width: 0;
+}
+.acct-key p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--bad);
+}
+/* The new key, shown once. */
+.acct-key .acct-new {
+  flex-basis: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--mint);
+  border-radius: var(--radius-sm);
+  background: var(--mint-soft);
+  color: var(--text);
+}
+.acct-new code {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--mint);
+  user-select: all;
+  word-break: break-all;
+}
+@media (max-width: 1000px) {
+  .acct-grid {
     grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-  }
-  .signed-out .ascii {
-    order: 1; /* the form first on a phone; the art after it */
-    height: 360px;
-    border-right: 0;
-    border-top: 1px dashed var(--rail);
-  }
-  .signed-out-side {
-    padding: 40px 20px 48px;
   }
 }
-@media (max-width: 960px) {
-  .signed-out {
-    margin: -24px -16px -48px; /* main's phone padding */
+@media (max-width: 520px) {
+  .acct .wide-only {
+    display: none; /* Fair and Last fired: the phone keeps name, bid, ask, status */
+  }
+  .acct th,
+  .acct td {
+    padding-left: 6px;
+    padding-right: 6px;
   }
 }
+/* Signed out: the heading and Clerk's sign-in box, centred. */
+.signed-out {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 0 64px;
+}
+.signed-out h1 {
+  margin: 0 0 24px;
+  text-align: center;
+}
+/* ==== end of Account ==== */
+
+/* ==== Task C (account-analytics): Distributions, Liquidity ================================ */
 
 details.more {
   margin-top: 32px;
