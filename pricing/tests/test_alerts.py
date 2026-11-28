@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from manta_pricing.alerts import describe, evaluate, fires
+from manta_pricing.alerts import describe, evaluate, fires, message
 
 
 def row(bid=0.40, ask=0.42, bid_size=500.0, ask_size=80.0, kalshi_mid=None, poly_mid=None):
@@ -55,3 +55,31 @@ def test_descriptions_match_the_site():
     assert describe("above", 0.6) == "Midpoint at or above 60¢"
     assert describe("spread", 0.025) == "Spread at least 2.5¢"
     assert describe("depth", 1500) == "Size at the best bid or ask under 1,500 contracts"
+
+
+def firing(**over):
+    a = dict(venue="kalshi", id="KXFED-26DEC-T3.50", kind="above", threshold=0.6,
+             title="Will the Fed cut rates in December?", label="Cut 25bps")  # fmt: skip
+    return a | over
+
+
+def test_email_has_text_and_html_with_the_condition_value_and_link():
+    m = message(firing(), 0.64)
+    assert m["subject"] == "Manta alert: Midpoint at or above 60¢"
+    page = "https://mantamarkets.com/contract/kalshi/KXFED-26DEC-T3.50"
+    for part in ("Midpoint at or above 60¢", "now", "64¢", page, "Not investment advice"):
+        assert part in m["text"] and part in m["html"]
+    assert f'href="{page}"' in m["html"] and "Open the market" in m["html"]
+    assert 'href="https://mantamarkets.com/account"' in m["html"]
+    assert "Will the Fed cut rates in December?" in m["html"]
+    assert "Cut 25bps &middot; Kalshi" in m["html"]
+    # Depth with an empty side has no number; the email says so instead.
+    assert "one side of the book is empty" in message(firing(kind="depth"), None)["html"]
+
+
+def test_email_html_escapes_what_comes_from_data():
+    a = firing(title="<script>alert(1)</script> S&P", label='"><img src=x>', id='x"><b>')
+    m = message(a, 0.64)
+    assert "<script>alert(1)</script>" in m["text"]  # plain text is sent as it is
+    assert "<script" not in m["html"] and "<img src=x" not in m["html"] and '"><b>' not in m["html"]
+    assert "&lt;script&gt;alert(1)&lt;/script&gt; S&amp;P" in m["html"]
