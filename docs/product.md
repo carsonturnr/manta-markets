@@ -42,14 +42,14 @@ Every series and every Polymarket event pattern is on an explicit allow-list, ch
 9. **Accuracy (research page).** Each venue's prices and our fair values scored against settled outcomes (calibration, Brier score), with honest sample sizes.
 
 **Accounts**
-10. **Waitlist**, then accounts.
+10. **Accounts** (the waitlist came first and was retired 2026-11-26).
 11. **Watchlists and alerts.** Save contracts; get notified when a condition is met (e.g. Kalshi and Polymarket differ by 5¢, the spread widens, depth disappears).
 12. **Trader workspace** (/terminal). One full-screen screen of panels a trader keeps open: a market monitor, chart, live order book and depth, trade tape with large trades flagged, event board, liquidity (spread, depth near the mid, book imbalance) and a cost ticket; plus what only Manta has: fair value with its own track record beside it, a cross-venue arbitrage scanner that walks both books after fees, the implied distribution, alerts from any panel, and a catalyst calendar of the releases contracts settle on. Preset layouts and a ⌘K command bar. Books and trades are polled every 2 seconds at first; a WebSocket relay from the recorder makes them live.
 13. **API.** Our analytics (fair values, distributions, cost-to-trade, cross-venue differences) with keys and rate limits. No redistribution of raw venue data.
 
 **Proposed (Carson, 2026-11-23): react to events**
 15. **Event response.** For each scheduled economic release (payrolls, unemployment, CPI, the Fed's decision), how every contract still trading moved, how fast (seconds to 90% of the move), and how its order book thinned before the number. From our recordings only. Plan: docs/plan-event-response.md.
-16. **News events** (research first). Unscheduled events from official sources and, if approved, a paid real-time feed, placed on the same clock as the order book. A comparison of sources (cost, measured delay, display terms) comes to Carson before any code.
+16. **News events.** Unscheduled news from official sources (Fed, Treasury, BEA, Labor Department, BLS; no paid feed), placed on the same clock as the order book, with the book move around each item against the 30 minutes before. Done 2026-11-27 (/insights/news).
 
 **On top**
 14. **Market maker.** Designed from measurements (queue sizes, fill likelihood, adverse selection), backtested on the recordings with NautilusTrader. Done 2026-11-27: it loses money (docs/plan-market-maker.md). Paper trading on Kalshi's demo environment was dropped (Carson, 2026-11-27); no live-money order path.
@@ -73,7 +73,7 @@ Each step ends in something that runs and can be shown.
 12. Trader workspace.
 13. API.
 13b. Event response (proposed 2026-11-23; first real release in our data: 2026-12-04).
-13c. News events: source comparison first, then a proposal.
+13c. News events (done 2026-11-27).
 14. Market maker.
 
 ## Must be checked before the waitlist goes public
