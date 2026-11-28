@@ -3976,3 +3976,160 @@ details.more[open] > summary {
     font-size: 15px;
   }
 }
+
+/* ---- home-content (2026-11-28): the home page's tools and findings -------------- */
+/* A section's heading line: its tag on the left, a few plain links on the right. */
+.home-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.home-head a {
+  margin-left: 20px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.home-head a:hover {
+  color: var(--mint);
+}
+.home-tools,
+.home-found {
+  margin-bottom: 80px;
+}
+/* Six terminal panels, three to a row. Each draws its own hairline into the 1px gap, so a row
+   left short (a tile is left out when its data can't be read) ends in plain black. */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+}
+.tool {
+  position: relative;
+  font-size: 12px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.tool:hover > header h2 {
+  color: var(--text);
+}
+/* "Open": its ::after covers the whole tile (or findings cell), so anywhere on it is the link. */
+.tool-open {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.tool-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.tool:hover .tool-open,
+.home-found .figures-row > div:hover .tool-open {
+  color: var(--mint);
+  text-decoration: none;
+}
+.tool-body p {
+  margin: 0;
+  padding: 10px 10px 8px;
+  max-width: none;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.tool-body p + p {
+  padding-top: 0;
+}
+.tool-body p.t-dim {
+  color: var(--text-3);
+}
+/* The terminal's dense tables (.terminal table), for these panels outside it. */
+.tool table {
+  min-width: 0;
+  width: 100%;
+}
+.tool th,
+.tool td {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+.tool th {
+  background: var(--bg);
+  font-size: 11px;
+}
+.tool th:first-child,
+.tool td:first-child {
+  padding-left: 10px;
+  text-align: left;
+}
+/* A question: one line, cut with an ellipsis (max-width: 0 lets the cell shrink below its text). */
+.tool table:not(.t-book) th:first-child,
+.tool table:not(.t-book) td:first-child {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A Markets row: venue, the question (cut first) and the outcome its price is for. */
+.tool-q {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tool-q span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-q span:last-child {
+  flex: none;
+  max-width: 45%;
+}
+.tool tr:last-child td {
+  border-bottom: 0;
+}
+.tool .chart {
+  padding: 0 4px 6px;
+}
+/* Findings: four cells of the figures row, each one a link to its Insights answer. */
+.home-found .stats-row {
+  margin-bottom: 0;
+}
+.home-found .figures-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.home-found .figures-row > div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.home-found .figures-row span {
+  margin-top: 8px;
+  line-height: 1.45;
+}
+.home-found .tool-open {
+  margin: 16px 0 0;
+}
+@media (max-width: 1100px) {
+  .tools-grid,
+  .home-found .figures-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .tools-grid,
+  .home-found .figures-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-found .figures-row > div:nth-child(n) {
+    grid-column: auto;
+    border-left: 0;
+  }
+  .home-tools,
+  .home-found {
+    margin-bottom: 56px;
+  }
+}
