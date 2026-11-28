@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import ReplayView from "@/components/ReplayView";
 import { utc } from "@/lib/format";
 import { fmtValue } from "@/lib/units";
-import { familyName, getPastEvents, getReplay, REPLAY_FAMILIES } from "@/lib/replay";
+import { familyName, getPastEvents, getRecordedFamilies, getReplay, REPLAY_FAMILIES } from "@/lib/replay";
 
 export const metadata = { title: "Manta: replay" };
 
@@ -14,11 +14,7 @@ export default function ReplayPage({ searchParams }: { searchParams: Promise<Par
   return (
     <div className="wide">
       <h1>Replay</h1>
-      <p className="muted">
-        Play back a past Kalshi close minute by minute: every strike&apos;s bid and ask as the
-        close approached, and where it settled. See how fast prices converge and how wide spreads
-        get in the final minutes, from order books Kalshi doesn&apos;t publish.
-      </p>
+      <p className="muted">Past Kalshi closes, minute by minute, from order books Kalshi doesn&apos;t publish.</p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Replays searchParams={searchParams} />
       </Suspense>
@@ -30,28 +26,48 @@ async function Replays({ searchParams }: { searchParams: Promise<Params> }) {
   await connection(); // request time only: the build never queries the database
   const p = await searchParams;
   const e = (Array.isArray(p.e) ? p.e[0] : p.e) ?? "";
-  const all = await getPastEvents();
-  const families = REPLAY_FAMILIES.filter((f) => all.some((x) => x.family === f));
-  const chosenEvent = all.find((x) => x.event === e);
-  const fam = chosenEvent?.family ?? (Array.isArray(p.f) ? p.f[0] : p.f) ?? "KXBTCD";
-  const past = all.filter((x) => x.family === fam);
+  const fam = e ? e.split("-")[0] : ((Array.isArray(p.f) ? p.f[0] : p.f) ?? "KXBTCD");
+  const families = await getRecordedFamilies();
+  const links = (
+    <p className="replay-families">
+      {families.map((f) =>
+        f === fam ? (
+          <strong key={f}>{familyName(f)}</strong>
+        ) : (
+          <Link key={f} href={`/replay?f=${f}`}>
+            {familyName(f)}
+          </Link>
+        ),
+      )}
+    </p>
+  );
+  if (!REPLAY_FAMILIES.includes(fam))
+    return (
+      <>
+        <p>There&apos;s no replay for {fam}.</p>
+        {links}
+      </>
+    );
+  const past = await getPastEvents(fam);
   if (past.length === 0)
-    return <p className="muted">No finished replay yet: the first appears an hour or so after a close.</p>;
-  const chosen = chosenEvent ?? past[0];
+    return (
+      <>
+        {links}
+        <p className="muted">No {familyName(fam)} close recorded yet.</p>
+      </>
+    );
+  const chosen = past.find((x) => x.event === e) ?? past[0];
   const r = await getReplay(chosen.event);
+  const recent = past.slice(0, 12);
+  const closeLink = (x: (typeof past)[number]) =>
+    x.event === chosen.event ? (
+      <strong>{utc(x.close)}</strong>
+    ) : (
+      <Link href={`/replay?e=${encodeURIComponent(x.event)}`}>{utc(x.close)}</Link>
+    );
   return (
     <>
-      <p className="replay-families">
-        {families.map((f) =>
-          f === fam ? (
-            <strong key={f}>{familyName(f)}</strong>
-          ) : (
-            <Link key={f} href={`/replay?f=${f}`}>
-              {familyName(f)}
-            </Link>
-          ),
-        )}
-      </p>
+      {links}
       <h2>
         {familyName(chosen.family)}, closing {utc(chosen.close)}
         {r?.settlement != null && (
@@ -65,17 +81,20 @@ async function Replays({ searchParams }: { searchParams: Promise<Params> }) {
       )}
       <h2>Other closes</h2>
       <ul className="replay-list">
-        {past.map((x) => (
-          <li key={x.event}>
-            {x.event === chosen.event ? (
-              <strong>{utc(x.close)}</strong>
-            ) : (
-              <Link href={`/replay?e=${encodeURIComponent(x.event)}`}>{utc(x.close)}</Link>
-            )}{" "}
-            <span className="muted small">{x.event}</span>
-          </li>
+        {recent.map((x) => (
+          <li key={x.event}>{closeLink(x)}</li>
         ))}
       </ul>
+      {past.length > recent.length && (
+        <details className="more">
+          <summary>All {past.length}</summary>
+          <ul className="replay-list">
+            {past.slice(recent.length).map((x) => (
+              <li key={x.event}>{closeLink(x)}</li>
+            ))}
+          </ul>
+        </details>
+      )}
       <details className="more">
         <summary>How the replay is built</summary>
         <p className="small">
