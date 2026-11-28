@@ -2469,22 +2469,6 @@ details.how[open] > summary {
 .signed-out-side h1 {
   margin: 0 0 20px;
 }
-.sell {
-  margin: 0 0 12px;
-  padding: 0;
-  list-style: none;
-}
-.sell li {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-  color: var(--text-2);
-}
-.sell li:first-child {
-  border-top: 1px solid var(--line);
-}
-.signed-out-side > .small {
-  margin: 0 0 24px;
-}
 @media (max-width: 900px) {
   .signed-out {
     grid-template-columns: minmax(0, 1fr);
