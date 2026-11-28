@@ -2447,7 +2447,7 @@ details.how[open] > summary {
 
 /* ==== Task C (account-analytics): signed-out account, Distributions, Liquidity ============= */
 
-/* Account, signed out: animated mark filling the left half of the page, sign-in on the right. */
+/* Account, signed out: the bank-building artwork filling the left half, sign-in on the right. */
 .signed-out {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
