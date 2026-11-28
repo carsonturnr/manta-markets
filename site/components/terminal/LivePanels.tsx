@@ -23,8 +23,9 @@ function Fresh() {
 }
 
 /** The live quote in one line: best bid and ask with their sizes, the spread and the last trade.
- * Read from the live book, not the market list, so it always agrees with the book panel. */
-export function QuoteStrip() {
+ * Read from the live book, not the market list, so it always agrees with the book panel. `lead`
+ * is the Market page's headline price, drawn as the strip's first, larger cell. */
+export function QuoteStrip({ lead }: { lead?: React.ReactNode }) {
   const { book, trades } = useLive();
   const bid = book?.bids[0];
   const ask = book?.asks[0];
@@ -45,6 +46,7 @@ export function QuoteStrip() {
     );
   return (
     <div className="quote-strip num" aria-label="Live quote">
+      {lead}
       {cell("Bid", sized(bid))}
       {cell("Ask", sized(ask))}
       {cell("Spread", bid && ask ? c(ask.price - bid.price) : "–")}

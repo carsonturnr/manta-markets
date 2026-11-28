@@ -11,6 +11,7 @@ import { BookPanel, DepthPanel, TapePanel } from "@/components/terminal/LivePane
 import Monitor from "@/components/terminal/Monitor";
 import { ArbPanel, BoardPanel, CalendarPanel, DistPanel, FairPanel } from "@/components/terminal/Panels";
 import TerminalDemo from "@/components/terminal/TerminalDemo";
+import VenueLogo from "@/components/VenueLogo";
 import { type Event, getEvents } from "@/lib/events";
 import { monitorRows } from "@/lib/monitor";
 import { mid, outcomeLabel, usableFair, whenET } from "@/lib/outcomes";
@@ -113,7 +114,7 @@ async function Preview() {
         }
         focus={
           <div className="t-focus num">
-            <span className="t-venue kalshi">Kalshi</span>
+            <VenueLogo venue="kalshi" />
             <b className="t-focus-q">{e.question}</b>
             <span className="t-focus-o">{outcomeLabel(o)}</span>
             <span>

@@ -4,6 +4,7 @@
 // that market in focus in every panel.
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import VenueLogo from "@/components/VenueLogo";
 
 export type MonitorRow = {
   key: string; // venue/event
@@ -96,7 +97,7 @@ export default function Monitor({
                 scroll={false}
               >
                 <span className="t-mon-q">
-                  <span className={`t-venue ${r.venue}`}>{r.venue === "kalshi" ? "K" : "P"}</span>
+                  <VenueLogo venue={r.venue} height={10} compact />
                   {r.question}
                 </span>
                 <span className="t-mon-fig num">

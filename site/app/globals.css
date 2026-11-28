@@ -1213,21 +1213,6 @@ h1.h2 {
   background: var(--fair);
   box-shadow: 0 0 0 1.5px var(--panel);
 }
-.venue::before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  vertical-align: 1px;
-  background: var(--text-3);
-}
-.venue.kalshi::before {
-  background: var(--kalshi);
-}
-.venue.polymarket::before {
-  background: var(--poly);
-}
 /* The closing call to action: a framed box, centred. */
 .cta-box {
   display: flex;
@@ -1552,26 +1537,6 @@ h1.h2 {
   font-size: 13.5px;
 }
 
-.focus {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.focus-pct {
-  font-size: 44px;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1;
-}
-.focus-what {
-  color: var(--text-2);
-  font-size: 15px;
-}
-.focus-what b {
-  color: var(--text);
-  font-weight: 600;
-}
 
 .quick {
   display: flex;
@@ -1753,21 +1718,6 @@ h1.h2 {
 .t-focus > a:last-child {
   margin-left: auto;
 }
-.t-venue {
-  display: inline-block;
-  min-width: 16px;
-  margin-right: 6px;
-  padding: 0 4px;
-  border-radius: var(--radius-sm);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  text-align: center;
-  background: var(--panel-2);
-  color: var(--text-2);
-}
-.t-venue.kalshi {
-  color: var(--text);
-}
 
 /* The grid of panels and its presets. */
 .t-grid {
@@ -1798,7 +1748,7 @@ h1.h2 {
     "mon cal";
 }
 .t-grid-arb {
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 330px;
+  grid-template-columns: 540px minmax(0, 1fr) 330px; /* the arb table at about its own width (it was ~650 px, half empty below); the chart gets the rest */
   grid-template-rows: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1fr);
   grid-template-areas:
     "arb chart book"
@@ -2498,9 +2448,6 @@ details.how[open] > summary {
 
 /* Phones: inside the Menu panel the tools are always listed, one per row, under a small heading. */
 
-.markets-lede {
-  margin-bottom: 32px;
-}
 .markets-bar {
   display: flex;
   flex-wrap: wrap;
@@ -2514,10 +2461,6 @@ details.how[open] > summary {
 }
 .markets-form input {
   width: 260px;
-}
-.markets-count {
-  margin: 16px 0;
-  font-size: 14px;
 }
 @media (max-width: 700px) {
   .markets-bar,
@@ -2722,18 +2665,6 @@ details.more[open] > summary {
   border-color: var(--text-3);
 }
 
-.focus-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.focus-help {
-  margin: 0 0 14px;
-  color: var(--text-3);
-  font-size: 13px;
-}
 
 /* ---- Research pages (task F): tracker ladders, accuracy answer, quality summary, events, replay ---- */
 /* Tracker: one row per strike, Kalshi's bid–ask as a grey bar and fair value as a mint tick. */
@@ -3896,5 +3827,152 @@ details.more[open] > summary {
   .news-table td[data-label]::before {
     content: attr(data-label) ": ";
     color: var(--text-3);
+  }
+}
+
+/* ---- design-market (2026-11-27): Market page price lockup, venue logos, phone Market page and
+   home terminal preview. Kept in one block; see docs/worklog/2026-11-27-design-market.md. ---- */
+/* Venue logos (components/VenueLogo.tsx): sit on the text baseline, with the clear space Kalshi's
+   kit asks for (about twice the K's stem). */
+.venue-logo {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 3px;
+}
+.t-mon-q .venue-logo,
+.t-cal-q .venue-logo {
+  margin: 0 8px 0 0;
+}
+.markets-bar {
+  margin-bottom: 16px; /* the count line that spaced the list from the filters is gone */
+}
+/* The Market page's headline price: the quote strip's first, larger cell. */
+.mkt .event-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.quote-strip {
+  padding: 14px 0;
+}
+.quote-strip > .qs-lead {
+  padding-right: 32px;
+  border-right: 1px solid var(--line);
+}
+.quote-strip > .qs-lead > span {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.quote-strip > .qs-lead > span b {
+  font-size: 13px;
+  color: var(--text);
+}
+.quote-strip > .qs-lead > b {
+  font-size: 44px;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+/* Phones: everything above the chart in about 280 px, so the chart shows on the first screen. */
+@media (max-width: 560px) {
+  .mkt .crumbs {
+    margin-bottom: 8px;
+  }
+  .mkt h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
+  .mkt .event-sub {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .mkt .quote-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px 10px;
+  }
+  .mkt .quote-strip > .qs-lead {
+    grid-column: 1 / -1;
+    padding: 0;
+    border: 0;
+  }
+  .mkt .quote-strip > div b {
+    font-size: 16px;
+  }
+  .mkt .quote-strip > .qs-lead > b {
+    font-size: 40px;
+  }
+  .mkt .quote-strip small,
+  .mkt .quote-strip > .t-live,
+  .mkt .quote-strip > .t-stale {
+    display: none;
+  }
+  .mkt .mkt-grid {
+    margin-top: 12px;
+  }
+  /* The chart's controls on one row that scrolls sideways, not three wrapped rows. */
+  .mkt .candle .toolbar,
+  .terminal .candle .toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mkt .candle .toolbar > *,
+  .terminal .candle .toolbar > * {
+    flex: none;
+  }
+}
+/* Home: on phones the terminal preview is one static card (the focus line and the price chart)
+   instead of the squeezed grid; "Open the full terminal" stays. */
+@media (max-width: 700px) {
+  .hero-split .pv-terminal {
+    height: auto;
+    mask-image: none;
+  }
+  .pv-terminal .t-layouts,
+  .pv-terminal .t-grid > :not([data-panel="chart"]),
+  .pv-terminal [data-panel="chart"] > header,
+  .pv-terminal .candle .toolbar,
+  .pv-terminal .candle-meta {
+    display: none;
+  }
+  .pv-terminal .t-grid {
+    display: block;
+  }
+  .pv-terminal .candle-box {
+    min-height: 220px;
+    pointer-events: none; /* a static picture: page scrolling never gets caught by the chart */
+  }
+  .pv-terminal [data-panel="chart"] {
+    min-height: 0;
+  }
+  .pv-terminal .t-top {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+  .pv-terminal .t-brand .t-dim {
+    display: none; /* "Terminal": room for the button on one line */
+  }
+  .pv-terminal a.pv-full {
+    white-space: nowrap;
+  }
+  /* The focus line as a card: question, then venue and outcome, then mid and fair value large.
+     Its 6th and 7th items (traded, close time) wait for the full terminal. */
+  .pv-terminal .t-focus {
+    gap: 6px 20px;
+    padding: 12px;
+  }
+  .pv-terminal .t-focus-o {
+    flex: 1 0 60%;
+  }
+  .pv-terminal .t-focus > :nth-child(n + 6) {
+    display: none;
+  }
+  .pv-terminal .t-focus span b {
+    font-size: 22px;
+  }
+  .pv-terminal .t-focus .t-focus-q {
+    font-size: 15px;
   }
 }

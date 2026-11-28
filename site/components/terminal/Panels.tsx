@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import AlertForm from "@/components/AlertForm";
 import DistChart from "@/components/DistChart";
 import FairLadder from "@/components/FairLadder";
+import VenueLogo from "@/components/VenueLogo";
 import { getAlerts, isPaired, isWatched } from "@/lib/account";
 import { deleteAlert, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
@@ -472,7 +473,7 @@ export function CalendarPanel({ events, now, layout }: { events: Event[]; now: n
                   <span className="t-dim">{utc(e.close)}</span>
                 </span>
                 <span className="t-cal-q">
-                  <span className={`t-venue ${e.venue}`}>{e.venue === "kalshi" ? "K" : "P"}</span>
+                  <VenueLogo venue={e.venue} height={10} compact />
                   {e.question}
                 </span>
                 <span className="t-cal-top num">

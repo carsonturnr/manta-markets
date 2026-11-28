@@ -1,7 +1,7 @@
 // Run with: npm test (node's built-in test runner; Node strips the types itself).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { type Bar, defaultMinutes, fill, fromPoints, group, type KalshiCandle, mergeCandles, midBars, tradeBars } from "./candles.ts";
+import { type Bar, defaultMinutes, enoughCandles, fill, fromPoints, group, type KalshiCandle, mergeCandles, midBars, tradeBars } from "./candles.ts";
 
 const bar = (time: number, o: number, h: number, l: number, c: number, v = 0): Bar => ({
   time,
@@ -121,4 +121,12 @@ test("mergeCandles: recorded minutes win, Kalshi's API fills the rest, in time o
       [180, 0],
     ],
   );
+});
+
+test("candles are offered only with at least 20 bars that moved", () => {
+  const flat = Array.from({ length: 30 }, (_, i) => bar(i * 60, 0.5, 0.5, 0.5, 0.5));
+  const moved = Array.from({ length: 20 }, (_, i) => bar(i * 60, 0.5, 0.52, 0.49, 0.51));
+  assert.equal(enoughCandles(flat), false); // 30 bars, none moved
+  assert.equal(enoughCandles([...flat, ...moved.slice(1)]), false); // 19 moved
+  assert.equal(enoughCandles([...flat, ...moved]), true); // 20 moved
 });
