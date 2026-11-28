@@ -1,7 +1,7 @@
 "use client";
 // A classical exchange building (pediment, six fluted columns, steps) on a night plain with low
-// hills behind: decoration for the signed-out account page. One still frame drawn on a canvas,
-// redrawn only when its box changes size, so there is no motion to reduce.
+// hills behind, in mint ordered-dither dots: decoration for the signed-out account page. One still
+// frame drawn on a canvas, redrawn only when its box changes size, so there is no motion to reduce.
 //
 // The scene is a brightness function over the whole plane (sky, hills and ground go on forever),
 // and the building is scaled to fit the box: a wide phone strip or a tall desktop half both show
@@ -104,11 +104,9 @@ const BAYER = [
   28, 52, 20, 62, 30, 54, 22, 3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25, 15, 47,
   7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21,
 ];
-const RAMP = " .:-=+*#%@"; // lightest to densest
 const DOT = 2; // px per dither dot
-const CELL = 11; // px per ASCII row
 
-export default function BankAscii({ variant = "dither" }: { variant?: "dither" | "ascii" }) {
+export default function BankAscii() {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -127,41 +125,20 @@ export default function BankAscii({ variant = "dither" }: { variant?: "dither" |
       const toX = (px: number) => (px - w / 2) / k;
       const toY = (py: number) => (py - h / 2) / k + 0.49;
 
-      if (variant === "dither") {
-        ctx.fillStyle = `rgb(${MINT})`;
-        // Start 24 px down, so no star sits against the header's rule.
-        for (let r = 24 / DOT; r * DOT < h; r++) {
-          for (let c = 0; c * DOT < w; c++) {
-            const b = scene(toX(c * DOT + DOT / 2), toY(r * DOT + DOT / 2));
-            if (b * 64 > BAYER[(r % 8) * 8 + (c % 8)] + 0.5) ctx.fillRect(c * DOT, r * DOT, DOT, DOT);
-          }
-        }
-        return;
-      }
-      ctx.font = `${CELL - 1}px ${getComputedStyle(canvas).fontFamily}`;
-      ctx.textBaseline = "top";
-      const cw = ctx.measureText("M").width;
-      for (let r = 0; r * CELL < h; r++) {
-        for (let c = 0; c * cw < w; c++) {
-          // Average a 4 x 4 grid of samples, so thin lines (the roof's edge) still register.
-          let b = 0;
-          for (let i = 0; i < 16; i++) {
-            b += scene(toX((c + ((i % 4) + 0.5) / 4) * cw), toY((r + (Math.floor(i / 4) + 0.5) / 4) * CELL));
-          }
-          b /= 16;
-          const ch = RAMP[Math.min(RAMP.length - 1, Math.round(b * (RAMP.length - 1)))];
-          if (ch === " ") continue;
-          ctx.fillStyle = `rgba(${MINT},${(0.3 + 0.7 * b).toFixed(2)})`;
-          ctx.fillText(ch, c * cw, r * CELL);
+      ctx.fillStyle = `rgb(${MINT})`;
+      // Start 24 px down, so no star sits against the header's rule.
+      for (let r = 24 / DOT; r * DOT < h; r++) {
+        for (let c = 0; c * DOT < w; c++) {
+          const b = scene(toX(c * DOT + DOT / 2), toY(r * DOT + DOT / 2));
+          if (b * 64 > BAYER[(r % 8) * 8 + (c % 8)] + 0.5) ctx.fillRect(c * DOT, r * DOT, DOT, DOT);
         }
       }
     };
 
     const resize = new ResizeObserver(draw);
     resize.observe(canvas);
-    document.fonts?.ready.then(draw); // measure the grid in Geist Mono once it has loaded
     return () => resize.disconnect();
-  }, [variant]);
+  }, []);
 
   return <canvas ref={ref} className="ascii" aria-hidden="true" />;
 }
