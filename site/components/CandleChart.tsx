@@ -1,6 +1,6 @@
 "use client";
-// The contract page's price chart: candles (or a line) with volume, Kalshi's bid and ask, and our
-// fair value where we have one, drawn with TradingView's lightweight-charts (Apache-2.0). Its logo is off:
+// The contract page's price chart: a line (candles one click away, once enough bars moved) with
+// volume, Kalshi's bid and ask, and our fair value where we have one, drawn with TradingView's lightweight-charts (Apache-2.0). Its logo is off:
 // the licence's link to tradingview.com is in the site footer and the terminal's status bar.
 // Attribution notice: TradingView Lightweight Charts™, Copyright (c) 2025 TradingView, Inc.
 // https://www.tradingview.com/ The library does the drawing, zoom, pan and crosshair;
@@ -25,7 +25,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type Bar, defaultMinutes, fill, group, type KalshiCandle, midBars, tradeBars } from "@/lib/candles";
+import { type Bar, defaultMinutes, enoughCandles, fill, group, type KalshiCandle, midBars, tradeBars } from "@/lib/candles";
 import type { Mark } from "@/lib/news";
 
 // Each timeframe is regrouped from one of the two resolutions the server fetched.
@@ -67,7 +67,7 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
     return FRAMES.find((f) => f.minutes === want) ?? FRAMES[1];
   });
   const [source, setSource] = useState<"mid" | "trades">("mid");
-  const [kind, setKind] = useState<"candles" | "line">("candles");
+  const [kind, setKind] = useState<"candles" | "line">("line");
   const [show, setShow] = useState({ fair: true, quotes: false, volume: true, news: true });
   const [hover, setHover] = useState<Bar | null>(null);
   // Where the pointer is over the chart, for the hover card; null when it's off the chart.
@@ -94,6 +94,10 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
     }
     return { bars: poly ? fill(group(poly[frame.from], frame.minutes), frame.minutes, end) : [], quotes: [] };
   }, [kalshi, poly, frame, source, end]);
+
+  // Candles only where enough bars moved; otherwise the line, whatever was picked before.
+  const candlesOk = enoughCandles(bars);
+  const shape = candlesOk ? kind : "line";
 
   // Our fair value, one point per period (the last in it), within the bars' time span.
   const fairLine = useMemo(() => {
@@ -241,8 +245,8 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
     if (!s || !c) return;
     const kept = lastFrame.current === frame ? c.timeScale().getVisibleLogicalRange() : null;
     const data = bars.map((b) => ({ ...b, time: ts(b.time) }));
-    s.candles.setData(kind === "candles" ? data : []);
-    s.line.setData(kind === "line" ? data.map((b) => ({ time: b.time, value: b.close })) : []);
+    s.candles.setData(shape === "candles" ? data : []);
+    s.line.setData(shape === "line" ? data.map((b) => ({ time: b.time, value: b.close })) : []);
     s.volume.setData(
       show.volume && kalshi
         ? data.map((b) => ({
@@ -264,13 +268,13 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
           color: css("--text-2"),
         }))
       : [];
-    markers.current?.candles.setMarkers(kind === "candles" ? marks : []);
-    markers.current?.line.setMarkers(kind === "line" ? marks : []);
+    markers.current?.candles.setMarkers(shape === "candles" ? marks : []);
+    markers.current?.line.setMarkers(shape === "line" ? marks : []);
     if (kept) c.timeScale().setVisibleLogicalRange(kept);
     else if (bars.length < 120) c.timeScale().fitContent(); // a young contract: show it all
     else c.timeScale().setVisibleLogicalRange({ from: bars.length - 120, to: bars.length + 2 });
     lastFrame.current = frame;
-  }, [bars, quotes, fairLine, kind, show, frame, kalshi, newsByBar]);
+  }, [bars, quotes, fairLine, shape, show, frame, kalshi, newsByBar]);
 
   const b = hover ?? bars.at(-1);
   // The hover card's extra rows: the bid and ask at that bar's close, and our fair value then.
@@ -301,14 +305,16 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
             </button>
           </span>
         )}
-        <span className="chips" role="group" aria-label="Chart type">
-          <button type="button" className={chip(kind === "candles")} onClick={() => setKind("candles")}>
-            Candles
-          </button>
-          <button type="button" className={chip(kind === "line")} onClick={() => setKind("line")}>
-            Line
-          </button>
-        </span>
+        {candlesOk && (
+          <span className="chips" role="group" aria-label="Chart type">
+            <button type="button" className={chip(kind === "line")} onClick={() => setKind("line")}>
+              Line
+            </button>
+            <button type="button" className={chip(kind === "candles")} onClick={() => setKind("candles")}>
+              Candles
+            </button>
+          </span>
+        )}
         <span className="chips" role="group" aria-label="Overlays">
           {fair && fair.length > 0 && (
             <button type="button" className={chip(show.fair)} aria-pressed={show.fair} onClick={() => toggle("fair")}>
@@ -331,7 +337,7 @@ export default function CandleChart({ kalshi, poly, fair, close, news }: Props) 
             </>
           )}
         </span>
-        <span className="hint">Times UTC · drag to pan</span>
+        <span className="hint">Times UTC</span>
       </div>
       <div className="candle-meta">
         {b && (

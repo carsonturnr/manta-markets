@@ -9,6 +9,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { ProbBar } from "@/components/EventCard";
 import LiveForm from "@/components/LiveForm";
+import VenueLogo from "@/components/VenueLogo";
 import { type Event, getEvents } from "@/lib/events";
 import { FAMILIES } from "@/lib/families";
 import { utc } from "@/lib/format";
@@ -30,11 +31,6 @@ export default function MarketsPage({ searchParams }: { searchParams: Promise<Pa
   return (
     <>
       <h1>Markets</h1>
-      <p className="lede markets-lede">
-        Every open crypto, economics and financial question on Kalshi and Polymarket. Each contract
-        pays $1 if its outcome happens, so its price reads as a chance: 37¢ means about 37%. Open a
-        question to see all its outcomes.
-      </p>
       <Suspense fallback={<p className="muted">Loading…</p>}>
         <Markets searchParams={searchParams} />
       </Suspense>
@@ -126,12 +122,6 @@ async function Markets({ searchParams }: { searchParams: Promise<Params> }) {
           </noscript>
         </LiveForm>
       </div>
-      <p className="markets-count muted">
-        {shown.length.toLocaleString("en-US")} {shown.length === 1 ? "question" : "questions"},{" "}
-        {shown.reduce((n, s) => n + s.e.outcomes.length, 0).toLocaleString("en-US")} contracts
-        {v.q && <> matching “{v.q}”</>}
-        {at !== null && <> · prices read {utc(at)}</>}
-      </p>
       {shown.length === 0 ? (
         <p className="muted">
           Nothing matches. Try fewer words, or <Link href="/markets">see every market</Link>.
@@ -227,8 +217,7 @@ function EventRow({ e, usd, at }: { e: Event; usd: number; at: number }) {
         <span className="mkt-q">
           <b>{e.question}</b>
           <span className="sub">
-            <span className={`venue ${e.venue}`}>{e.venue === "kalshi" ? "Kalshi" : "Polymarket"}</span>{" "}
-            · {FAMILY_NAME.get(e.family) ?? e.family} · {e.outcomes.length}{" "}
+            <VenueLogo venue={e.venue} /> · {FAMILY_NAME.get(e.family) ?? e.family} · {e.outcomes.length}{" "}
             {e.outcomes.length === 1 ? "outcome" : "outcomes"}
           </span>
         </span>

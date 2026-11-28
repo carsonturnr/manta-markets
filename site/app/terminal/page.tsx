@@ -27,6 +27,7 @@ import {
   TITLES,
 } from "@/components/terminal/Panels";
 import ResizableGrid from "@/components/terminal/ResizableGrid";
+import VenueLogo from "@/components/VenueLogo";
 import { RESET_EVENT } from "@/lib/grid";
 import { monitorRows } from "@/lib/monitor";
 import { getEvents } from "@/lib/events";
@@ -139,7 +140,7 @@ async function Workspace({ searchParams }: { searchParams: Promise<Params> }) {
       </header>
 
       <div className="t-focus num">
-        <span className={`t-venue ${o.venue}`}>{o.venue === "kalshi" ? "Kalshi" : "Polymarket"}</span>
+        <VenueLogo venue={o.venue} />
         <b className="t-focus-q">{e.question}</b>
         <span className="t-focus-o">{outcomeLabel(o)}</span>
         <span>

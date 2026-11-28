@@ -131,3 +131,12 @@ export function mergeCandles(recorded: KalshiCandle[], api: KalshiCandle[]): Kal
   for (const c of recorded) byTime.set(c.time, c);
   return [...byTime.values()].sort((a, b) => a.time - b.time);
 }
+
+/** Whether candles are worth offering: at least `min` bars whose high and low differ. A thin
+ * market's chart is mostly flat bars (fill draws unchanged periods flat) and a few lone spikes,
+ * which read as noise as candles; the line shows the same prices cleanly. */
+export function enoughCandles(bars: Bar[], min = 20): boolean {
+  let moved = 0;
+  for (const b of bars) if (b.high !== b.low && ++moved >= min) return true;
+  return false;
+}
