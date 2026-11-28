@@ -26,6 +26,9 @@ from datetime import datetime, timedelta
 import psycopg
 from psycopg.rows import dict_row
 
+from manta_pricing import mail
+from manta_pricing.mail import esc
+
 SITE = "https://mantamarkets.com"
 SENDER = "Manta alerts <alerts@mantamarkets.com>"
 COOLDOWN = timedelta(hours=1)
@@ -183,6 +186,32 @@ def clerk_user(user_id: str) -> dict | None:
         raise
 
 
+def message(a: dict, value: float | None) -> dict:
+    """The email for one firing: subject, plain text, and the same content as HTML (mail.py)."""
+    page = f"{SITE}/contract/{a['venue']}/{a['id']}"
+    condition = describe(a["kind"], a["threshold"])
+    now = reading(a["kind"], value)
+    venue = "Kalshi" if a["venue"] == "kalshi" else "Polymarket"
+    again = (
+        "This alert emails again only after the condition has stopped holding, at most once"
+        " an hour."
+    )
+    advice = "Manta shows market data and analytics. Not investment advice."
+    text = (
+        f"{condition}: now {now}.\n\n"
+        f"{a['title']} ({a['label']}, {venue})\n{page}\n\n"
+        f"{again} Change or delete your alerts: {SITE}/account\n\n{advice}"
+    )
+    # Only what the reader acts on (Carson, 2026-11-28); the footer keeps the way to stop the
+    # emails and the short disclaimer, and the plain text keeps the full wording.
+    body = f'<p style="margin:0;">{esc(a["label"])} &middot; {venue}</p>' + mail.edged(
+        f'{esc(condition)} <span style="white-space:nowrap;">&rarr; now <b>{esc(now)}</b></span>'
+    )
+    footer = mail.link(f"{SITE}/account", "Manage alerts") + " &middot; Not investment advice"
+    html = mail.layout(a["title"], body, ("Open the market", page), footer)
+    return {"subject": f"Manta alert: {condition}", "text": text, "html": html}
+
+
 def send(a: dict, value: float | None) -> str:
     """Emails one firing: "sent", "failed" (logged without the address), or "gone" (no such
     user at Clerk)."""
@@ -196,19 +225,8 @@ def send(a: dict, value: float | None) -> str:
         if to is None:
             print(f"alert {a['alert_id']}: the user has no email address at Clerk")
             return "failed"
-        page = f"{SITE}/contract/{a['venue']}/{a['id']}"
-        condition = describe(a["kind"], a["threshold"])
-        text = (
-            f"{condition}: now {reading(a['kind'], value)}.\n\n"
-            f"{a['title']} ({a['label']}, {'Kalshi' if a['venue'] == 'kalshi' else 'Polymarket'})"
-            f"\n{page}\n\n"
-            "This alert emails again only after the condition has stopped holding, at most once"
-            f" an hour. Change or delete your alerts: {SITE}/account\n\n"
-            "Manta shows market data and analytics. Not investment advice."
-        )
-        http("https://api.resend.com/emails", os.environ["RESEND_API_KEY"], {
-            "from": SENDER, "to": [to], "subject": f"Manta alert: {condition}", "text": text,
-        })  # fmt: skip
+        http("https://api.resend.com/emails", os.environ["RESEND_API_KEY"],
+             {"from": SENDER, "to": [to], **message(a, value)})  # fmt: skip
         return "sent"
     except Exception as e:  # noqa: BLE001 - logged in alert_log as not emailed
         # The error's class only: a message could quote the address.

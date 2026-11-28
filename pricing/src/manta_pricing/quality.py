@@ -20,7 +20,9 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Jsonb
 
+from manta_pricing import mail
 from manta_pricing.alerts import http
+from manta_pricing.mail import esc
 from manta_pricing.snapshot import connect
 
 STALE_SECONDS = 600  # status runs every 15 minutes; a venue silent for 10 is down, not quiet
@@ -49,6 +51,23 @@ def disk(usage) -> list[str]:
     return []
 
 
+def message(now: list[str], generated: str) -> dict:
+    """The operator's email for the problem list `now` (empty: all clear): subject, plain text,
+    and the same content as HTML (mail.py)."""
+    built = "https://mantamarkets.com/how-its-built"
+    clear = "Every venue is recording, coverage at least 99%."
+    text = ("\n".join(now) if now else clear) + f"\n\nReport of {generated}. {built}"
+    if now:
+        items = "".join(f'<li style="margin:0 0 6px;">{esc(p)}</li>' for p in now)
+        body = f'<ul style="margin:18px 0 0;padding:0 0 0 20px;">{items}</ul>'
+    else:
+        body = f'<p style="margin:18px 0 0;">{clear}</p>'
+    body += f'<p style="margin:18px 0 0;">{mail.link(built, "Data quality and coverage")}</p>'
+    html = mail.layout("Problem" if now else "All clear", body, tone="bad" if now else "ok")
+    subject = "Manta recorder: " + ("problem" if now else "all clear")
+    return {"subject": subject, "text": text, "html": html}
+
+
 def notify(report: dict, state: Path, extra: list[str] = ()) -> None:
     """Emails OPS_EMAIL when the problem list (the report's, then `extra`) differs from the last
     run's."""
@@ -60,14 +79,10 @@ def notify(report: dict, state: Path, extra: list[str] = ()) -> None:
     if not to:
         print(f"recorder problems changed ({len(now)} now); OPS_EMAIL unset, not emailed")
     else:
-        subject = "Manta recorder: " + ("problem" if now else "all clear")
-        text = "\n".join(now) if now else "Every venue is recording, coverage at least 99%."
-        text += f"\n\nReport of {report['generated']}. https://mantamarkets.com/how-its-built"
-        http("https://api.resend.com/emails", os.environ["RESEND_API_KEY"], {
-            "from": "Manta recorder <alerts@mantamarkets.com>", "to": [to],
-            "subject": subject, "text": text,
-        })  # fmt: skip
-        print(f"emailed: {subject}")
+        m = message(now, report["generated"])
+        http("https://api.resend.com/emails", os.environ["RESEND_API_KEY"],
+             {"from": "Manta recorder <alerts@mantamarkets.com>", "to": [to], **m})  # fmt: skip
+        print(f"emailed: {m['subject']}")
     state.write_text("\n".join(now))  # written after the email, so a failed send retries
 
 
