@@ -6,7 +6,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import KeyForm from "@/components/KeyForm";
-import MantaAscii from "@/components/MantaAscii";
+import BankAscii from "@/components/BankAscii";
 import { getAlerts, getFired, getKeys, getListed, getWatchlist, type Listed } from "@/lib/account";
 import { deleteAlert, deleteKey, toggleWatch } from "@/lib/accountActions";
 import { describe } from "@/lib/alerts";
@@ -51,21 +51,9 @@ async function Account() {
   if (!userId) {
     return (
       <div className="signed-out">
-        <MantaAscii />
+        <BankAscii />
         <div className="signed-out-side">
-          <h1>Your markets, watched while you&apos;re away</h1>
-          <ul className="sell">
-            <li>
-              Keep a watchlist of the contracts you follow, with the latest bid, ask and fair value.
-            </li>
-            <li>Get an email when a price crosses your level, or a spread or depth changes.</li>
-            <li>Hear when Kalshi and Polymarket disagree on the same question.</li>
-            <li>
-              Make <Link href="/docs/api">API keys</Link> to pull Manta&apos;s analytics into your
-              own tools.
-            </li>
-          </ul>
-          <p className="muted small">Sign in with Google or a code sent to your email.</p>
+          <h1>Sign in to Manta</h1>
           {/* Clerk's own form, in place: hash routing keeps it on this URL. */}
           <SignIn
             routing="hash"
@@ -83,6 +71,8 @@ async function Account() {
                 borderRadius: "3px",
                 fontFamily: "var(--font-sans), system-ui, sans-serif",
               },
+              // The page's own h1 says "Sign in"; Clerk's title and welcome line would repeat it.
+              elements: { header: { display: "none" } },
             }}
           />
         </div>
