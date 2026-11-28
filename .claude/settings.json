@@ -2,8 +2,6 @@
   "permissions": {
     "ask": [
       "Bash(psql:*)",
-      "Bash(supabase db:*)",
-      "Bash(supabase migration:*)",
       "Edit(db/**)",
       "Bash(vercel:*)",
       "Bash(npx vercel:*)",

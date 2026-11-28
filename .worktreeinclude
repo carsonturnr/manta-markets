@@ -2,4 +2,3 @@
 site/.env.local
 site/.env.production.local
 infra.local.md
-.mcp.json

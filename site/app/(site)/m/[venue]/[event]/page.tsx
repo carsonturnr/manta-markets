@@ -135,7 +135,7 @@ async function MarketView({
             <Panel k="cost">
               <CostPanel venue={o.venue} rate={o.feeTaker} fair={usableFair(o)} />
             </Panel>
-            <Panel k="fair" title="Fair value: a second opinion">
+            <Panel k="fair" title="Fair value">
               <Suspense fallback={wait}>
                 <FairPanel o={o} close={e.close} now={now} />
               </Suspense>
