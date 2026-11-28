@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from manta_pricing.quality import disk, notify, problems
+from manta_pricing.quality import disk, message, notify, problems
 
 Usage = namedtuple("Usage", "total used free")
 
@@ -72,3 +72,23 @@ def test_main_emails_when_database_down(tmp_path, monkeypatch, capsys):
     assert "report not stored" in capsys.readouterr().out
     lines = (tmp_path / "quality-alert.txt").read_text().splitlines()
     assert lines[0] == "database: down (the report could not be stored)"
+
+
+def test_email_has_text_and_html():
+    built = "https://mantamarkets.com/how-its-built"
+    m = message(["deribit: no data for 32 minutes", "disk: over 80% full"], "2026-11-26T16:02:00Z")
+    assert m["subject"] == "Manta recorder: problem"
+    assert m["text"].startswith("deribit: no data for 32 minutes\ndisk: over 80% full\n\n")
+    for part in ("deribit: no data for 32 minutes", "disk: over 80% full", built):
+        assert part in m["text"] and part in m["html"]
+    assert ">Problem</h1>" in m["html"] and m["html"].count("<li") == 2
+    clear = message([], "2026-11-26T16:02:00Z")
+    assert clear["subject"] == "Manta recorder: all clear"
+    assert ">All clear</h1>" in clear["html"] and "<li" not in clear["html"]
+    assert "Every venue is recording" in clear["text"] and built in clear["html"]
+
+
+def test_email_html_escapes_problem_lines():
+    m = message(["<script>x</script>: coverage 98.00% & falling"], "2026-11-26T16:02:00Z")
+    assert "<script" not in m["html"]
+    assert "&lt;script&gt;x&lt;/script&gt;: coverage 98.00% &amp; falling" in m["html"]
