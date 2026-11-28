@@ -92,7 +92,7 @@ in [docs/plan-market-maker.md](docs/plan-market-maker.md), and read-only queries
 - **Arbitrage after fees is measured, not assumed.** On 2026-11-25, 8 of 52 questions listed on
   both Kalshi and Polymarket crossed before fees and 7 after both venues' taker fees. It is a
   one-minute snapshot: no history is kept.
-- **Tests.** 187: 66 Go, 57 Python, 64 site (counted 2026-11-27). Every fee and cost formula is
+- **Tests.** 198: 66 Go, 60 Python, 72 site (counted 2026-11-27). Every fee and cost formula is
   tested against hand-worked numbers; the backtest has none of its own outside the market maker's
   branch.
 
@@ -149,17 +149,26 @@ could test the plumbing but never change that answer. The paper-trading bot
 venues (Kalshi, Polymarket, Deribit, Coinbase, Kraken, Binance)
    │  WebSocket / REST, read-only
    ▼
-recorder (Go, on a VM) ──► raw hourly gzip JSONL ──► nightly archive (Storage Box)
+recorder (Go, on a VM) ──► raw hourly gzip JSONL ──► hourly archive (Storage Box)
    │        │                     │
    │        │ replay files        └─► backtest/ (Python + NautilusTrader Parquet catalog)
    │        └─► 1-minute candles for the charts
    │ live relay (Kalshi books and trades) ──► terminal
    ▼
-pricing jobs (Python, every minute) ──► Postgres (Supabase, schema `manta`)
-                                              │  read-only login
+pricing jobs (Python, every minute) ──► Postgres 17 (same VM, schema `manta`) ──► nightly dump (Storage Box)
+                                              │  PgBouncer, TLS, read-only login
                                               ▼
                                    site (Next.js 16, React 19, TypeScript, Vercel)
 ```
+
+Everything but the site runs on one Hetzner VM. The database was on Supabase's free tier until
+2026-11-27, when Manta's traffic (46 GB of egress in a month, against 5 GB free) pushed it off:
+on the VM it costs nothing extra, and Hetzner includes 20 TB of traffic.
+
+Hosting a month (2026-11-27): the VM, a Hetzner CX23 with its IPv4 address, about €6 (from
+third-party price lists, not yet an invoice); the 1 TB Storage Box for recordings and database
+backups, €4. The site (Vercel), sign-in (Clerk), email (Resend) and the market brief (Anthropic's
+API) are billed by those services.
 
 | Folder | What | Stack |
 |---|---|---|

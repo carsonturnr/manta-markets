@@ -1,0 +1,8 @@
+[Unit]
+Description=Manta nightly database backup to the Storage Box
+After=postgresql@17-main.service
+
+[Service]
+Type=oneshot
+Nice=10
+ExecStart=/opt/manta/bin/db-backup.sh

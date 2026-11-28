@@ -49,7 +49,8 @@ def connect() -> psycopg.Connection:
     url = os.environ.get("DATABASE_URL")
     if not url:
         sys.exit("DATABASE_URL is not set (locally: uv run --env-file ../.env ...)")
-    conn = psycopg.connect(url, autocommit=True)
+    # A bound on connecting, so a hung database fails the run (and manta-quality's email) fast.
+    conn = psycopg.connect(url, autocommit=True, connect_timeout=10)
     conn.execute("set time zone 'UTC'")  # timestamps print and group in UTC
     return conn
 

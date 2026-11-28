@@ -43,3 +43,21 @@ ufw allow 6432/tcp comment "manta site database (PgBouncer, TLS only)"
 
 Check row-level security after any change to roles or policies:
 `sudo -u postgres psql -d manta -v ON_ERROR_STOP=1 -f db/rls-check.sql` (ends "all passed").
+
+## Backups and restore
+
+`manta-db-backup.timer` runs infra/deploy/db-backup.sh at 03:30 UTC: `manta-<day>.dump` (pg_dump
+custom format) and `globals-<day>.sql` (the logins) in /var/lib/manta/db-backup and on the Storage
+Box under `manta/db/`, 14 days kept. Restore-tested 2026-11-27 from the Storage Box copy (all 17
+tables and 5 policies back):
+
+```sh
+rsync -a -e "ssh -p 23 -i /root/.ssh/storagebox" <storagebox-user>@<storagebox-user>.your-storagebox.de:manta/db/manta-<day>.dump /root/
+# on a new server, first the logins: sudo -u postgres psql -f globals-<day>.sql
+sudo -u postgres createdb -O manta_job manta
+sudo -u postgres pg_restore -d manta --exit-on-error --single-transaction < /root/manta-<day>.dump
+sudo -u postgres psql -d manta -v ON_ERROR_STOP=1 -f db/rls-check.sql
+```
+
+The recorder email (pricing/quality.py, every 15 minutes, to OPS_EMAIL) also says when the
+database is down (the report can't be stored) or the disk is over 80% full.
