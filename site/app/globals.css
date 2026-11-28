@@ -1359,6 +1359,101 @@ h1.h2 {
   gap: 6px;
 }
 
+/* ---- /replay player (design-replay, 2026-11-27): one contract's chart beside a strike ladder ---- */
+.rp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+  margin: 16px 0 32px;
+}
+.rp-main {
+  padding: 16px 20px 4px;
+}
+.rp-now {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.rp-now span {
+  display: block;
+  color: var(--text-3);
+}
+.rp-now b {
+  font-size: 20px;
+  font-weight: 400;
+}
+.rp .replay-controls button.rp-play {
+  background: var(--mint);
+  color: #000;
+  min-width: 84px;
+}
+.rp-ladder {
+  min-width: 0; /* the global 520px would push Result out of a 340px card */
+  font-size: 13px;
+}
+.rp-ladder th,
+.rp-ladder td {
+  height: 34px;
+  padding: 0 8px;
+}
+.rp-ladder th:first-child,
+.rp-ladder td:first-child {
+  padding-left: 14px;
+}
+.rp-ladder th:last-child,
+.rp-ladder td:last-child {
+  padding-right: 14px;
+}
+.rp-ladder th:first-child,
+.rp-ladder td:first-child {
+  text-align: left;
+}
+.rp-ladder tbody tr {
+  cursor: pointer;
+}
+.rp-ladder td button {
+  all: unset;
+  cursor: pointer;
+}
+.rp-ladder td button:focus-visible {
+  outline: 2px solid var(--focus);
+}
+/* The charted contract: a mint edge and tint, visible at a glance on a phone too. */
+.rp-ladder tr.on td {
+  background: var(--mint-soft);
+}
+.rp-ladder tr.on td:first-child {
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+.rp-bar {
+  width: 30%;
+}
+.rp-bar span {
+  display: block;
+  height: 6px;
+  background: var(--kalshi);
+}
+@media (max-width: 900px) {
+  .rp {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .rp-main {
+    padding: 12px 12px 4px;
+  }
+  .rp-now {
+    gap: 8px 20px;
+  }
+  .rp-now b {
+    font-size: 17px;
+  }
+}
+/* ---- end /replay player ---- */
+
 /* ---- Waitlist and prose pages ------------------------------------------------------------ */
 .tools {
   list-style: none;

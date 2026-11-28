@@ -34,13 +34,29 @@ type RawFile = {
 
 export type Past = { event: string; family: string; close: number; hours: number };
 
-/** Events with a finished replay, newest close first: the close has passed and the hour holding
- * its last minute has been processed. */
-export async function getPastEvents(): Promise<Past[]> {
+// The replay server's list: event → the hours it has files for. Every recorded series is in it
+// (1,168 events on 2026-11-27), not only the replayed families.
+async function replayIndex(): Promise<Record<string, string[]>> {
   "use cache";
   cacheLife({ stale: 60, revalidate: 120, expire: 600 });
-  const index = (await (await fetchReplay("/index")).json()) as Record<string, string[]>;
-  const events = Object.keys(index);
+  return (await (await fetchReplay("/index")).json()) as Record<string, string[]>;
+}
+
+/** The replayed families with at least one recorded event (finished or not). */
+export async function getRecordedFamilies(): Promise<string[]> {
+  const events = Object.keys(await replayIndex());
+  return REPLAY_FAMILIES.filter((f) => events.some((e) => e.startsWith(f + "-")));
+}
+
+/** One family's events with a finished replay, newest close first: the close has passed and the
+ * hour holding its last minute has been processed. One family only: "use cache" is in-memory, and
+ * on Vercel it rarely survives to the next request, so every request redid the Kalshi lookups below
+ * for all ~94 unknown events of all families (~20 s per page, 2026-11-27). */
+export async function getPastEvents(family: string): Promise<Past[]> {
+  "use cache";
+  cacheLife({ stale: 60, revalidate: 120, expire: 600 });
+  const index = await replayIndex();
+  const events = Object.keys(index).filter((e) => e.startsWith(family + "-"));
   if (events.length === 0) return [];
   const rows = await sql`
     select event, extract(epoch from max(decided)) * 1000 as close
@@ -59,7 +75,7 @@ export async function getPastEvents(): Promise<Past[]> {
   };
   // About 10 lookups a second (5 every half second), under Kalshi's 20 reads a second: all at
   // once, the 22 recorded series' ~100 unknown events drew 429 (too many requests) on 2026-11-26
-  // and dropped from the list. Only the first load pays: each answer is cached a day.
+  // and dropped from the list. One family has at most ~14 unknown (2026-11-27): about 2 s.
   const closes: number[] = [];
   for (let i = 0; i < events.length; i += 5) {
     const [batch] = await Promise.all([
@@ -71,7 +87,7 @@ export async function getPastEvents(): Promise<Past[]> {
   return events
     .map((event, k) => ({
       event,
-      family: event.split("-")[0],
+      family,
       close: closes[k],
       hours: index[event].length,
     }))
@@ -124,14 +140,16 @@ export type Replay = {
     // Per minute: [bid, ask, bid size, ask size]; a missing side is null; null if not recorded.
     q: ([number | null, number | null, number, number] | null)[];
     fair: (number | null)[];
+    // Contracts traded in the minute before each boundary. Totals, not the trades themselves:
+    // a Bitcoin hour has ~13,000 trades, most of the page's 1.1 MB (2026-11-27).
+    traded: number[];
   }[];
-  trades: { t: number; m: number; side: string; px: number; sz: number }[]; // m: market index
 };
 
 export async function getReplay(event: string): Promise<Replay | null> {
   "use cache";
   cacheLife({ stale: 3600, revalidate: 86_400, expire: 86_400 * 7 }); // a past close never changes
-  const past = (await getPastEvents()).find((p) => p.event === event);
+  const past = (await getPastEvents(event.split("-")[0])).find((p) => p.event === event);
   if (!past) return null;
   // Only "above" thresholds: the chart reads each strike's price as P(value > strike).
   const kalshi = (await kalshiEvent(event)).filter(
@@ -141,7 +159,7 @@ export async function getReplay(event: string): Promise<Replay | null> {
   const settled = kalshi.find((m) => m.expiration_value !== "");
   const settlement = settled ? Number(settled.expiration_value) : null;
   const from = past.close - HOURS * 3_600_000;
-  const index = (await (await fetchReplay("/index")).json()) as Record<string, string[]>;
+  const index = await replayIndex();
   const hours = index[event].filter((h) => {
     const t = Date.parse(h + ":00:00Z");
     return t + 3_600_000 > from && t < past.close;
@@ -198,8 +216,13 @@ export async function getReplay(event: string): Promise<Replay | null> {
         if (i !== undefined)
           q[i] = [x.bids[0]?.[0] ?? null, x.asks[0]?.[0] ?? null, x.bids[0]?.[1] ?? 0, x.asks[0]?.[1] ?? 0];
       }
+      const traded = times.map(() => 0);
+      for (const x of merged.get(ticker)!.trades) {
+        const i = at.get(Math.floor(x.t / 60_000) * 60_000 + 60_000); // a trade in [t − 1 min, t)
+        if (i !== undefined) traded[i] += x.sz;
+      }
       const result = r.result === "yes" || r.result === "no" ? r.result : null;
-      return { ticker, strike: Number(r.floor_strike), result, q, fair: times.map(() => null as number | null) };
+      return { ticker, strike: Number(r.floor_strike), result, q, fair: times.map(() => null as number | null), traded };
     })
     .sort((a, b) => a.strike - b.strike);
   const mi = new Map(markets.map((m, i) => [m.ticker, i]));
@@ -213,8 +236,5 @@ export async function getReplay(event: string): Promise<Replay | null> {
     const i = at.get(Number(r.t));
     if (i !== undefined) idx[i] = Number(r.deribit_index);
   }
-  const trades = markets
-    .flatMap((m, k) => merged.get(m.ticker)!.trades.map((x) => ({ t: x.t, m: k, side: x.side, px: x.px, sz: x.sz })))
-    .sort((a, b) => a.t - b.t);
-  return { event, family: past.family, close: past.close, settlement, times, index: idx, markets, trades };
+  return { event, family: past.family, close: past.close, settlement, times, index: idx, markets };
 }
