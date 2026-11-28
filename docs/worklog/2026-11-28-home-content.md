@@ -21,8 +21,9 @@
   and getLiquidity (1.1–1.6 s each cold from a laptop, 10–80 ms warm). Both sections stream in
   their own Suspense below the fold: first byte 0.13 s cold, 6 ms warm on a local `next start`.
 - No replay frame: one needs Kalshi lookups and several hourly files from the VM (seconds).
-- Book and cost tiles use the most-traded Kalshi contract closing more than an hour out, and are
-  left out without a two-sided book: at 10:45 a 15-minute Bitcoin market led and its book was empty.
+- The preview and the book and cost tiles share one pick: the most-traded Kalshi contract closing
+  more than an hour out (at 10:45 ET a 15-minute Bitcoin market led and its book was empty). The
+  tiles are left out without a two-sided book.
 - Recorder coverage is not repeated in the findings: the figures row already shows it.
 - A closing call-to-action band was built and removed: Carson did not want it.
 - Explore stays as it is (it links How it's built and Insights).
@@ -34,6 +35,4 @@
 - The news tile with no measured item shows the newest item without a chart (simulated).
 
 ## Follow-ups
-- The hero preview still picks its contract without the hour filter, so it can show an empty
-  book in a 15-minute market's last minutes (seen 2026-11-28 10:45 ET). One-line fix if wanted.
 - Not checked on a Vercel preview; timings are from a laptop, not Vercel.

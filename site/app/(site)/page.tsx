@@ -91,9 +91,12 @@ export default function Home() {
 }
 
 /** Kalshi's most-traded contract in dollars (contracts × midpoint) and its event: by contract
- * count alone, 2¢ long shots win. Kalshi only, as the demo's chart and book read Kalshi's API. */
-function topKalshi(events: Event[]) {
-  const kalshi = events.filter((x) => x.venue === "kalshi");
+ * count alone, 2¢ long shots win. Kalshi only, as the demo's chart and book read Kalshi's API.
+ * Only contracts closing more than an hour out: in its last minutes a contract's book empties (a
+ * 15-minute Bitcoin market led at 10:45 ET on 2026-11-28 and the preview showed "No book yet").
+ * The listing holds only contracts quoted on both sides (lib/events.ts), so the book is two-sided. */
+function topKalshi(events: Event[], now: number) {
+  const kalshi = events.filter((x) => x.venue === "kalshi" && x.close - now > 3_600_000);
   const dollars = (r: Event["outcomes"][number]) => r.volume * (mid(r) ?? 0);
   const o = kalshi.flatMap((x) => x.outcomes).sort((a, b) => dollars(b) - dollars(a))[0];
   const e = o && kalshi.find((x) => x.outcomes.includes(o));
@@ -107,7 +110,7 @@ async function Preview() {
   await connection(); // request time only: the build never queries the database
   const { events, at } = await getEvents();
   const now = at ?? 0;
-  const top = topKalshi(events);
+  const top = topKalshi(events, now);
   if (!top) return <div className="panel preview" />;
   const { o, e } = top;
   const [book, trades, market] = await Promise.all([kalshiBook(o.id), kalshiTrades(o.id), getMarket(o.venue, o.id)]);
@@ -297,18 +300,14 @@ function Tool({ code, title, href, children }: { code: string; title: string; hr
   );
 }
 
-/** Six tools, each shown by what it says right now. Nearly everything here is already read for
- * the terminal preview above (events, pairs, distributions, news, and Kalshi's book unless the
- * preview's contract is about to close), so the cached results are reused; the news item's chart
- * is one more small file from the VM. */
+/** Six tools, each shown by what it says right now. Everything here is already read for the
+ * terminal preview above (events, Kalshi's book, pairs, distributions, news), so the cached
+ * results are reused; only the news item's chart is one more small file from the VM. */
 async function Tools() {
   await connection(); // request time only: the build never queries the database
   const { events, at } = await getEvents();
   const now = at ?? 0;
-  const later = events.filter((x) => x.close - now > 3_600_000);
-  // The book and cost tiles: Kalshi's most-traded contract closing more than an hour out. In its
-  // last minutes a contract's book empties (a 15-minute Bitcoin market led at 10:45 on 2026-11-28).
-  const top = topKalshi(later);
+  const top = topKalshi(events, now); // the preview's contract, so its book is read once
   const [read, { pairs }, dists, news] = await Promise.all([
     top ? kalshiBook(top.o.id) : null,
     getPairs(),
@@ -338,7 +337,7 @@ async function Tools() {
   // The busiest ladder with a distribution that closes more than an hour out: nearer the close
   // the curve is a single step.
   const dist = (x: Event) => dists.find((d) => d.event === x.event && (d.venue === x.venue || d.venue === "both"));
-  const dEvent = later.find(dist);
+  const dEvent = events.find((x) => x.close - now > 3_600_000 && dist(x));
   const d = dEvent && dist(dEvent);
   // The newest item whose book move has been measured, with its biggest mover's chart; before any
   // is measured (an hour or two after it lands), the newest item alone.
